@@ -18,11 +18,21 @@ const RecordType = new Enum({
 const kBlockSize = 32768; // 32KB
 
 class Log {
-  constructor(workdir) {
-    this._file = path.resolve(workdir, './LOG');
+  constructor(dbpath) {
+    this._logPath = path.resolve(dbpath, './LOG')
+    this._blocks = []
+    this._currentBlock = Buffer.from({ length: 0 })
   }
 
-  append() {
+  readLogRecord(initial_offset) {
+    fs.openSync(this._logPath, 'a+');
+    this._buf = fs.readFileSync(this._logPath)
+    console.log(this._buf.length)
+
+    
+  }
+
+  append(data) {
 
   }
 
