@@ -1,0 +1,29 @@
+{
+  "name": "node-level",
+  "version": "0.0.1",
+  "main": "index.js",
+  "repository": "https://github.com/heineiuo/node-level",
+  "author": "heineiuo <heineiuo@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "prepublish": "babel src -d dist"
+  },
+  "files": [
+    "dist",
+    "index.d.ts",
+    "index.js",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "babel-runtime": "^6.26.0"
+  },
+  "dependencies": {
+    "buffer-crc32": "^0.2.13",
+    "enum": "^2.5.0"
+  }
+}
