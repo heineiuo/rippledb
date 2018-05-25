@@ -1,3 +1,5 @@
+// inspired from https://github.com/ceejbot/skiplist
+
 import assert from 'assert'
 
 /**
