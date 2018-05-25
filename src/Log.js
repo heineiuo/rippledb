@@ -1,5 +1,5 @@
 import path from 'path'
-import fs from 'fs'
+import { promises as fs } from 'fs'
 import crc32 from 'buffer-crc32'
 import Enum from 'enum'
 
@@ -24,16 +24,47 @@ class Log {
     this._currentBlock = Buffer.from({ length: 0 })
   }
 
-  readLogRecord(initial_offset) {
-    fs.openSync(this._logPath, 'a+');
+  /**
+   * @param {number} initial_offset 
+   */
+  async readLogRecord(initial_offset) {
+    const fd = await fs.open(this._logPath, 'a+');
     this._buf = fs.readFileSync(this._logPath)
     console.log(this._buf.length)
-
-    
   }
 
-  append(data) {
+  async append(key, value) {
+    await fs.appendFile(this._logPath)
+  }
 
+  /**
+   * @param {buffer} strKey 
+   * @param {buffer} strValue 
+   */
+  createRecord(strKey, strValue) {
+    const keyLen = this.length2Buf(strKey.length)
+    const valLen = this.length2Buf(strValue.length)
+    const body = Buffer.concat([keyLen, strKey, valLen, strValue])
+    const checksum = crc32(body)
+    const bodyLen = this.length2Buf(body.length)
+    const typeBuf = Buffer.from([RecordType.get('kFullType').value])
+    const header = Buffer.concat([checksum, bodyLen, typeBuf])
+    return Buffer.concat([header, body])
+  }
+
+  /**
+   * @param {buffer} record 
+   */
+  parseRecord(record) {
+    const bodyLen = this.buf2Integer(record.slice(3, 5))
+    const body = record.slice(7, bodyLen)
+    const keyLen = this.buf2Integer(body.slice(0, 2))
+    const key = body.slice(2, 2 + keyLen)
+    const value = body.slice(4 + keyLen)
+    return {
+      key,
+      value
+    }
   }
 
   length2Buf = (len) => {

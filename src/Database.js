@@ -2,11 +2,21 @@ import path from 'path'
 import fs from 'fs'
 import MemTable from './MemTable'
 import Log from './Log'
+import SequnceNnumber from './SequnceNnumber'
 
 class Database {
   constructor(dbpath) {
     this._log = new Log(dbpath)
     this._mem = new MemTable()
+    this.recovery()
+  }
+
+  recovery() {
+    this._log.readLogRecord(0)
+  }
+
+  _viewLog = () => {
+
   }
 
 }
