@@ -67,19 +67,28 @@ class Log {
     }
   }
 
-  length2Buf = (len) => {
+  /**
+   * @param {number} len 
+   */
+  length2Buf(len) {
     const buf = Buffer.from({ length: 2 });
     buf[0] = len & 0xff;
     buf[1] = len >> 8;
     return buf;
   }
 
-  buf2Integer = (buf) => {
-    return Number(buf.readUInt16LE(0).toString(10));
+  /**
+   * @param {buffer} buf 
+   */
+  buf2Integer(buf) {
+    return buf.readUInt16LE(0)
   }
 
-  // get record length from record header
-  getLengthFromHeader = (header) => {
+  /**
+   * get record length from record header
+   * @param {buffer} header 
+   */
+  getLengthFromHeader(header) {
     const buf = Buffer.from({ length: 2 });
     buf[0] = header[4];
     buf[1] = header[5];

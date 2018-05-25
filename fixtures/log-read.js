@@ -1,17 +1,19 @@
-const path = require('path')
-const fs = require('fs')
-const Log = require('../dist/Log').default
-const dbpath = require('./dbpath')
+const path = require('path');
+const { promises: fs } = require('fs');
+const Log = require('../dist/Log').default;
+const dbpath = require('./dbpath');
 
-const log = new Log(dbpath)
+const log = new Log(dbpath);
 
-console.time('log read')
+(async () => {
+  console.time('log read');
 
-const record = log.parseRecord(fs.readFileSync(log._logPath))
+  let record = log.parseRecord(await fs.readFile(log._logPath));
+  console.timeEnd('log read');
 
-console.timeEnd('log read')
+  console.log({
+    key: record.key.toString(),
+    value: JSON.parse(record.value.toString())
+  })
+})();
 
-console.log({
-  key: record.key.toString(),
-  value: record.value.toString()
-})

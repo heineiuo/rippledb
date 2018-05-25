@@ -7,7 +7,11 @@ const dbpath = path.resolve(__dirname, '../.db')
 const log = new Log(dbpath)
 
 console.time('log write')
-let record = log.createRecord(Buffer.from('abcde'), Buffer.from('bop00'))
+let record = log.createRecord(Buffer.from('abcde'), Buffer.from(
+  JSON.stringify({
+    hello: 'world'
+  })
+))
 
 console.timeEnd('log write')
 
