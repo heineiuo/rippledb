@@ -2,7 +2,7 @@ import path from 'path'
 import fs from 'fs'
 import MemTable from './MemTable'
 import Log from './Log'
-import SequnceNnumber from './SequnceNnumber'
+import SequenceNumber from './SequenceNumber'
 
 class Database {
   constructor(dbpath) {
