@@ -29,8 +29,10 @@ class Log {
    */
   async readLogRecord(initial_offset) {
     const fd = await fs.open(this._logPath, 'a+');
-    this._buf = fs.readFileSync(this._logPath)
-    console.log(this._buf.length)
+    this._buf = await fs.readFile(this._logPath)
+    // console.log(this._buf.length)
+
+    
   }
 
   async append(key, value) {
