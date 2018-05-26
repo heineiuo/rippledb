@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "buffer-crc32": "^0.2.13",
+    "buffer-equal": "^1.0.0",
     "enum": "^2.5.0",
     "lru-cache": "^4.1.3"
   }
