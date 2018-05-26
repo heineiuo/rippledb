@@ -1,6 +1,17 @@
 // inspired from https://github.com/ceejbot/skiplist
 
 import assert from 'assert'
+import bufferEqual from 'buffer-equal'
+
+/**
+ * 
+ * @param {*} a 
+ * @param {*} b 
+ */
+function isEqual(a, b) {
+  if (!(Buffer.isBuffer(a) && Buffer.isBuffer(b))) return a === b
+  return bufferEqual(a, b)
+}
 
 /**
  * 
@@ -23,10 +34,14 @@ function makeNode(level, key, value) {
 function nodesEqual(left, right) {
   if ((left === undefined) && right) return false;
   if ((right === undefined) && left) return false;
-  if (left[0] !== right[0]) return false;
-  if (left[1] !== right[1]) return false;
-  if (left[2] !== right[2]) return false;
-  if (left[3] !== right[3]) return false;
+  // if (left[0] !== right[0]) return false;
+  // if (left[1] !== right[1]) return false;
+  // if (left[2] !== right[2]) return false;
+  // if (left[3] !== right[3]) return false;
+  if (!isEqual(left[0], right[0])) return false;
+  if (!isEqual(left[1], right[1])) return false;
+  if (!isEqual(left[2], right[2])) return false;
+  if (!isEqual(left[3], right[3])) return false;
   return true;
 }
 
@@ -34,7 +49,7 @@ const P = 1 / Math.E;
 const NIL = makeNode(-1);
 
 class Skiplist {
-  constructor() {
+  constructor(maxsize) {
     this.maxsize = maxsize || 65535; // Uint64
     this.maxlevel = Math.round(Math.log(this.maxsize, 2));
 
@@ -127,7 +142,7 @@ class Skiplist {
     let node = this._findLess(update, key);
     const prev = node;
     node = node[3];
-    if (node[0] === key) {
+    if (isEqual(node[0], key)) {
       node[1] = value;
     } else {
       const lvl = this._randomLevel();
@@ -151,7 +166,7 @@ class Skiplist {
     let node = this._findLess(update, key);
     node = node[3];
 
-    if (node[0] === key) {
+    if (isEqual(node[0], key)) {
       node[3][2] = update[0];
       for (let i = 0; i <= this.level; i++) {
         if (!nodesEqual(update[i][3 + i], node)) {
@@ -184,7 +199,7 @@ class Skiplist {
       }
     }
     node = node[3];
-    if (node[0] === search) {
+    if (isEqual(node[0], search)) {
       return node[1];
     }
 
