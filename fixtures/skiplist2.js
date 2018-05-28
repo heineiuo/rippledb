@@ -27,12 +27,16 @@ function makeBufList() {
 
   console.time('make and match')
   const list = makeBufList()
+  list.put('cat', 'hello kitty')
   list.get('key1')
   console.timeEnd('make and match')
   
   console.log(list.get('cat'))
 
   console.log(list.get(Buffer.from('key1')))
+  
+  list.del('cat')
+  console.log(list.get('cat'))
 
 
 })();
