@@ -5,20 +5,6 @@ const P = 1 / Math.E;
 
 /**
  * 
- * @param {array} left 
- * @param {array} right 
- */
-function nodesEqual(left, right) {
-  if ((left === undefined) && right) return false;
-  if ((right === undefined) && left) return false;
-  if (!isEqual(left.key, right.key)) return false;
-  if (!isEqual(left.value, right.value)) return false;
-  return true;
-}
-
-
-/**
- * 
  * @param {*} a 
  * @param {*} b 
  */
@@ -26,7 +12,6 @@ function isEqual(a, b) {
   if (!(Buffer.isBuffer(a) && Buffer.isBuffer(b))) return a === b;
   return bufferEqual(a, b);
 }
-
 
 class SkiplistNode {
   constructor(maxlevel, next, key, value) {
