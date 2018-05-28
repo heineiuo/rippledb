@@ -2,7 +2,7 @@ const Skiplist = require('../dist/Skiplist').default
 
 
 function makeAnimalList() {
-  var list = new Skiplist(30);
+  var list = new Skiplist();
   list.insert('cat', 'Cats are cute.');
   list.insert('dog', 'Dogs are loyal.');
   list.insert('aardvark', 'Aardvarks are long-nosed.');
@@ -25,9 +25,12 @@ function makeBufList() {
 
 ; (async () => {
 
+  console.time('make and match')
   const list = makeBufList()
-
-  console.log(list.match('key1'))
+  list.match('key1')
+  console.timeEnd('make and match')
+  
+  console.log(list.match('cat'))
 
   console.log(list.match(Buffer.from('key1')))
 
