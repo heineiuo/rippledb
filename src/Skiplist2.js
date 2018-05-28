@@ -5,8 +5,9 @@ const P = 1 / Math.E;
 
 /**
  * 
- * @param {*} a 
- * @param {*} b 
+ * @param {string|Buffer} a 
+ * @param {string|Buffer} b 
+ * @returns {boolean} isEqual
  */
 function isEqual(a, b) {
   if (!(Buffer.isBuffer(a) && Buffer.isBuffer(b))) return a === b;
@@ -14,6 +15,13 @@ function isEqual(a, b) {
 }
 
 class SkiplistNode {
+  /**
+   * 
+   * @param {number} maxlevel 
+   * @param {SkiplistNode} next 
+   * @param {string|Buffer} key 
+   * @param {string|Buffer} value 
+   */
   constructor(maxlevel, next, key, value) {
     this.key = key
     this.value = value
@@ -22,6 +30,10 @@ class SkiplistNode {
     this.fill(next)
   }
 
+  /**
+   * 
+   * @param {SkiplistNode} next 
+   */
   fill(next) {
     for (let i = 0; i <= this.maxlevel; i++) {
       this.levels[i] = next
@@ -38,6 +50,10 @@ class SkiplistNode {
 
 class Skiplist {
 
+  /**
+   * 
+   * @param {number} maxsize 
+   */
   constructor(maxsize) {
     this.maxsize = maxsize || 65535;
     this.maxlevel = Math.round(Math.log(this.maxsize, 2));
@@ -56,27 +72,35 @@ class Skiplist {
     this.head = new SkiplistNode(this.maxlevel, this.tail);
   }
 
+  /**
+   * @returns {number} randomLevel
+   */
   randomLevel() {
     let randomLevel = 0;
     const max = Math.min(this.maxlevel, this.level + 1);
-    while ((Math.random() < P) && (randomLevel < max)) {
+    while (Math.random() < P && randomLevel < max) {
       randomLevel++;
     }
     return randomLevel;
   }
 
+  /**
+   * 
+   * @param {string|Buffer} key 
+   * @param {SkiplistNode[]} update 
+   */
   findPrev(key, update = []) {
-    
+
     let level = this.maxlevel;
-    let prev = this.head
-    let current = prev.levels[level]
+    let prev = this.head;
+    let current = prev.levels[level];
     // let times = 0
     while (level >= 0) {
       // times ++
-      assert(prev.levels.length > level, 'prev level length must bigger then level')
+      assert(prev.levels.length > level, 'prev level length must bigger then level');
 
-      update[level] = prev
-      current = prev.levels[level]
+      update[level] = prev;
+      current = prev.levels[level];
 
       // 如果当前节点的next节点是this.tail
       //  如果level已经是0，则循环结束，说明插入节点最大，
@@ -85,17 +109,22 @@ class Skiplist {
       //   如果next节点的key比插入节点小，则查找next节点是否存在
       //   next节点且比key大
       if (current != this.tail && current.key < key) {
-        prev = current
+        prev = current;
         continue;
       }
-      level--
+      level--;
     }
 
     // console.log(`${key} find times: ${times}`)
-    
-    return prev
+
+    return prev;
   }
 
+  /**
+   * 
+   * @param {string|Buffer} key 
+   * @returns {SkiplistNode} node
+   */
   get(key) {
     let prev = this.findPrev(key);
     if (!prev) return null;
@@ -104,6 +133,10 @@ class Skiplist {
     return null;
   }
 
+  /**
+   * 
+   * @param {string|Buffer} key 
+   */
   del(key) {
     let update = new Array(this.maxlevel + 1);
     let prev = this.findPrev(key, update);
@@ -119,6 +152,11 @@ class Skiplist {
 
   }
 
+  /**
+   * 
+   * @param {string|Buffer} key 
+   * @param {string|Buffer} value 
+   */
   put(key, value) {
     let update = new Array(this.maxlevel + 1)
     let prev = this.findPrev(key, update)
@@ -138,6 +176,10 @@ class Skiplist {
         // prev.levels[i] = node
       }
     }
+  }
+
+  length() {
+
   }
 }
 

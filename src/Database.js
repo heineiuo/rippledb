@@ -27,6 +27,10 @@ class Database {
     this._log.readLogRecord(0)
   }
 
+  async interator() {
+
+  }
+
   async get(key) {
     return this._cache.get(key)
   }
@@ -39,14 +43,13 @@ class Database {
     return this._cache.del(key)
   }
 
-  createReadStream() {
+  createReadStream(options) {
 
   }
 
   _viewLog = () => {
 
   }
-
 }
 
 
