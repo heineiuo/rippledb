@@ -15,28 +15,27 @@ function makeAnimalList() {
   return list;
 }
 
-function makeBufList() {
-
-  var list = new Skiplist(2);
-  list.put(Buffer.from('key1'), 'Cats are cute.');
-
-  return list
-}
 
 ; (async () => {
 
   console.time('make and match')
-  const list = makeBufList()
-  list.put('cat', 'hello kitty')
-  list.get('key1')
+
+  var list = new Skiplist();
+
+  list.put(Buffer.from('key1'), Buffer.from('Cats are cute.'));
+  list.put(Buffer.from('cat'), Buffer.from('hello kitty'))
+  list.get(Buffer.from('key1'))
+
   console.timeEnd('make and match')
   
-  console.log(list.get('cat'))
+  console.log(list.get(Buffer.from('cat')))
+  
+
+  list.del(Buffer.from('cat'))
 
   console.log(list.get(Buffer.from('key1')))
+  console.log(list.get(Buffer.from('cat')))
   
-  list.del('cat')
-  console.log(list.get('cat'))
 
 
 })();
