@@ -112,16 +112,26 @@ class Skiplist {
   }
 
   get(key) {
-    let prev = this.findPrev(key)
-    if (!prev) return null
-    let current = prev.levels[0]
-    if (isEqual(current.key, key)) return current.value
-    return null
+    let prev = this.findPrev(key);
+    if (!prev) return null;
+    let current = prev.levels[0];
+    if (isEqual(current.key, key)) return current.value;
+    return null;
   }
 
   del(key) {
-    let node = this.findPrev(key)
-    if (!isEqual(prev.key, key)) return;
+    let update = new Array(this.maxlevel + 1);
+    let prev = this.findPrev(key, update);
+    if (!prev) return null;
+    let node = prev.levels[0];
+    if (!isEqual(node.key, key)) return;
+
+    for (let i = 0; i <= node.maxlevel; i++) {
+      if (update[i]) {
+        update[i].levels[i] = node.levels[i]
+      }
+    }
+
   }
 
   put(key, value) {
@@ -143,9 +153,7 @@ class Skiplist {
         // prev.levels[i] = node
       }
     }
-
   }
-
 }
 
 
