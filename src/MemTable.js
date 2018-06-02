@@ -13,8 +13,26 @@ class MemTable {
   constructor() {
     this._list = new Skiplist()
   }
-  
-  
+
+  encodeBuf() {
+
+  }
+
+  decodeBuf() {
+
+  }
+
+  get = function* () {
+
+  }
+
+  put(sn, valueType, key, value) {
+
+  }
+
+  createInterator = function* () {
+
+  }
 }
 
 export default MemTable
