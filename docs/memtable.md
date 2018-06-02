@@ -25,3 +25,30 @@ http://dsqiu.iteye.com/blog/1705530
 
 相等则返回
 否则跟右边的值比较，如果比右边的大继续向右边查找，否则向下查找，直到找到节点或未找到节点。
+
+
+
+## memtable
+
+
+memtable用到了`arena`做内存管理，包含了`ApproximateMemoryUsage`，实际上nodejs里不需要，内存管理交给V8.
+
+将SequenceNumber和ValueType 以及消息编码成一个字符串，存放在buf数组中，然后调用table.Insert(buf)插入数据。
+
+![memtable buf](./images/3.png)<sup>[[1]](#ref1)</sup>
+
+
+### key
+
+>所以总结下如下:
+
+>最短的为`internalkey`，就是`userkey`+`sequence`+`type`组成
+>接下来是`lookupkey`,由`internalkey`的长度+`internalkey`组成
+>`skiplist`中存储的键为`lookupkey`+`value`的长度+value。
+—— leveldb源码分析之memtable
+ <sup>[[2]](#ref2)</sup>
+
+
+* <span id="ref1"></span>` [1] LevelDB源码剖析之MemTable
+ `http://mingxinglai.com/cn/2013/01/leveldb-memtable/
+* `<span id="ref2"></span>` [2] leveldb源码分析之memtable https://luodw.cc/2015/10/17/leveldb-06/
