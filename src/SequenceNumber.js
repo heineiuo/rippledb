@@ -5,13 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
- class SequenceNumber {
+class SequenceNumber {
   constructor() {
     this._value = 0
   }
 
-  increase(){
-    this._value ++
+  increase() {
+    this._value++
   }
 
   get value() {

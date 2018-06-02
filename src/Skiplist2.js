@@ -52,6 +52,10 @@ class SkiplistNode {
       cb(this.levels[i], i)
     }
   }
+
+  next() {
+    return this.levels[0]
+  }
 }
 
 
@@ -96,7 +100,7 @@ class Skiplist {
    * @param {string|Buffer} key 
    * @param {SkiplistNode[]} update 
    */
-  findPrev(key, update = []) {
+  findLess(key, update = []) {
 
     let level = this.maxlevel;
     let prev = this.head;
@@ -127,15 +131,19 @@ class Skiplist {
     return prev;
   }
 
+  findGreator() {
+
+  }
+
   /**
    * 
    * @param {string|Buffer} key 
    * @returns {SkiplistNode} node
    */
   get(key) {
-    let prev = this.findPrev(key);
+    let prev = this.fineLess(key);
     if (!prev) return null;
-    let current = prev.levels[0];
+    let current = prev.next();
     if (isEqual(current.key, key)) return current.value;
     return null;
   }
@@ -146,9 +154,9 @@ class Skiplist {
    */
   del(key) {
     let update = new Array(this.maxlevel + 1);
-    let prev = this.findPrev(key, update);
+    let prev = this.fineLess(key, update);
     if (!prev) return null;
-    let node = prev.levels[0];
+    let node = prev.next();
     if (!isEqual(node.key, key)) return;
 
     for (let i = 0; i <= node.maxlevel; i++) {
@@ -159,6 +167,11 @@ class Skiplist {
 
   }
 
+
+  iterator = function* () {
+
+  }
+
   /**
    * 
    * @param {string|Buffer} key 
@@ -166,14 +179,14 @@ class Skiplist {
    */
   put(key, value) {
     let update = new Array(this.maxlevel + 1)
-    let prev = this.findPrev(key, update)
+    let prev = this.fineLess(key, update)
     if (isEqual(prev.key, key)) {
       prev.value = value
     } else {
       const randomLevel = this.randomLevel()
       this.level = Math.max(randomLevel, this.level)
       // console.log(`randomLevel, ${randomLevel}`)
-      const node = new SkiplistNode(randomLevel, prev.levels[0], key, value)
+      const node = new SkiplistNode(randomLevel, prev.next(), key, value)
 
       for (let i = 0; i <= randomLevel; i++) {
         if (update[i]) {
