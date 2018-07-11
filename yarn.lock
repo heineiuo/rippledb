@@ -1495,6 +1495,10 @@ v8flags@^2.1.1:
   dependencies:
     user-home "^1.1.1"
 
+varint@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.npmjs.org/varint/-/varint-5.0.0.tgz#d826b89f7490732fabc0c0ed693ed475dcb29ebf"
+
 wide-align@^1.1.0:
   version "1.1.2"
   resolved "https://registry.npmjs.org/wide-align/-/wide-align-1.1.2.tgz#571e0f1b0604636ebc0dfc21b0339bbe31341710"

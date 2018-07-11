@@ -5,23 +5,43 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/**
+ * @module SSTable
+ */
 
 import path from 'path'
 import fs from 'fs'
+import Footer from './TableFooter'
 
 class SSTable {
-  constructor(file_path) {
+  static fromFile (file_path) {
+    const buf = fs.readFileSync(file_path)
+    const footer = Footer.fromFile(buf)
+    const table = new SSTable({
+      footer
+    })
+    return table
+  }
 
+  constructor(file_path) {
   }
 
   append() {
 
   }
 
-  decodeFooter() {
+
+  getMetaIndex = () => {
 
   }
 
+  getIndex = () => {
+
+  }
 }
 
+/** 
+ * Create a sstable class
+ * @constructor
+ */
 export default SSTable
