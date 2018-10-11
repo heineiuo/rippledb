@@ -1,236 +1,206 @@
-// inspired from https://github.com/ceejbot/skiplist
+/**
+ * Copyright (c) 2018-present, heineiuo.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 import assert from 'assert'
 import bufferEqual from 'buffer-equal'
 
+const P = 1 / Math.E;
+
 /**
  * 
- * @param {*} a 
- * @param {*} b 
+ * @param {string|Buffer} a 
+ * @param {string|Buffer} b 
+ * @returns {boolean} isEqual
  */
 function isEqual(a, b) {
   if (!(Buffer.isBuffer(a) && Buffer.isBuffer(b))) return a === b;
   return bufferEqual(a, b);
 }
 
-/**
- * 
- * @param {number} level 
- * @param {*} key 
- * @param {*} value 
- */
-function makeNode(level, key, value) {
-  const node = new Array(4 + level);
-  node[0] = key;
-  node[1] = value;
-  return node;
+class SkiplistNode {
+  /**
+   * 
+   * @param {number} maxlevel 
+   * @param {SkiplistNode} next 
+   * @param {string|Buffer} key 
+   * @param {string|Buffer} value 
+   */
+  constructor(maxlevel, next, key, value) {
+    this.key = key
+    this.value = value
+    this.maxlevel = maxlevel
+    this.levels = new Array(maxlevel + 1)
+    this.fill(next)
+  }
+
+  /**
+   * 
+   * @param {SkiplistNode} next 
+   */
+  fill(next) {
+    for (let i = 0; i <= this.maxlevel; i++) {
+      this.levels[i] = next
+    }
+  }
+
+  forEach(cb) {
+    for (let i = 0; i <= this.maxlevel; i++) {
+      cb(this.levels[i], i)
+    }
+  }
+
+  next() {
+    return this.levels[0]
+  }
 }
 
-/**
- * 
- * @param {array} left 
- * @param {array} right 
- */
-function nodesEqual(left, right) {
-  if ((left === undefined) && right) return false;
-  if ((right === undefined) && left) return false;
-  if (!isEqual(left[0], right[0])) return false;
-  if (!isEqual(left[1], right[1])) return false;
-  if (!isEqual(left[2], right[2])) return false;
-  if (!isEqual(left[3], right[3])) return false;
-  return true;
-}
-
-const P = 1 / Math.E;
-const NIL = makeNode(-1);
 
 class Skiplist {
+
+  /**
+   * 
+   * @param {number} maxsize 
+   */
   constructor(maxsize) {
-    this.maxsize = maxsize || 65535; // Uint64
+    this.maxsize = maxsize || 65535;
     this.maxlevel = Math.round(Math.log(this.maxsize, 2));
 
     this.level = 0;
-    this.head = makeNode(this.maxlevel); // head在左下角
-    this.tail = NIL;
-    for (let i = 0; i < this.maxlevel; i++) {
-      this.head[i + 3] = NIL;
-      this._update = new Array(this.maxlevel + 1);
-    }
 
-    for (let i = 0; i < this._update.length; i++) {
-      this._update[i] = this.head;
-    }
+    // 开局的时候，tail是NIL， head指向tail
+    // [] -------> []
+    // [] -------> []
+    // [] -------> []
+    // [] -------> []
+    // [] -------> []
+    // head       tail
+    this.tail = new SkiplistNode(this.maxlevel);
+    this.tail.fill(this.tail)
+    this.head = new SkiplistNode(this.maxlevel, this.tail);
   }
 
   /**
-   * 返回一个小于等于(this.level + 1)的level
-   * 
-   * 从概率上来讲偏小的level可能性更大
-   * 
+   * @returns {number} randomLevel
    */
-  _randomLevel() {
-    let lvl = 0;
+  randomLevel() {
+    let randomLevel = 0;
     const max = Math.min(this.maxlevel, this.level + 1);
-    while ((Math.random() < P) && (lvl < max)) {
-      lvl++;
+    while (Math.random() < P && randomLevel < max) {
+      randomLevel++;
     }
-    return lvl;
+    return randomLevel;
   }
 
   /**
    * 
-   * @param {*} search 
-   * @param {boolean} reverse 
+   * @param {string|Buffer} key 
+   * @param {SkiplistNode[]} update 
    */
-  find(search, reverse) {
-    let node = reverse ? this.tail : this.head[3];
-    const idx = reverse ? 2 : 3;
-    const results = [];
+  findLess(key, update = []) {
 
-    if (search) {
-      const update = this._update.slice(0);
-      const found = this._findLess(update, search);
-      if (!nodesEqual(found[3], NIL)) {
-        node = found[3];
+    let level = this.maxlevel;
+    let prev = this.head;
+    let current = prev.levels[level];
+    // let times = 0
+    while (level >= 0) {
+      // times ++
+      assert(prev.levels.length > level, 'prev level length must bigger then level');
+
+      update[level] = prev;
+      current = prev.levels[level];
+
+      // 如果当前节点的next节点是this.tail
+      //  如果level已经是0，则循环结束，说明插入节点最大，
+      //  否则继续向下查找
+      // 如果key比下一个节点的key小，则循环结束
+      //   如果next节点的key比插入节点小，则查找next节点是否存在
+      //   next节点且比key大
+      if (current != this.tail && current.key < key) {
+        prev = current;
+        continue;
       }
+      level--;
     }
-    while (node[0]) {
-      results.push([node[0], node[1]]);
-      node = node[idx];
-    }
-    return results;
+
+    // console.log(`${key} find times: ${times}`)
+
+    return prev;
+  }
+
+  findGreator() {
+
   }
 
   /**
    * 
-   * @param {*} search 
-   * @param {boolean} maxResultsToReturn 
-   * @param {boolean} reverse 
+   * @param {string|Buffer} key 
+   * @returns {SkiplistNode} node
    */
-  findWithCount(search, maxResultsToReturn, reverse) {
-    let node = reverse ? this.tail : this.head[3];
-    const idx = reverse ? 2 : 3;
-    const results = [];
-
-    if (search) {
-      const update = this._update.slice(0);
-      const found = this._findLess(update, search);
-      if (!nodesEqual(found[3], NIL))
-        node = found[3];
-    }
-    while (node[0] && (results.length < maxResultsToReturn)) {
-      results.push([node[0], node[1]]);
-      node = node[idx];
-    }
-    return results;
-  };
-
-  /**
-   * 从head节点开始，如果右边的节点有值，则计数
-   */
-  length() {
-    // more for my curiosity
-    let node = this.head[3];
-    let count = 0;
-    while (node[0]) { 
-      count++;
-      node = node[3];
-    }
-    return count;
-  };
-
-  /**
-   * 
-   * @param {number[]} update 
-   * @param {string|Buffer} search 
-   */
-  _findLess(update, search) {
-    let node = this.head;
-    for (let i = this.level; i >= 0; i--) {
-      let key = node[3 + i][0]; // 首先是head里最上层的第一个节点，然后是
-      while (key && (key < search)) {
-        node = node[3 + i]; // 下面的节点
-        key = node[3 + i] ? node[3 + i][0] : null;
-      }
-      update[i] = node; // 如果key不存在或者在search右边， 更新update[i]为node
-    }
-    return node;
-  };
-
-  insert(key, value) {
-    assert(key);
-    const update = this._update.slice(0);
-    let node = this._findLess(update, key);
-    const prev = node;
-    node = node[3]; // 右节点
-    if (isEqual(node[0], key)) {
-      node[1] = value;
-    } else {
-      const lvl = this._randomLevel();
-      this.level = Math.max(this.level, lvl);
-      node = makeNode(lvl, key, value);
-      node[2] = prev; // 左节点
-      for (let i = 0; i <= this.level; i++) {
-        node[3 + i] = update[i][3 + i];
-        update[i][3 + i] = node;
-      }
-      if (nodesEqual(node[3], NIL)) {
-        this.tail = node;
-      } else {
-        node[3][2] = node;
-      }
-    }
-  };
-
-  remove(key) {
-    const update = this._update.slice(0);
-    let node = this._findLess(update, key);
-    node = node[3];
-
-    if (isEqual(node[0], key)) {
-      node[3][2] = update[0];
-      for (let i = 0; i <= this.level; i++) {
-        if (!nodesEqual(update[i][3 + i], node)) {
-          break;
-        }
-        update[i][3 + i] = node[3 + i];
-      }
-
-      while ((this.level > 1) && (this.head[3 + this.level].key !== null)) {
-        this.level--;
-      }
-
-      if (nodesEqual(this.tail, node)) {
-        this.tail = node[2];
-      }
-
-      return true;
-    }
-
-    return false; // just to make it explicit
-  };
-
-  /**
-   * 从head的最高的一个level开始往下找
-   * 如果右节点的key存在且key比待查找的小，则往右边找，
-   * @param {string|Buffer} search 
-   */
-  match(search) {
-    let node = this.head;
-    for (let i = this.level; i >= 0; i--) {
-      let key = node[3 + i][0];
-      while (key && (key < search)) {
-        node = node[3 + i];
-        key = node[3 + i] ? node[3 + i][0] : null;
-      }
-    }
-    node = node[3];
-    if (isEqual(node[0], search)) {
-      return node[1];
-    }
-
+  get(key) {
+    let prev = this.fineLess(key);
+    if (!prev) return null;
+    let current = prev.next();
+    if (isEqual(current.key, key)) return current.value;
     return null;
-  };
+  }
+
+  /**
+   * 
+   * @param {string|Buffer} key 
+   */
+  del(key) {
+    let update = new Array(this.maxlevel + 1);
+    let prev = this.fineLess(key, update);
+    if (!prev) return null;
+    let node = prev.next();
+    if (!isEqual(node.key, key)) return;
+
+    for (let i = 0; i <= node.maxlevel; i++) {
+      if (update[i]) {
+        update[i].levels[i] = node.levels[i]
+      }
+    }
+
+  }
+
+
+  async *iterator() {
+
+  }
+
+  /**
+   * 
+   * @param {string|Buffer} key 
+   * @param {string|Buffer} value 
+   */
+  put(key, value) {
+    let update = new Array(this.maxlevel + 1)
+    let prev = this.fineLess(key, update)
+    if (isEqual(prev.key, key)) {
+      prev.value = value
+    } else {
+      const randomLevel = this.randomLevel()
+      this.level = Math.max(randomLevel, this.level)
+      // console.log(`randomLevel, ${randomLevel}`)
+      const node = new SkiplistNode(randomLevel, prev.next(), key, value)
+
+      for (let i = 0; i <= randomLevel; i++) {
+        if (update[i]) {
+          node.levels[i] = update[i].levels[i]
+          update[i].levels[i] = node
+        }
+        // prev.levels[i] = node
+      }
+    }
+  }
+
+  length() {
+
+  }
 }
 
 
