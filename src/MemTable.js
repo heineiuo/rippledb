@@ -7,7 +7,7 @@
 
 import path from 'path'
 import fs from 'fs'
-import Skiplist from './Skiplist2'
+import Skiplist from './Skiplist'
 
 class MemTable {
   constructor() {

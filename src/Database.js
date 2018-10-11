@@ -16,6 +16,7 @@ class Database {
   constructor(dbpath) {
     this._log = new Log(dbpath)
     this._mem = new MemTable()
+    this._sn = new SequenceNumber(0)
     this._cache = LRU({
       max: 500,
       length: function (n, key) {
@@ -34,7 +35,7 @@ class Database {
     this._log.readLogRecord(0)
   }
 
-  async interator() {
+  async *iterator(options) {
 
   }
 

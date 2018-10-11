@@ -5,13 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-class SequenceNumber {
-  constructor() {
-    this._value = 0
-  }
-
-  increase() {
-    this._value++
+export class SequenceNumber {
+  constructor(initial = 0) {
+    this._value = initial
   }
 
   get value() {
@@ -19,5 +15,3 @@ class SequenceNumber {
     return this._value
   }
 }
-
-export default new SequenceNumber()
