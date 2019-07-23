@@ -23,7 +23,7 @@
     "buffer-crc32": "^0.2.13",
     "buffer-equal": "^1.0.0",
     "enum": "^2.5.0",
-    "lru-cache": "^4.1.3",
+    "lru-cache": "^5.1.1",
     "varint": "^5.0.0"
   },
   "standard": {
