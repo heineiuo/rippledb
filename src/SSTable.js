@@ -9,13 +9,13 @@
  * @module SSTable
  */
 
-import path from 'path'
+// import path from 'path'
 import fs from 'fs'
 import Footer from './TableFooter'
 
 class SSTable {
-  static fromFile (file_path) {
-    const buf = fs.readFileSync(file_path)
+  static async fromFile (filePath) {
+    const buf = await fs.readFile(filePath)
     const footer = Footer.fromFile(buf)
     const table = new SSTable({
       footer
@@ -23,13 +23,21 @@ class SSTable {
     return table
   }
 
-  constructor(file_path) {
+  constructor(options) {
+    this.footer = options.footer
   }
 
   append() {
 
   }
 
+  async *keyIterator () {
+
+  }
+
+  async *blockIterator () {
+
+  }
 
   getMetaIndex = () => {
 

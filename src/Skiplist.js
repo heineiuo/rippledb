@@ -116,10 +116,10 @@ class Skiplist {
       // 如果当前节点的next节点是this.tail
       //  如果level已经是0，则循环结束，说明插入节点最大，
       //  否则继续向下查找
-      // 如果key比下一个节点的key小，则循环结束
+      //  如果key比下一个节点的key小，则循环结束
       //   如果next节点的key比插入节点小，则查找next节点是否存在
       //   next节点且比key大
-      if (current != this.tail && current.key < key) {
+      if (!(current === this.tail) && current.key < key) {
         prev = current;
         continue;
       }
