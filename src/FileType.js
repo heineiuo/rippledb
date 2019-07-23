@@ -7,7 +7,6 @@
 
 import Enum from 'enum'
 
-
 export const FileType = new Enum([
   'kLogFile',
   'kDBLockFile',

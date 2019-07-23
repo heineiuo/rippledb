@@ -1,10 +1,18 @@
+"use strict";
+
+exports.__esModule = true;
+exports.default = void 0;
+
 /**
  * Copyright (c) 2018-present, heineiuo.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+class FileNumber {
+  constructor() {}
 
-'use strict'
+}
 
-module.exports = module.exports.default = require('./build/Database').default
+var _default = FileNumber;
+exports.default = _default;

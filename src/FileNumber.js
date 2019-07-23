@@ -6,7 +6,7 @@
  */
 
 class FileNumber {
-  constructor() {
+  constructor () {
 
   }
 }

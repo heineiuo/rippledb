@@ -3,7 +3,7 @@
  */
 
 class TableDataBlock {
-  constructor({ buf, offset, size}){
+  constructor ({ buf, offset, size }) {
 
   }
 }

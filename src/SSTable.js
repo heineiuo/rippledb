@@ -23,19 +23,19 @@ class SSTable {
     return table
   }
 
-  constructor(options) {
+  constructor (options) {
     this.footer = options.footer
   }
 
-  append() {
+  append () {
 
   }
 
-  async *keyIterator () {
+  async * keyIterator () {
 
   }
 
-  async *blockIterator () {
+  async * blockIterator () {
 
   }
 
@@ -48,7 +48,7 @@ class SSTable {
   }
 }
 
-/** 
+/**
  * Create a sstable class
  * @constructor
  */

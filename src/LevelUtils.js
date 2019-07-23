@@ -7,9 +7,9 @@
 
 /**
  * get part of buffer like String.substr
- * @param {Buffer} buf 
- * @param {number} start 
- * @param {number} len 
+ * @param {Buffer} buf
+ * @param {number} start
+ * @param {number} len
  */
 export const subbuf = (buf, start = 0, len) => {
   if (!Buffer.isBuffer(buf)) throw new TypeError('Buffer required.')
@@ -21,9 +21,9 @@ export const subbuf = (buf, start = 0, len) => {
 
 /**
  * get part of buffer like String.substring
- * @param {Buffer} buf 
- * @param {number} start 
- * @param {number} end 
+ * @param {Buffer} buf
+ * @param {number} start
+ * @param {number} end
  */
 export const subbuffer = (buf, start = 0, end) => {
   if (!Buffer.isBuffer(buf)) throw new TypeError('Buffer required.')

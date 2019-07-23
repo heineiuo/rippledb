@@ -13,7 +13,7 @@ import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
 
 class Database {
-  constructor(dbpath) {
+  constructor (dbpath) {
     this._log = new Log(dbpath)
     this._mem = new MemTable()
     this._sn = new SequenceNumber(0)
@@ -25,33 +25,33 @@ class Database {
       dispose: function (key, n) {
         n.close()
       },
-      maxAge: 1000 * 60 * 60,
+      maxAge: 1000 * 60 * 60
     })
 
     this.recovery()
   }
 
-  recovery() {
+  recovery () {
     this._log.readLogRecord(0)
   }
 
-  async *iterator(options) {
+  async * iterator (options) {
 
   }
 
-  async get(key) {
+  async get (key) {
     return this._cache.get(key)
   }
 
-  async put(key, value) {
+  async put (key, value) {
     return this._cache.set(key, value)
   }
 
-  async del(key) {
+  async del (key) {
     return this._cache.del(key)
   }
 
-  createReadStream(options) {
+  createReadStream (options) {
 
   }
 
@@ -59,6 +59,5 @@ class Database {
 
   }
 }
-
 
 export default Database

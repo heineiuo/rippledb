@@ -6,11 +6,11 @@
  */
 
 export class SequenceNumber {
-  constructor(initial = 0) {
+  constructor (initial = 0) {
     this._value = initial
   }
 
-  get value() {
+  get value () {
     this._value++
     return this._value
   }

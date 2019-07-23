@@ -2,14 +2,14 @@ import varint from 'varint'
 import { subbuf } from './LevelUtils'
 
 class Footer {
-  static fromFile(fileBuf) {
+  static fromFile (fileBuf) {
     if (fileBuf.length < 48) throw new RangeError('Illegal file')
     const footer = new Footer()
     footer.decode(subbuf(fileBuf, fileBuf.length - 48))
     return footer
   }
 
-  constructor() {
+  constructor () {
     // meta block索引信息
     this.metaIndexOffset = 0
     this.metaIndexSize = 0
@@ -18,7 +18,7 @@ class Footer {
     this.indexSize = 0
   }
 
-  encode() {
+  encode () {
     const handlers = Buffer.concat([
       Buffer.from(varint.encode(this.metaIndexOffset)),
       Buffer.from(varint.encode(this.metaIndexSize)),
@@ -37,7 +37,7 @@ class Footer {
   // 最近的index block的BlockHandle，
   // 以及metaindex block的BlockHandle，从而确定这两个组成部分在文件中的位置。
   // footer 48Bytes = metaindexhandle(0~20Bytes) + indexHandle(0-20byptes) + padding(0-40bytes) + magicNumber(8bytes)
-  decode(buf) {
+  decode (buf) {
     this.metaIndexOffset = varint.decode(buf, 0)
     this.metaIndexSize = varint.decode(buf, varint.decode.bytes)
     this.indexOffset = varint.decode(buf, varint.decode.bytes)

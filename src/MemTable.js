@@ -10,27 +10,27 @@ import fs from 'fs'
 import Skiplist from './Skiplist'
 
 class MemTable {
-  constructor() {
+  constructor () {
     this._list = new Skiplist()
   }
 
-  encodeBuf() {
+  encodeBuf () {
 
   }
 
-  decodeBuf() {
+  decodeBuf () {
 
   }
 
-  get = function* () {
+  get = function * () {
 
   }
 
-  put(sn, valueType, key, value) {
+  put (sn, valueType, key, value) {
 
   }
 
-  createInterator = function* () {
+  createInterator = function * () {
 
   }
 }
