@@ -6,8 +6,8 @@
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "export NODE_ENV=production && babel src -d build",
-    "prepublish": "yarn build"
+    "build": "babel src -d build",
+    "prepublish": "export NODE_ENV=production && yarn build"
   },
   "files": [
     "build",
