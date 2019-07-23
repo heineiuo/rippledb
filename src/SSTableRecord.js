@@ -12,7 +12,7 @@ export default class SSTableRecoed {
     })
   }
 
-  constructor (key, value) {
+  constructor ({ key, value }) {
     this._key = key
     this._value = value
   }
