@@ -32,9 +32,9 @@ class Log {
   }
 
   /**
-   * @param {number} initial_offset 
+   * @param {number} initialOffset 
    */
-  async readLogRecord(initial_offset) {
+  async readLogRecord(initialOffset) {
     const fd = await fs.open(this._logPath, 'a+');
     this._buf = await fs.readFile(this._logPath)
     // console.log(this._buf.length)

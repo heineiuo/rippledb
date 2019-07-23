@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import path from 'path'
-import fs from 'fs'
+// import path from 'path'
+// import fs from 'fs'
 import MemTable from './MemTable'
 import Log from './Log'
 import SequenceNumber from './SequenceNumber'
