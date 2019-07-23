@@ -1,6 +1,6 @@
 const fs = require('fs')
 const path = require('path')
-const Footer = require('../build/TableFooter').default
+const Footer = require('../build/SSTableFooter').default
 
 async function write () {
   try {
@@ -22,7 +22,7 @@ async function read () {
   try {
     const footerPath = path.resolve(__dirname, '../.db/footer')
 
-    const footer = Footer.fromFile(await fs.promises.readFile(footerPath))
+    const footer = Footer.fromBuffer(await fs.promises.readFile(footerPath))
     console.log(footer)
   } catch (e) {
     console.log(e)

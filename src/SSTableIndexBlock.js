@@ -6,7 +6,7 @@ export default class TableIndexBlock extends SSTableBlock {
     this.block_type = 'TableIndexBlock'
   }
 
-  get key () {
+  iterator () {
 
   }
 }

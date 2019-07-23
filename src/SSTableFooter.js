@@ -7,7 +7,7 @@ import { subbuf } from './LevelUtils'
  * 的偏移量和大小，读取 table 时从末尾开始读取。
  */
 export default class TableFooter {
-  static fromFile (fileBuf) {
+  static fromBuffer (fileBuf) {
     if (fileBuf.length < 48) throw new RangeError('Illegal file')
     const footer = new TableFooter()
     footer.decode(subbuf(fileBuf, fileBuf.length - 48))
