@@ -5,15 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/**
- * @module SSTable
- */
-
-// import path from 'path'
 import fs from 'fs'
 import Footer from './TableFooter'
 
-class SSTable {
+/**
+ * Create a sstable class
+ * @constructor
+ */
+export default class SSTable {
   static async fromFile (filePath) {
     const buf = await fs.readFile(filePath)
     const footer = Footer.fromFile(buf)
@@ -26,6 +25,8 @@ class SSTable {
   constructor (options) {
     this.footer = options.footer
   }
+
+  immutable = false
 
   append () {
 
@@ -47,9 +48,3 @@ class SSTable {
 
   }
 }
-
-/**
- * Create a sstable class
- * @constructor
- */
-export default SSTable

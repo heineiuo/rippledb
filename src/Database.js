@@ -51,10 +51,6 @@ class Database {
     return this._cache.del(key)
   }
 
-  createReadStream (options) {
-
-  }
-
   _viewLog = () => {
 
   }

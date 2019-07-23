@@ -14,6 +14,8 @@ class MemTable {
     this._list = new Skiplist()
   }
 
+  immutable = false
+
   encodeBuf () {
 
   }

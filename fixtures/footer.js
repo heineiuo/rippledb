@@ -1,38 +1,32 @@
-import fs from 'fs'
-import path from 'path'
-import Footer from '../src/TableFooter'
+const fs = require('fs')
+const path = require('path')
+const Footer = require('../build/TableFooter').default
 
-async function write() {
-
+async function write () {
   try {
     const footerPath = path.resolve(__dirname, '../.db/footer')
     const footer = new Footer()
-  
+
     footer.metaIndexOffset = 100
     footer.metaIndexSize = 100123
     footer.indexSize = 20123
     footer.indexSize = 100124
-  
+
     await fs.promises.writeFile(footerPath, footer.encode())
-  } catch(e){
+  } catch (e) {
     console.log(e)
   }
-
-  
 }
 
-async function read(){
-
+async function read () {
   try {
     const footerPath = path.resolve(__dirname, '../.db/footer')
 
     const footer = Footer.fromFile(await fs.promises.readFile(footerPath))
     console.log(footer)
-
-  } catch(e){
+  } catch (e) {
     console.log(e)
   }
-
 }
 
 read()

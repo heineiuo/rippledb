@@ -1,10 +1,15 @@
 import varint from 'varint'
 import { subbuf } from './LevelUtils'
 
-class Footer {
+/**
+ * 置于 table 末尾，固定 48 byte，
+ * 包含指向各个分区（ data index block 以及 meta index block ）
+ * 的偏移量和大小，读取 table 时从末尾开始读取。
+ */
+export default class TableFooter {
   static fromFile (fileBuf) {
     if (fileBuf.length < 48) throw new RangeError('Illegal file')
-    const footer = new Footer()
+    const footer = new TableFooter()
     footer.decode(subbuf(fileBuf, fileBuf.length - 48))
     return footer
   }
@@ -44,5 +49,3 @@ class Footer {
     this.indexSize = varint.decode(buf, varint.decode.bytes)
   }
 }
-
-export default Footer
