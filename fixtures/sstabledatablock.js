@@ -17,7 +17,7 @@ async function main () {
   let iterator = block.iterator()
   let result = iterator.next()
   while (!result.done) {
-    // console.log(result.value)
+    console.log(result.value)
     result = iterator.next()
     // let result = block.iterator().next()
     // console.log(result)
