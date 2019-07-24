@@ -1,17 +1,14 @@
 import SSTableBlock from './SSTableBlock'
+import SSTableRecoed from './SSTableRecoed'
 
 export default class TableIndexBlock extends SSTableBlock {
-  static fromBuffer (buffer) {
-
+  static fromBuffer (buf) {
+    const indexBlock = new TableIndexBlock()
+    return indexBlock
   }
 
   constructor (data) {
     super(data)
     this.block_type = 'TableIndexBlock'
-    this._list = []
-  }
-
-  * iterator () {
-    yield * this._list
   }
 }

@@ -1,8 +1,16 @@
 import BloomFilter from 'bloomfilter'
+import SSTableRecord from './SSTableRecord'
 
-export default class Filter {
+export default class SSTableMetaBlock {
   static fromBuffer (buf) {
 
+  }
+
+  constructor (data) {
+    this._filter = new BloomFilter(
+      data,
+      16
+    )
   }
 
   add () {
@@ -10,10 +18,6 @@ export default class Filter {
   }
 
   contains () {
-
-  }
-
-  toBuffer () {
 
   }
 }

@@ -7,19 +7,29 @@
 
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
+import MetaIndexBlock from './SSTableMetaIndexBlock'
 
 /**
  * Create a sstable class
  * @constructor
  */
 export default class SSTable {
+  /**
+   *
+   * @param {Buffer} buf
+   * @param {object} options
+   * @returns {SSTable}
+   */
   static async fromBuffer (buf, options = {}) {
-    const footer = Footer.fromFile(buf)
-    const indexBlockBuf = buf.slice(footer.indexBlock, footer.indexBlock + footer.indexBlockLength)
+    const footer = Footer.fromBuffer(buf)
+    const indexBlockBuf = buf.slice(footer.indexOffset, footer.indexOffset + footer.indexSize)
+    const metaIndexBlockBuf = buf.slice(footer.metaIndexOffset, footer.metaIndexOffset + footer.metaIndexSize)
     const indexBlock = IndexBlock.fromBuffer(indexBlockBuf)
+    const metaIndexBlock = MetaIndexBlock.fromBuffer(metaIndexBlockBuf)
     const table = new SSTable()
     table.footer = footer
     table.indexBlock = indexBlock
+    table.metaIndexBlock = metaIndexBlock
     if (options.immutable) {
       table.immutable = true
     }
@@ -52,13 +62,5 @@ export default class SSTable {
 
   * indexIterator () {
     yield * this._indexBlock.iterator()
-  }
-
-  getMetaIndex = () => {
-
-  }
-
-  getIndex = () => {
-
   }
 }

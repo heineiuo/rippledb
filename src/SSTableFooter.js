@@ -7,6 +7,11 @@ import { subbuf } from './LevelUtils'
  * 的偏移量和大小，读取 table 时从末尾开始读取。
  */
 export default class TableFooter {
+  /**
+   *
+   * @param {Buffer} fileBuf
+   * @return {TableFooter}
+   */
   static fromBuffer (fileBuf) {
     if (fileBuf.length < 48) throw new RangeError('Illegal file')
 
@@ -36,12 +41,34 @@ export default class TableFooter {
     indexSize
   }) {
     // meta block索引信息
-    this.metaIndexOffset = metaIndexOffset
-    this.metaIndexSize = metaIndexSize
+    this._metaIndexOffset = metaIndexOffset
+    this._metaIndexSize = metaIndexSize
     // data block 索引信息
-    this.indexOffset = indexOffset
-    this.indexSize = indexSize
+    this._indexOffset = indexOffset
+    this._indexSize = indexSize
   }
+
+  /**
+   * @type {Number}
+   */
+  get metaIndexOffset () { return this._metaIndexOffset }
+  /**
+   * @type {Number}
+   */
+  get metaIndexSize () { return this._metaIndexSize }
+  /**
+   * @type {Number}
+   */
+  get indexOffset () { return this._indexOffset }
+  /**
+   * @type {Number}
+   */
+  get indexSize () { return this._indexSize }
+
+  set metaIndexOffset (value) { this._metaIndexOffset = value }
+  set metaIndexSize (value) { this._metaIndexSize = value }
+  set indexOffset (value) { this._indexOffset = value }
+  set indexSize (value) { this._indexSize = value }
 
   toBuffer () {
     const handlers = Buffer.concat([
