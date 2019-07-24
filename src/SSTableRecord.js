@@ -1,7 +1,7 @@
 import varint from 'varint'
 import { subbuf } from './LevelUtils'
 
-export default class SSTableRecoed {
+export default class SSTableRecord {
   constructor (buffer, offset) {
     this._buffer = buffer
     this._offset = offset
@@ -20,6 +20,11 @@ export default class SSTableRecoed {
     return this._buffer
   }
 
+  /**
+   *
+   * @param {("utf8"|null)} encoding
+   * @returns {object}
+   */
   get (encoding) {
     if (!this._buffer) return { key: null, value: null }
     const buf = subbuf(this._buffer, this.offset)
@@ -40,6 +45,8 @@ export default class SSTableRecoed {
 
   /**
    * [key_length, key, value_length, value]
+   * @param {any} key
+   * @param {any} value
    */
   put (key, value) {
     if (key && value) {
