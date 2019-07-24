@@ -2,52 +2,55 @@ import varint from 'varint'
 import { subbuf } from './LevelUtils'
 
 export default class SSTableRecoed {
-  static fromBuffer (rawbuf) {
-    let buf = subbuf(rawbuf)
-    let keyLength = varint.decode(buf)
-    let keyStartIndex = varint.decode.bytes
-    let key = buf.slice(keyStartIndex, keyStartIndex + keyLength)
-    let valueLength = varint.decode(buf, keyStartIndex + keyLength)
-    let valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
-    let value = buf.slice(valueStartIndex, valueStartIndex + valueLength)
-    return new SSTableRecoed({
-      key: String(key),
-      value: String(value)
-    })
+  constructor (buffer, offset) {
+    this._buffer = buffer
+    this._offset = offset
+    if (buffer) {
+      const data = this.get()
+      this.put(data.key, data.value)
+    }
   }
 
-  constructor ({ key, value }) {
-    this._key = key
-    this._value = value
+  get length () {
+    return this._buffer.length
   }
 
-  get key () {
-    return this._key
+  get buffer () {
+    return this._buffer
   }
 
-  get value () {
-    return this._value
-  }
-
-  set key (next) {
-    this._key = next
-  }
-
-  set value (next) {
-    this._value = next
+  get (encoding) {
+    if (!this._buffer) return { key: null, value: null }
+    const buf = subbuf(this._buffer, this.offset)
+    const keyLength = varint.decode(buf)
+    const keyStartIndex = varint.decode.bytes
+    const key = buf.slice(keyStartIndex, keyStartIndex + keyLength)
+    const valueLength = varint.decode(buf, keyStartIndex + keyLength)
+    const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
+    const value = buf.slice(valueStartIndex, valueStartIndex + valueLength)
+    if (encoding === 'utf8') {
+      return {
+        key: String(key),
+        value: String(value)
+      }
+    }
+    return { key, value }
   }
 
   /**
    * [key_length, key, value_length, value]
    */
-  toBuffer () {
-    const keyLength = varint.encode(this.key.length)
-    const valueLength = varint.encode(this.value.length)
-    return Buffer.concat([
-      Buffer.from(keyLength),
-      Buffer.from(this.key),
-      Buffer.from(valueLength),
-      Buffer.from(this.value)
-    ])
+  put (key, value) {
+    if (key && value) {
+      const keyLength = varint.encode(key.length)
+      const valueLength = varint.encode(value.length)
+      this._buffer = Buffer.concat([
+        Buffer.from(keyLength),
+        Buffer.from(key),
+        Buffer.from(valueLength),
+        Buffer.from(value)
+      ])
+      this._offset = 0
+    }
   }
 }
