@@ -1,11 +1,15 @@
 import varint from 'varint'
+import { subbuf } from './LevelUtils'
 
 export default class SSTableRecoed {
-  static fromBuffer (buf) {
+  static fromBuffer (rawbuf) {
+    let buf = subbuf(rawbuf)
     let keyLength = varint.decode(buf)
-    let key = buf.slice(varint.decode.bytes, keyLength)
-    let valueLength = varint.decode(buf, varint.decode.bytes + keyLength)
-    let value = buf.slice(varint.decode.bytes, valueLength)
+    let keyStartIndex = varint.decode.bytes
+    let key = buf.slice(keyStartIndex, keyStartIndex + keyLength)
+    let valueLength = varint.decode(buf, keyStartIndex + keyLength)
+    let valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
+    let value = buf.slice(valueStartIndex, valueStartIndex + valueLength)
     return new SSTableRecoed({
       key: String(key),
       value: String(value)
@@ -25,6 +29,14 @@ export default class SSTableRecoed {
     return this._value
   }
 
+  set key (next) {
+    this._key = next
+  }
+
+  set value (next) {
+    this._value = next
+  }
+
   /**
    * [key_length, key, value_length, value]
    */
@@ -32,9 +44,9 @@ export default class SSTableRecoed {
     const keyLength = varint.encode(this.key.length)
     const valueLength = varint.encode(this.value.length)
     return Buffer.concat([
-      keyLength,
+      Buffer.from(keyLength),
       Buffer.from(this.key),
-      valueLength,
+      Buffer.from(valueLength),
       Buffer.from(this.value)
     ])
   }
