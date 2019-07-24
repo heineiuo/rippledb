@@ -9,66 +9,57 @@ const CompressionTypes = new Enum({
 })
 
 export default class SSTableBlock {
-  static fromBuffer (buf) {
-    const crc = String(Buffer.slice(Buffer.length - 4, 4))
-    const compressionType = String(Buffer.slice(Buffer.length - 5, 1))
-    const data = []
-
-    return new SSTableBlock({
-      block_data: data,
-      compression_type: CompressionTypes.get(varint.decode(compressionType)),
-      crc32: crc
-    })
-  }
-
-  constructor (data) {
-    /**
-     * @type {SSTableRecord[]}
-     */
-    this._block_data = data.block_data
-    /**
-     * @type string
-     */
-    this._crc32 = data.crc32
-    this._compression_type = data.compression_type
+  constructor (buffer) {
+    this._buffer = buffer
   }
 
   get crc32 () {
-    return this._crc32
-  }
-
-  /**
-   * @type {SSTableRecord[]}
-   */
-  get blockData () {
-    return this._block_data
+    return Buffer.slice(this._buffer.length - 4, 4)
   }
 
   /**
    * @type {number}
    */
   get compressionType () {
-    return this._compression_type
+    return this._buffer.slice(Buffer.length - 5, 1)
+  }
+
+  get buffer () {
+    return this._buffer
+  }
+
+  * iterator () {
+    let offset = 0
+    while (true) {
+      const record = new SSTableRecord(this._buffer, offset)
+      yield record.get()
+      offset += record.length
+      if (offset >= this._buffer.length - 5) {
+        return
+      }
+    }
+    // yield * this._buffer
   }
 
   append (data) {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
-    this.blockBuffer = Buffer.concat([
-      this.blockBuffer,
-      record.buffer
-    ])
-  }
+    let buf
+    if (this._buffer && this._buffer.length > 5) {
+      buf = Buffer.concat([
+        this._buffer.slice(0, this._buffer.length - 5),
+        record.buffer
+      ])
+    } else {
+      buf = record.buffer
+    }
 
-  * iterator () {
-    yield * this.blockData
-  }
-
-  get buffer () {
-    return Buffer.concat([
-      this.blockBuffer,
-      varint.encode(this.compressionType.value),
-      crc32(this.blockBuffer)
+    const compressionType = Buffer.from(varint.encode(CompressionTypes.get('none').value))
+    const crc32buffer = crc32(buf)
+    this._buffer = Buffer.concat([
+      buf,
+      compressionType,
+      crc32buffer
     ])
   }
 }

@@ -3,17 +3,23 @@ import { subbuf } from './LevelUtils'
 
 export default class SSTableRecord {
   constructor (buffer, offset) {
+    // if (buffer) console.log([`sstable record constructure`, buffer.length,'offset', offset])
     this._buffer = buffer
     this._offset = offset
-    if (buffer) {
-      const data = this.get()
-      this.put(data.key, data.value)
-    }
+    // if (buffer) {
+    //   const data = this.get()
+    //   this.put(data.key, data.value)
+    // }
   }
 
   get length () {
     if (!this._buffer) return 0
-    return this._buffer.length
+    const buf = this._buffer.slice(this._offset)
+    const keyLength = varint.decode(buf)
+    const keyStartIndex = varint.decode.bytes
+    const valueLength = varint.decode(buf, keyStartIndex + keyLength)
+    const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
+    return valueStartIndex + valueLength
   }
 
   get buffer () {
@@ -27,13 +33,13 @@ export default class SSTableRecord {
    */
   get (encoding = 'utf8') {
     if (!this._buffer) return { key: null, value: null }
-    const buf = subbuf(this._buffer, this.offset)
-    const keyLength = varint.decode(buf)
+    const keyLength = varint.decode(this._buffer, this._offset)
     const keyStartIndex = varint.decode.bytes
-    const key = buf.slice(keyStartIndex, keyStartIndex + keyLength)
-    const valueLength = varint.decode(buf, keyStartIndex + keyLength)
+    const key = this._buffer.slice(this._offset + keyStartIndex, this._offset + keyStartIndex + keyLength)
+    const valueLength = varint.decode(this._buffer, this._offset + keyStartIndex + keyLength)
     const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
-    const value = buf.slice(valueStartIndex, valueStartIndex + valueLength)
+    const value = this._buffer.slice(this._offset + valueStartIndex, this._offset + valueStartIndex + valueLength)
+
     if (encoding === 'utf8') {
       return {
         key: String(key),
