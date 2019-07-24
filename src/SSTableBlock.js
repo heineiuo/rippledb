@@ -51,18 +51,24 @@ export default class SSTableBlock {
     return this._compression_type
   }
 
+  append (data) {
+    const record = new SSTableRecord()
+    record.put(data.key, data.value)
+    this.blockBuffer = Buffer.concat([
+      this.blockBuffer,
+      record.buffer
+    ])
+  }
+
   * iterator () {
     yield * this.blockData
   }
 
-  toBuffer () {
-    let buf = Buffer.concat(this.blockData.map(record => record.toBuffer()))
-    this._crc32 = crc32(buf)
-    buf = Buffer.concat([
-      buf,
+  get buffer () {
+    return Buffer.concat([
+      this.blockBuffer,
       varint.encode(this.compressionType.value),
-      this._crc32
+      crc32(this.blockBuffer)
     ])
-    return buf
   }
 }

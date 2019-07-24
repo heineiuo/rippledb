@@ -1,25 +1,8 @@
-import TableBlock from './SSTableBlock'
+import SSTableBlock from './SSTableBlock'
 
-class TableDataBlock extends TableBlock {
+export default class TableDataBlock extends SSTableBlock {
   constructor (data) {
     super(data)
     this.block_type = 'TableDataBlock'
   }
-
-  get key () {
-
-  }
-  get keyLengh () {
-    const data = this.block_data
-  }
-
-  get valueLength () {
-
-  }
-
-  get value () {
-
-  }
 }
-
-export default TableDataBlock

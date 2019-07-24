@@ -48,19 +48,15 @@ export default class SSTable {
     if (next) this._immutable = true
   }
 
-  append () {
+  append (data) {
 
   }
 
-  * keyIterator () {
-
+  * dataBlockIterator () {
+    yield * this._dataBlock.iterator()
   }
 
-  * blockIterator () {
-
-  }
-
-  * indexIterator () {
+  * indexBlockIterator () {
     yield * this._indexBlock.iterator()
   }
 }
