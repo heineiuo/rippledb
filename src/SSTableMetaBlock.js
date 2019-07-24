@@ -1,8 +1,19 @@
-import TableBlock from './SSTableBlock'
+import BloomFilter from 'bloomfilter'
 
-export default class TableMetaBlock extends TableBlock {
-  constructor (data) {
-    super(data)
-    this.block_type = ''
+export default class Filter {
+  static fromBuffer (buf) {
+
+  }
+
+  add () {
+
+  }
+
+  contains () {
+
+  }
+
+  toBuffer () {
+
   }
 }

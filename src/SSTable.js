@@ -5,39 +5,53 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import fs from 'fs'
-import Footer from './TableFooter'
+import Footer from './SSTableFooter'
+import IndexBlock from './SSTableIndexBlock'
 
 /**
  * Create a sstable class
  * @constructor
  */
 export default class SSTable {
-  static async fromFile (filePath) {
-    const buf = await fs.readFile(filePath)
+  static async fromBuffer (buf, options = {}) {
     const footer = Footer.fromFile(buf)
-    const table = new SSTable({
-      footer
-    })
+    const indexBlockBuf = buf.slice(footer.indexBlock, footer.indexBlock + footer.indexBlockLength)
+    const indexBlock = IndexBlock.fromBuffer(indexBlockBuf)
+    const table = new SSTable()
+    table.footer = footer
+    table.indexBlock = indexBlock
+    if (options.immutable) {
+      table.immutable = true
+    }
     return table
   }
 
-  constructor (options) {
-    this.footer = options.footer
+  constructor () {
+    this._immutable = false
   }
 
-  immutable = false
+  get immutable () {
+    return this._immutable
+  }
+
+  set immutable (next) {
+    if (next) this._immutable = true
+  }
 
   append () {
 
   }
 
-  async * keyIterator () {
+  * keyIterator () {
 
   }
 
-  async * blockIterator () {
+  * blockIterator () {
 
+  }
+
+  * indexIterator () {
+    yield * this._indexBlock.iterator()
   }
 
   getMetaIndex = () => {

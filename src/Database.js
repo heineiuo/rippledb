@@ -36,7 +36,8 @@ class Database {
   }
 
   async * iterator (options) {
-
+    // await new Promise()
+    // yield 'a'
   }
 
   async get (key) {
