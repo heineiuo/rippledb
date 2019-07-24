@@ -25,7 +25,7 @@ export default class SSTableRecord {
    * @param {("utf8"|null)} encoding
    * @returns {object}
    */
-  get (encoding) {
+  get (encoding = 'utf8') {
     if (!this._buffer) return { key: null, value: null }
     const buf = subbuf(this._buffer, this.offset)
     const keyLength = varint.decode(buf)
