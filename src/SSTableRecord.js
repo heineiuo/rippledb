@@ -12,6 +12,7 @@ export default class SSTableRecoed {
   }
 
   get length () {
+    if (!this._buffer) return 0
     return this._buffer.length
   }
 
