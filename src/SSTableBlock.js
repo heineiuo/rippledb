@@ -43,7 +43,7 @@ export default class SSTableBlock {
     while (true) {
       const record = new SSTableRecord(this._buffer, offset)
       yield record.get()
-      offset += record.length
+      offset += record.size
       if (offset >= this._size - 5) {
         return
       }

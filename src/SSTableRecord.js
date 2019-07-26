@@ -1,24 +1,32 @@
 import varint from 'varint'
 
+function getSize (buffer, offset = 0) {
+  if (buffer.length === 0) return 0
+  const buf = buffer.slice(offset)
+  const keyLength = varint.decode(buf)
+  const keyStartIndex = varint.decode.bytes
+  const valueLength = varint.decode(buf, keyStartIndex + keyLength)
+  const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
+  return valueStartIndex + valueLength
+}
+
 export default class SSTableRecord {
-  constructor (buffer, offset) {
-    // if (buffer) console.log([`sstable record constructure`, buffer.length,'offset', offset])
-    this._buffer = buffer
-    this._offset = offset
+  constructor (buffer, offset, size) {
+    this._buffer = buffer || Buffer.from([])
+    this._offset = offset || 0
+    this._size = size || getSize(this._buffer, this._offset)
   }
 
-  get length () {
-    if (!this._buffer) return 0
-    const buf = this._buffer.slice(this._offset)
-    const keyLength = varint.decode(buf)
-    const keyStartIndex = varint.decode.bytes
-    const valueLength = varint.decode(buf, keyStartIndex + keyLength)
-    const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
-    return valueStartIndex + valueLength
+  get size () {
+    return this._size
   }
 
   get buffer () {
     return this._buffer
+  }
+
+  get offset () {
+    return this._offset
   }
 
   /**
@@ -27,7 +35,7 @@ export default class SSTableRecord {
    * @returns {object}
    */
   get (encoding = 'utf8') {
-    if (!this._buffer) return { key: null, value: null }
+    if (this._size === 0) return { key: null, value: null }
     const keyLength = varint.decode(this._buffer, this._offset)
     const keyStartIndex = varint.decode.bytes
     const key = this._buffer.slice(this._offset + keyStartIndex, this._offset + keyStartIndex + keyLength)
@@ -60,6 +68,7 @@ export default class SSTableRecord {
         Buffer.from(value)
       ])
       this._offset = 0
+      this._size = this._buffer.length
     }
   }
 }
