@@ -48,7 +48,6 @@ export default class SSTableBlock {
         return
       }
     }
-    // yield * this._buffer
   }
 
   append (data) {
