@@ -9,32 +9,42 @@ const CompressionTypes = new Enum({
 })
 
 export default class SSTableBlock {
-  constructor (buffer) {
+  constructor (buffer = Buffer.from([]), offset, size) {
     this._buffer = buffer
-  }
-
-  get crc32 () {
-    return Buffer.slice(this._buffer.length - 4, 4)
-  }
-
-  /**
-   * @type {number}
-   */
-  get compressionType () {
-    return this._buffer.slice(Buffer.length - 5, 1)
+    this._offset = offset || 0
+    this._size = size || buffer.length
   }
 
   get buffer () {
     return this._buffer
   }
 
+  get size () {
+    return this._size
+  }
+
+  get offset () {
+    return this._offset
+  }
+
+  get crc32 () {
+    return this._buffer.slice(this.offset + this._size - 4, 4)
+  }
+
+  /**
+   * @type {number}
+   */
+  get compressionType () {
+    return this._buffer.slice(this.offset + this._size - 5, 1)
+  }
+
   * iterator () {
-    let offset = 0
+    let offset = this._offset
     while (true) {
       const record = new SSTableRecord(this._buffer, offset)
       yield record.get()
       offset += record.length
-      if (offset >= this._buffer.length - 5) {
+      if (offset >= this._size - 5) {
         return
       }
     }
@@ -45,9 +55,9 @@ export default class SSTableBlock {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
     let buf
-    if (this._buffer && this._buffer.length > 5) {
+    if (this._buffer && this._size > 5) {
       buf = Buffer.concat([
-        this._buffer.slice(0, this._buffer.length - 5),
+        this._buffer.slice(0, this._size - 5),
         record.buffer
       ])
     } else {
@@ -61,5 +71,7 @@ export default class SSTableBlock {
       compressionType,
       crc32buffer
     ])
+    this._offset = 0
+    this._size = this._buffer.length
   }
 }

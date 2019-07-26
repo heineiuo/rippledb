@@ -4,7 +4,7 @@ const SSTableDataBlock = require('../build/SSTableDataBlock').default
 
 async function main () {
   console.time('sstabledatablock')
-  const block = new SSTableDataBlock()
+  const block = new SSTableDataBlock(Buffer.from([]))
   block.append({ key: 'key1', value: '1' })
   block.append({ key: 'key2', value: '2' })
   block.append({ key: 'key3', value: '3' })

@@ -5,4 +5,12 @@ export default class TableMetaIndexBlock extends TableBlock {
     super(data)
     this.block_type = ''
   }
+
+  get offset () {
+
+  }
+
+  get size () {
+
+  }
 }

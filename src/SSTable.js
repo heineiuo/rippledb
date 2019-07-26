@@ -20,24 +20,16 @@ export default class SSTable {
    * @param {object} options
    * @returns {SSTable}
    */
-  static async fromBuffer (buf, options = {}) {
+  constructor (buf, options = {}) {
     const footer = Footer.fromBuffer(buf)
     const indexBlockBuf = buf.slice(footer.indexOffset, footer.indexOffset + footer.indexSize)
     const metaIndexBlockBuf = buf.slice(footer.metaIndexOffset, footer.metaIndexOffset + footer.metaIndexSize)
     const indexBlock = IndexBlock.fromBuffer(indexBlockBuf)
     const metaIndexBlock = MetaIndexBlock.fromBuffer(metaIndexBlockBuf)
-    const table = new SSTable()
-    table.footer = footer
-    table.indexBlock = indexBlock
-    table.metaIndexBlock = metaIndexBlock
-    if (options.immutable) {
-      table.immutable = true
-    }
-    return table
-  }
-
-  constructor () {
-    this._immutable = false
+    this.footer = footer
+    this.indexBlock = indexBlock
+    this.metaIndexBlock = metaIndexBlock
+    this._immutable = options.immutable || false
   }
 
   get immutable () {
@@ -53,10 +45,10 @@ export default class SSTable {
   }
 
   * dataBlockIterator () {
-    yield * this._dataBlock.iterator()
+    yield * this.dataBlock.iterator()
   }
 
   * indexBlockIterator () {
-    yield * this._indexBlock.iterator()
+    yield * this.indexBlock.iterator()
   }
 }
