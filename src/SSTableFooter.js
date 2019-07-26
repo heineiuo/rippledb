@@ -1,5 +1,4 @@
 import varint from 'varint'
-import { subbuf } from './LevelUtils'
 
 /**
  * 置于 table 末尾，固定 48 byte，
@@ -7,78 +6,89 @@ import { subbuf } from './LevelUtils'
  * 的偏移量和大小，读取 table 时从末尾开始读取。
  */
 export default class TableFooter {
-  /**
-   *
-   * @param {Buffer} fileBuf
-   * @return {TableFooter}
-   */
-  static fromBuffer (fileBuf) {
-    if (fileBuf.length < 48) throw new RangeError('Illegal file')
+  constructure (buffer) {
+    this._buffer = buffer
+  }
 
-    // sstable文件中footer中可以解码出在文件的结尾处距离footer
-    // 最近的index block的BlockHandle，
-    // 以及metaindex block的BlockHandle，从而确定这两个组成部分在文件中的位置。
-    // footer 48Bytes = metaindexhandle(0~20Bytes) + indexHandle(0-20byptes) + padding(0-40bytes) + magicNumber(8bytes)
-    const buf = subbuf(fileBuf, fileBuf.length - 48)
+  get buffer () {
+    return this._buffer.slice(this._buffer.length - 48, 48)
+  }
+
+  set metaIndexOffset (value) {
+    const data = {
+      ...this.get(),
+      metaIndexOffset: value
+    }
+    this.put(data)
+  }
+
+  set metaIndexSize (value) {
+    const data = {
+      ...this.get(),
+      metaIndexSize: value
+    }
+    this.put(data)
+  }
+
+  set indexOffset (value) {
+    const data = {
+      ...this.get(),
+      indexOffset: value
+    }
+    this.put(data)
+  }
+
+  set indexSize (value) {
+    const data = {
+      ...this.get(),
+      indexSize: value
+    }
+    this.put(data)
+  }
+
+  get () {
+    if (!this.buffer) {
+      return {
+        metaIndexOffset: 0,
+        metaIndexSize: 0,
+        indexOffset: 0,
+        indexSize: 0
+      }
+    }
+    const buf = this.buffer
     const metaIndexOffset = varint.decode(buf, 0)
     const metaIndexSize = varint.decode(buf, varint.decode.bytes)
     const indexOffset = varint.decode(buf, varint.decode.bytes)
     const indexSize = varint.decode(buf, varint.decode.bytes)
-
-    const footer = new TableFooter({
+    return {
+      /**
+       * @type {number}
+       */
       metaIndexOffset,
+      /**
+       * @type {number}
+       */
       metaIndexSize,
+      /**
+       * @type {number}
+       */
       indexOffset,
+      /**
+       * @type {number}
+       */
       indexSize
-    })
-    return footer
+    }
   }
 
-  constructor ({
-    metaIndexOffset,
-    metaIndexSize,
-    indexOffset,
-    indexSize
-  }) {
-    // meta block索引信息
-    this._metaIndexOffset = metaIndexOffset
-    this._metaIndexSize = metaIndexSize
-    // data block 索引信息
-    this._indexOffset = indexOffset
-    this._indexSize = indexSize
-  }
-
-  /**
-   * @type {Number}
-   */
-  get metaIndexOffset () { return this._metaIndexOffset }
-  /**
-   * @type {Number}
-   */
-  get metaIndexSize () { return this._metaIndexSize }
-  /**
-   * @type {Number}
-   */
-  get indexOffset () { return this._indexOffset }
-  /**
-   * @type {Number}
-   */
-  get indexSize () { return this._indexSize }
-
-  set metaIndexOffset (value) { this._metaIndexOffset = value }
-  set metaIndexSize (value) { this._metaIndexSize = value }
-  set indexOffset (value) { this._indexOffset = value }
-  set indexSize (value) { this._indexSize = value }
-
-  toBuffer () {
+  put (data) {
     const handlers = Buffer.concat([
-      Buffer.from(varint.encode(this.metaIndexOffset)),
-      Buffer.from(varint.encode(this.metaIndexSize)),
-      Buffer.from(varint.encode(this.indexOffset)),
-      Buffer.from(varint.encode(this.indexSize))
+      Buffer.from(varint.encode(data.metaIndexOffset)),
+      Buffer.from(varint.encode(data.metaIndexSize)),
+      Buffer.from(varint.encode(data.indexOffset)),
+      Buffer.from(varint.encode(data.indexSize))
     ])
     const paddingBuf = Buffer.from({ length: 40 - handlers.length })
-    return Buffer.concat([
+    this._buffer = Buffer.concat([
       handlers,
       paddingBuf,
       Buffer.from({ length: 8 })

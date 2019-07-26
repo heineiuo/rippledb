@@ -1,15 +1,10 @@
 import varint from 'varint'
-import { subbuf } from './LevelUtils'
 
 export default class SSTableRecord {
   constructor (buffer, offset) {
     // if (buffer) console.log([`sstable record constructure`, buffer.length,'offset', offset])
     this._buffer = buffer
     this._offset = offset
-    // if (buffer) {
-    //   const data = this.get()
-    //   this.put(data.key, data.value)
-    // }
   }
 
   get length () {

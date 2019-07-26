@@ -4,14 +4,15 @@ const Footer = require('../build/SSTableFooter').default
 
 async function write () {
   try {
-    const footerPath = path.resolve(__dirname, '../.db/footer')
-    const footer = new Footer({
+    const footer = new Footer()
+    footer.put({
       metaIndexOffset: 100,
       metaIndexSize: 100123,
       indexOffset: 123123,
       indexSize: 20123
     })
-    await fs.writeFile(footerPath, footer.toBuffer())
+    const footerPath = path.resolve(__dirname, '../.db/footer')
+    await fs.writeFile(footerPath, footer.buffer)
   } catch (e) {
     console.log(e)
   }
@@ -20,8 +21,8 @@ async function write () {
 async function read () {
   try {
     const footerPath = path.resolve(__dirname, '../.db/footer')
-    const footer = Footer.fromBuffer(await fs.readFile(footerPath))
-    console.log(footer)
+    const footer = new Footer(await fs.readFile(footerPath))
+    console.log(footer.get())
   } catch (e) {
     console.log(e)
   }
