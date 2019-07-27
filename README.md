@@ -1,5 +1,5 @@
 # node-level
-A pure node.js implemention of LSM(log structured merge tree) based storage engine(inspired by leveldb).
+A pure node.js implementation of LSM(log structured merge tree) based storage engine(inspired by leveldb).
 
 ## Roadmap
 - [x] SSTableFooter
