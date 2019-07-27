@@ -10,11 +10,7 @@ export default class SSTableMetaBlock extends SSTableBlock {
     )
   }
 
-  add () {
-
-  }
-
-  contains () {
+  get filter () {
 
   }
 }
