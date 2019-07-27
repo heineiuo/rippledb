@@ -3,6 +3,7 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 
 ## Roadmap
 - [x] SSTableFooter
+- [x] SSTableRecord
 - [x] SSTableBaseBlock
 - [x] SSTableDataBlock
 - [x] SSTableIndexBlock
