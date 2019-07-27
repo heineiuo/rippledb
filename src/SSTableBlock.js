@@ -1,8 +1,7 @@
 import crc32 from 'buffer-crc32'
 import Enum from 'enum'
 import varint from 'varint'
-// eslint-disable-next-line
-import SSTableRecord from './SSTableRecord' 
+import SSTableRecord from './SSTableRecord'
 
 const CompressionTypes = new Enum({
   'none': 0
@@ -12,7 +11,7 @@ export default class SSTableBlock {
   constructor (buffer = Buffer.from([]), offset, size) {
     this._buffer = buffer
     this._offset = offset || 0
-    this._size = size || buffer.length
+    this._size = size || (this._buffer.length - this._offset)
   }
 
   get buffer () {
@@ -28,23 +27,27 @@ export default class SSTableBlock {
   }
 
   get crc32 () {
-    return this._buffer.slice(this.offset + this._size - 4, 4)
+    return this._buffer.slice(this.offset + this._size - 4)
   }
 
   /**
    * @type {number}
    */
   get compressionType () {
-    return this._buffer.slice(this.offset + this._size - 5, 1)
+    return this._buffer.slice(this.offset + this._size - 5, this.offset + this._size - 4)
   }
 
-  * iterator () {
+  * iterator (encoding) {
     let offset = this._offset
+    let recordSizeSummary = 0
     while (true) {
-      const record = new SSTableRecord(this._buffer, offset)
-      yield record.get()
-      offset += record.size
-      if (offset >= this._size - 5) {
+      const record = new SSTableRecord(this._buffer, offset + recordSizeSummary)
+      const data = record.get(encoding)
+      yield data
+      // console.log('SSTableBlock iterator increase with offset ' + offset + ' and fixed-size ' + this._size + ' and record.size is ' + record.size)
+      recordSizeSummary += record.size
+      if (recordSizeSummary >= this._size - 5) {
+        // console.log('SSTableBlock iterator done because offset is: ' + offset + ' and size is ' + this._size + ' and record.size is ' + record.size + ' and data is ' + JSON.stringify(data))
         return
       }
     }
@@ -53,20 +56,20 @@ export default class SSTableBlock {
   append (data) {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
-    let buf
+    let body
     if (this._buffer && this._size > 5) {
-      buf = Buffer.concat([
+      body = Buffer.concat([
         this._buffer.slice(0, this._size - 5),
         record.buffer
       ])
     } else {
-      buf = record.buffer
+      body = record.buffer
     }
 
     const compressionType = Buffer.from(varint.encode(CompressionTypes.get('none').value))
-    const crc32buffer = crc32(buf)
+    const crc32buffer = crc32(body)
     this._buffer = Buffer.concat([
-      buf,
+      body,
       compressionType,
       crc32buffer
     ])

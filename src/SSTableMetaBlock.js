@@ -1,14 +1,11 @@
 import BloomFilter from 'bloomfilter'
-import SSTableRecord from './SSTableRecord'
+import SSTableBlock from './SSTableBlock'
 
-export default class SSTableMetaBlock {
-  static fromBuffer (buf) {
-
-  }
-
-  constructor (data) {
+export default class SSTableMetaBlock extends SSTableBlock {
+  constructor (...props) {
+    super(...props)
     this._filter = new BloomFilter(
-      data,
+      props,
       16
     )
   }

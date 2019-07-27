@@ -1,16 +1,11 @@
 import TableBlock from './SSTableBlock'
 
 export default class TableMetaIndexBlock extends TableBlock {
-  constructor (data) {
-    super(data)
-    this.block_type = ''
-  }
-
-  get offset () {
-
-  }
-
-  get size () {
-
+  * metaBlockIterator () {
+    const iterator = this.iterator()
+    const meta = iterator.next()
+    while (!meta.done) {
+      yield meta.iterator()
+    }
   }
 }

@@ -1,8 +1,37 @@
 import SSTableBlock from './SSTableBlock'
+import SSTableDataBlock from './SSTableDataBlock'
+import varint from 'varint'
 
 export default class TableIndexBlock extends SSTableBlock {
-  constructor (data) {
-    super(data)
-    this.block_type = 'TableIndexBlock'
+  * dataBlockIterator () {
+    const iterator = this.iterator('buffer')
+    let dataBlockIndexRecord = iterator.next()
+    while (!dataBlockIndexRecord.done) {
+      // console.log('dataBlockIndexRecord loop times')
+
+      // yield dataBlockIndexRecord.value
+
+      /**
+       * key=max key of data block
+       * value=data block offset,size
+       */
+      const { value } = dataBlockIndexRecord.value
+      const offset = varint.decode(value)
+      const size = varint.decode(value, varint.decode.bytes)
+      const dataBlock = new SSTableDataBlock(this.buffer, offset, size)
+      // console.log('dataBlockIterator', [this._offset, this._size], [offset, size])
+
+      yield * dataBlock.iterator()
+
+      // const iterator2 = dataBlock.iterator()
+      // let dataBlockRecord = iterator2.next()
+      // while (!dataBlockRecord.done) {
+      //   yield dataBlockRecord.value
+      //   dataBlockRecord = iterator2.next()
+      // }
+
+      dataBlockIndexRecord = iterator.next()
+      // console.log(dataBlockIndexRecord)
+    }
   }
 }
