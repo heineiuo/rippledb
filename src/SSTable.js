@@ -21,9 +21,10 @@ export default class SSTable {
    * @returns {SSTable}
    */
   constructor (buf, options = {}) {
-    const footer = Footer.fromBuffer(buf)
-    const indexBlockBuf = buf.slice(footer.indexOffset, footer.indexOffset + footer.indexSize)
-    const metaIndexBlockBuf = buf.slice(footer.metaIndexOffset, footer.metaIndexOffset + footer.metaIndexSize)
+    const footer = new Footer(buf)
+    const footerData = footer.get()
+    const indexBlockBuf = buf.slice(footerData.indexOffset, footerData.indexOffset + footerData.indexSize)
+    const metaIndexBlockBuf = buf.slice(footerData.metaIndexOffset, footerData.metaIndexOffset + footerData.metaIndexSize)
     const indexBlock = IndexBlock.fromBuffer(indexBlockBuf)
     const metaIndexBlock = MetaIndexBlock.fromBuffer(metaIndexBlockBuf)
     this.footer = footer

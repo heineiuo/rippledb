@@ -14,15 +14,15 @@ export default class SSTableBlock {
     this._size = size || (this._buffer.length - this._offset)
   }
 
-  get buffer () {
+  get buffer ():Buffer {
     return this._buffer
   }
 
-  get size () {
+  get size ():number {
     return this._size
   }
 
-  get offset () {
+  get offset ():number {
     return this._offset
   }
 
@@ -30,30 +30,26 @@ export default class SSTableBlock {
     return this._buffer.slice(this.offset + this._size - 4)
   }
 
-  /**
-   * @type {number}
-   */
-  get compressionType () {
+  get compressionType ():number {
     return this._buffer.slice(this.offset + this._size - 5, this.offset + this._size - 4)
   }
 
-  * iterator (encoding) {
-    let offset = this._offset
-    let recordSizeSummary = 0
+  * iterator (encoding:"utf8"|"buffer") {
+    let recordSizeSummary:number = 0
     while (true) {
-      const record = new SSTableRecord(this._buffer, offset + recordSizeSummary)
+      if (recordSizeSummary >= this.size - 5) {
+        // console.log('SSTableBlock iterator done because offset is: ' + offset + ' and size is ' + this._size + ' and record.size is ' + record.size + ' and data is ' + JSON.stringify(data))
+        return
+      }
+      const record = new SSTableRecord(this.buffer, this.offset + recordSizeSummary)
       const data = record.get(encoding)
       yield data
       // console.log('SSTableBlock iterator increase with offset ' + offset + ' and fixed-size ' + this._size + ' and record.size is ' + record.size)
       recordSizeSummary += record.size
-      if (recordSizeSummary >= this._size - 5) {
-        // console.log('SSTableBlock iterator done because offset is: ' + offset + ' and size is ' + this._size + ' and record.size is ' + record.size + ' and data is ' + JSON.stringify(data))
-        return
-      }
     }
   }
 
-  append (data) {
+  append (data:{key:any, value:any}) {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
     let body

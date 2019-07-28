@@ -1,6 +1,7 @@
 import varint from 'varint'
+import { Buffer } from 'buffer'
 
-function getSize (buffer, offset = 0) {
+function getSize (buffer:Buffer, offset:number = 0):number {
   if (buffer.length === 0) return 0
   const buf = buffer.slice(offset)
   const keyLength = varint.decode(buf)
@@ -17,31 +18,26 @@ export default class SSTableRecord {
     this._size = size || getSize(this._buffer, this._offset)
   }
 
-  get size () {
+  get size ():number {
     return this._size
   }
 
-  get buffer () {
+  get buffer ():Buffer {
     return this._buffer
   }
 
-  get offset () {
+  get offset ():number {
     return this._offset
   }
 
-  /**
-   *
-   * @param {("utf8"|null)} encoding
-   * @returns {object}
-   */
-  get (encoding = 'utf8') {
-    if (this._size === 0) return { key: null, value: null }
-    const keyLength = varint.decode(this._buffer, this._offset)
+  get (encoding:("utf8"|"buffer") = 'utf8'):{key:any, value:any} {
+    if (this.size === 0) return { key: null, value: null }
+    const keyLength = varint.decode(this.buffer, this.offset)
     const keyStartIndex = varint.decode.bytes
-    const key = this._buffer.slice(this._offset + keyStartIndex, this._offset + keyStartIndex + keyLength)
-    const valueLength = varint.decode(this._buffer, this._offset + keyStartIndex + keyLength)
+    const key = this.buffer.slice(this.offset + keyStartIndex, this.offset + keyStartIndex + keyLength)
+    const valueLength = varint.decode(this.buffer, this.offset + keyStartIndex + keyLength)
     const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
-    const value = this._buffer.slice(this._offset + valueStartIndex, this._offset + valueStartIndex + valueLength)
+    const value = this.buffer.slice(this.offset + valueStartIndex, this.offset + valueStartIndex + valueLength)
 
     if (encoding === 'utf8') {
       return {
@@ -54,10 +50,8 @@ export default class SSTableRecord {
 
   /**
    * [key_length, key, value_length, value]
-   * @param {any} key
-   * @param {any} value
    */
-  put (key, value) {
+  put (key:string|Buffer, value:string|Buffer) {
     if (key && value) {
       const keyLength = varint.encode(key.length)
       const valueLength = varint.encode(value.length)

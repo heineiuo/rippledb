@@ -1,4 +1,5 @@
 import TableBlock from './SSTableBlock'
+import SStableMetaBlock from './SSTableMetaBlock'
 
 export default class TableMetaIndexBlock extends TableBlock {
   * metaBlockIterator () {

@@ -10,7 +10,7 @@ export default class TableFooter {
     this._buffer = buffer
   }
 
-  get buffer () {
+  get buffer ():Buffer {
     return this._buffer.slice(this._buffer.length - 48, 48)
   }
 
@@ -46,7 +46,12 @@ export default class TableFooter {
     this.put(data)
   }
 
-  get () {
+  get ():{
+    metaIndexOffset: number,
+    metaIndexSize: number,
+    indexOffset: number,
+    indexSize: number
+    } {
     if (!this.buffer) {
       return {
         metaIndexOffset: 0,
@@ -61,26 +66,19 @@ export default class TableFooter {
     const indexOffset = varint.decode(buf, varint.decode.bytes)
     const indexSize = varint.decode(buf, varint.decode.bytes)
     return {
-      /**
-       * @type {number}
-       */
       metaIndexOffset,
-      /**
-       * @type {number}
-       */
       metaIndexSize,
-      /**
-       * @type {number}
-       */
       indexOffset,
-      /**
-       * @type {number}
-       */
       indexSize
     }
   }
 
-  put (data) {
+  put (data: {
+    metaIndexOffset: number,
+    metaIndexSize: number,
+    indexOffset: number,
+    indexSize: number
+  }) {
     const handlers = Buffer.concat([
       Buffer.from(varint.encode(data.metaIndexOffset)),
       Buffer.from(varint.encode(data.metaIndexSize)),
