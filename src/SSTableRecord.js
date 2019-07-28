@@ -30,7 +30,7 @@ export default class SSTableRecord {
     return this._offset
   }
 
-  get (encoding:("utf8"|"buffer") = 'utf8'):{key:any, value:any} {
+  get (encoding:"utf8"|"buffer" = 'utf8'):{key:string|Buffer, value:string|Buffer} {
     if (this.size === 0) return { key: null, value: null }
     const keyLength = varint.decode(this.buffer, this.offset)
     const keyStartIndex = varint.decode.bytes

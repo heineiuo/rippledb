@@ -35,26 +35,6 @@ export default class SSTableMetaBlock {
     return this._buffer
   }
 
-  * iterator () {
-    const offsetIterator = this.offsetIterator()
-    let offsetResult = offsetIterator.next()
-    while (!offsetResult.done) {
-      const beginningOfFilter = offsetResult.value
-      const filter = new BloomFilter(this._buffer.slice(beginningOfFilter + this._offset))
-      offsetResult = offsetIterator.next()
-    }
-  }
-
-  * offsetIterator () {
-    const start = this.beginningOfOffset
-    const offsetTotalCount = this._size - 5 - start
-    let count = 0
-    while (count < offsetTotalCount) {
-      yield varint.decode(this._buffer.slice(start + count))
-      count += 4
-    }
-  }
-
   get beginningOfOffset ():number {
     let buf
     if (this._offset === 0 && this._size === this._buffer.length) {
@@ -67,5 +47,25 @@ export default class SSTableMetaBlock {
 
   get baseLg ():number {
     return 11
+  }
+
+  * iterator () {
+    const offsetIterator = this.offsetIterator()
+    let offsetResult = offsetIterator.next()
+    while (!offsetResult.done) {
+      const beginningOfFilter = offsetResult.value
+      const filter = new BloomFilter(this.buffer.slice(beginningOfFilter + this.offset))
+      offsetResult = offsetIterator.next()
+    }
+  }
+
+  * offsetIterator () {
+    const start = this.beginningOfOffset
+    const offsetTotalCount = this._size - 5 - start
+    let count = 0
+    while (count < offsetTotalCount) {
+      yield varint.decode(this._buffer.slice(start + count))
+      count += 4
+    }
   }
 }
