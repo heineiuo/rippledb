@@ -1,4 +1,5 @@
 import varint from 'varint'
+import { Buffer } from 'buffer'
 import BloomFilter from './BloomFilter'
 
 /**

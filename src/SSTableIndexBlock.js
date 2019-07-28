@@ -1,6 +1,7 @@
+// import { Buffer } from 'buffer'
+import varint from 'varint'
 import SSTableBlock from './SSTableBlock'
 import SSTableDataBlock from './SSTableDataBlock'
-import varint from 'varint'
 
 export default class TableIndexBlock extends SSTableBlock {
   * dataBlockIterator () {

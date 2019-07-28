@@ -1,6 +1,7 @@
 import crc32 from 'buffer-crc32'
 import Enum from 'enum'
 import varint from 'varint'
+import { Buffer } from 'buffer'
 import SSTableRecord from './SSTableRecord'
 
 const CompressionTypes = new Enum({

@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer'
 import TableBlock from './SSTableBlock'
 import SStableMetaBlock from './SSTableMetaBlock'
 

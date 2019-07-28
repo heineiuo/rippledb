@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { Buffer } from 'buffer'
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
 import MetaIndexBlock from './SSTableMetaIndexBlock'
@@ -14,13 +15,7 @@ import MetaIndexBlock from './SSTableMetaIndexBlock'
  * @constructor
  */
 export default class SSTable {
-  /**
-   *
-   * @param {Buffer} buf
-   * @param {object} options
-   * @returns {SSTable}
-   */
-  constructor (buf, options = {}) {
+  constructor (buf:Buffer, options?: { immutable: boolean } = {}) {
     const footer = new Footer(buf)
     const footerData = footer.get()
     const indexBlockBuf = buf.slice(footerData.indexOffset, footerData.indexOffset + footerData.indexSize)
@@ -33,11 +28,11 @@ export default class SSTable {
     this._immutable = options.immutable || false
   }
 
-  get immutable () {
+  get immutable ():boolean {
     return this._immutable
   }
 
-  set immutable (next) {
+  set immutable (next:boolean) {
     if (next) this._immutable = true
   }
 

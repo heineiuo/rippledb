@@ -12,7 +12,7 @@ function getSize (buffer:Buffer, offset:number = 0):number {
 }
 
 export default class SSTableRecord {
-  constructor (buffer, offset, size) {
+  constructor (buffer:Buffer, offset?:number, size?:number) {
     this._buffer = buffer || Buffer.from([])
     this._offset = offset || 0
     this._size = size || getSize(this._buffer, this._offset)

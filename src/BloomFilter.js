@@ -25,7 +25,7 @@ export default class BloomFilter {
     if (k > 30) return true
   }
 
-  get kNumber () {
+  get kNumber ():number {
     return varint.decode(this._buffer.slice(this._offset, this._offset + this._size - 1))
   }
 }

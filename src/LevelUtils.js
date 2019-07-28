@@ -5,13 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { Buffer } from 'buffer'
+
 /**
  * get part of buffer like String.substr
- * @param {Buffer} buf
- * @param {number} start
- * @param {number} len
  */
-export const subbuf = (buf, start = 0, len) => {
+export const subbuf = (buf:Buffer, start:number = 0, len?:number):Buffer => {
   if (!Buffer.isBuffer(buf)) throw new TypeError('Buffer required.')
   const length = typeof len === 'undefined' ? buf.length - start : len
   const buf1 = Buffer.from({ length })
@@ -21,11 +20,8 @@ export const subbuf = (buf, start = 0, len) => {
 
 /**
  * get part of buffer like String.substring
- * @param {Buffer} buf
- * @param {number} start
- * @param {number} end
  */
-export const subbuffer = (buf, start = 0, end) => {
+export const subbuffer = (buf:Buffer, start:number = 0, end:number):Buffer => {
   if (!Buffer.isBuffer(buf)) throw new TypeError('Buffer required.')
   const length = (typeof end === 'undefined' ? buf.length : end) - start
   const buf1 = Buffer.from({ length })
@@ -35,11 +31,8 @@ export const subbuffer = (buf, start = 0, end) => {
 
 /**
  *
- * @param {string} string1
- * @param {string} string2
- * @returns {string}
  */
-export function findShortestSeparator (string1, string2) {
+export function findShortestSeparator (string1:string, string2:string):string {
   let index = 0
   let same = ''
   let base = ''
