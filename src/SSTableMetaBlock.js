@@ -21,7 +21,7 @@ import BloomFilter from './BloomFilter'
  * lg(base) : 1 byte
  */
 export default class SSTableMetaBlock {
-  constructor (buffer, offset, size) {
+  constructor (buffer:Buffer, offset?:number, size?:number) {
     this._buffer = buffer || Buffer.from([])
     this._offset = offset || 0
     this._size = size || 0
@@ -31,7 +31,7 @@ export default class SSTableMetaBlock {
 
   }
 
-  get buffer () {
+  get buffer ():Buffer {
     return this._buffer
   }
 
@@ -55,7 +55,7 @@ export default class SSTableMetaBlock {
     }
   }
 
-  get beginningOfOffset () {
+  get beginningOfOffset ():number {
     let buf
     if (this._offset === 0 && this._size === this._buffer.length) {
       buf = this._buffer
@@ -65,7 +65,7 @@ export default class SSTableMetaBlock {
     return varint.decode(buf, buf.length - 5)
   }
 
-  get baseLg () {
-    return Buffer.from(varint.encode(11))
+  get baseLg ():number {
+    return 11
   }
 }

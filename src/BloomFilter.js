@@ -14,7 +14,7 @@ import MurmurHash3 from './MurmurHash3'
  * 其中元素个数和ln2是可确定的，位图数位理论上越大越好，将作为配置项
  */
 export default class BloomFilter {
-  constructor (buffer:Buffer, offset, size) {
+  constructor (buffer:Buffer, offset?:number, size?:number) {
     this._buffer = buffer
     this._offset = offset || 0
     this._size = size
