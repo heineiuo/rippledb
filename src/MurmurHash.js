@@ -67,8 +67,8 @@ function Umul32 (n, m) {
   return res
 }
 
-function getBucket (str, buckets) {
-  var hash = murmur(str, str.length)
-  var bucket = hash % buckets
-  return bucket
-}
+// function getBucket (str, buckets) {
+//   var hash = murmur(str, str.length)
+//   var bucket = hash % buckets
+//   return bucket
+// }
