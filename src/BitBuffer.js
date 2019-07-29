@@ -24,6 +24,20 @@ export default class BitBuffer {
     return this.size * 8
   }
 
+  resizeBits (bits:number) {
+    const nextSize = Math.ceil(bits / 8)
+    if (nextSize > this.size) {
+      this._buffer = Buffer.concat([
+        this._buffer,
+        Buffer.from({ length: nextSize - this.size })
+      ])
+      this._size = this._buffer.length
+    } else if (nextSize < this.size) {
+      this._buffer = this._buffer.slice(0, nextSize)
+      this._size = this._buffer.length
+    }
+  }
+
   set (index:number, bool:boolean) {
     const pos = index >>> 3
     if (bool) {
