@@ -2,11 +2,11 @@
 
 import { Buffer } from 'buffer'
 
-/**
- * Buffer length should be Math.ceil(bits / 8)
- */
 export default class BitBuffer {
-  constructor (buffer) {
+  /**
+   * Buffer length should be Math.ceil(bits / 8)
+   */
+  constructor (buffer:Buffer) {
     this._buffer = buffer
     this._size = buffer.length
   }
@@ -24,7 +24,7 @@ export default class BitBuffer {
     return this.size * 8
   }
 
-  set = (index:number, bool:boolean) => {
+  set (index:number, bool:boolean) {
     const pos = index >>> 3
     if (bool) {
       this._buffer[pos] |= 1 << (index % 8)
@@ -37,7 +37,7 @@ export default class BitBuffer {
     this._buffer[index >>> 3] ^= 1 << (index % 8)
   }
 
-  get = (index:number):boolean => {
+  get (index:number):boolean {
     return (this._buffer[index >>> 3] & (1 << (index % 8))) !== 0
   }
 }

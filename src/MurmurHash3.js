@@ -11,14 +11,14 @@
  * @return {number} 32-bit positive integer hash
  */
 export default function MurmurHash3 (key:string, seed?:number):number {
-  var remainder, bytes, h1, h1b, c1, c2, k1, i
-
-  remainder = key.length & 3 // key.length % 4
-  bytes = key.length - remainder
-  h1 = seed
-  c1 = 0xcc9e2d51
-  c2 = 0x1b873593
-  i = 0
+  const remainder = key.length & 3 // key.length % 4
+  const bytes = key.length - remainder
+  const c1 = 0xcc9e2d51
+  const c2 = 0x1b873593
+  let h1 = seed
+  let i = 0
+  let h1b
+  let k1
 
   while (i < bytes) {
     k1 =

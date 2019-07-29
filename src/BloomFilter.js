@@ -7,6 +7,7 @@
 
 import varint from 'varint'
 import { Buffer } from 'buffer'
+import BitBuffer from './BitBuffer'
 import MurmurHash3 from './MurmurHash3'
 
 /**
@@ -14,15 +15,27 @@ import MurmurHash3 from './MurmurHash3'
  * 其中元素个数和ln2是可确定的，位图数位理论上越大越好，将作为配置项
  */
 export default class BloomFilter {
-  constructor (buffer:Buffer, offset?:number, size?:number) {
+  constructor (buffer:Buffer) {
     this._buffer = buffer
-    this._offset = offset || 0
-    this._size = size
+    this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 1))
   }
 
-  keyMayMatch (key):boolean {
+  putKeys (keys:string[]) {
+
+  }
+
+  keyMayMatch (key:string):boolean {
     const k = this.kNumber
+    const bits = this._bitBuffer.bits
     if (k > 30) return true
+    let h = MurmurHash3(key)
+    let delta = (h >> 17) | (h << 15)
+    for (let j = 0; j < k; j++) {
+      const bitpos = h % bits
+      if (!this._bitBuffer.get(bitpos)) return false
+      h += delta
+    }
+    return true
   }
 
   get kNumber ():number {
