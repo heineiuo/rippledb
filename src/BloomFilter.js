@@ -8,7 +8,7 @@
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import BitBuffer from './BitBuffer'
-import MurmurHash from './MurmurHash'
+import BloomHash from './MurmurHash'
 
 /**
  * 关键是hash几次。hash次数 = 位图数位 / 元素个数 x ln2(约等于0.69)
@@ -63,7 +63,7 @@ export default class BloomFilter {
     // console.log('putKeys bits', bits)
 
     for (let i = 0; i < n; i++) {
-      let h = MurmurHash(keys[i])
+      let h = BloomHash(keys[i])
       let delta = (h >> 17) | (h << 15)
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits
@@ -82,7 +82,7 @@ export default class BloomFilter {
   keyMayMatch (key: string): boolean {
     // console.log('this._bitBuffer.bits', this._bitBuffer.bits)
     if (this.kNumber > 30) return true
-    let h = MurmurHash(key)
+    let h = BloomHash(key)
     // console.log('h', h)
     let delta = (h >> 17) | (h << 15)
     for (let j = 0; j < this.kNumber; j++) {
