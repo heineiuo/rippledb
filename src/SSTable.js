@@ -9,6 +9,7 @@ import { Buffer } from 'buffer'
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
 import MetaIndexBlock from './SSTableMetaIndexBlock'
+import SSTableRecord from './SSTableRecord'
 
 /**
  * Create a sstable class
@@ -26,6 +27,7 @@ export default class SSTable {
     this.indexBlock = indexBlock
     this.metaIndexBlock = metaIndexBlock
     this._immutable = options.immutable || false
+    this._cacheData = Buffer.from([])
   }
 
   get immutable ():boolean {
@@ -36,8 +38,9 @@ export default class SSTable {
     if (next) this._immutable = true
   }
 
-  append (data) {
-
+  put (data: { key: string|Buffer, value: string|Buffer }) {
+    const record = new SSTableRecord()
+    record.put(data.key, data.value)
   }
 
   * dataBlockIterator () {
