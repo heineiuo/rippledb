@@ -1,6 +1,6 @@
 // via https://gist.github.com/588423
 // thanks github.com/raycmorgan!
-export default function murmur (str, seed) {
+export default function murmur (str:string, seed:number):number {
   var m = 0x5bd1e995
   var r = 24
   var h = seed ^ str.length

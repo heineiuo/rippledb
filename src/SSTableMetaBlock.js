@@ -27,10 +27,6 @@ export default class SSTableMetaBlock {
     this._size = size || 0
   }
 
-  get filter () {
-
-  }
-
   get buffer ():Buffer {
     return this._buffer
   }
@@ -42,30 +38,72 @@ export default class SSTableMetaBlock {
     } else {
       buf = this._buffer.slice(this._offset, this._size)
     }
-    return varint.decode(buf, buf.length - 5)
+    return varint.decode(buf, buf.length - 2)
   }
 
   get baseLg ():number {
     return 11
   }
 
+  appendFilter (buffer:Buffer) {
+    // console.log('appendFilter buffer: ', buffer)
+    // console.log('appendFilter buffer length: ', buffer.length)
+
+    let buf
+    if (this._offset === 0 && this._size === this._buffer.length) {
+      buf = this._buffer
+    } else {
+      buf = this._buffer.slice(this._offset, this._size)
+    }
+
+    let filterBuffers = buf.slice(0, this.beginningOfOffset)
+    filterBuffers = Buffer.concat([filterBuffers, buffer])
+    // console.log('filterBuffers length: ', filterBuffers.length)
+    let filterOffsetBuffers = buf.slice(this.beginningOfOffset, buf.length - 2)
+    filterOffsetBuffers = Buffer.concat([
+      filterOffsetBuffers,
+      Buffer.from(varint.encode(filterBuffers.length))
+    ])
+    // console.log('filterOffsetBuffers length: ', filterOffsetBuffers.length)
+
+    this._buffer = Buffer.concat([
+      filterBuffers,
+      filterOffsetBuffers,
+      Buffer.from(varint.encode(filterBuffers.length)),
+      Buffer.from(varint.encode(this.baseLg))
+    ])
+    this._offset = 0
+    this._size = this._buffer.length
+  }
+
   * iterator () {
     const offsetIterator = this.offsetIterator()
     let offsetResult = offsetIterator.next()
+    let filterStart = this._offset
+    let filterEnd = 0
     while (!offsetResult.done) {
-      const beginningOfFilter = offsetResult.value
-      const filter = new BloomFilter(this.buffer.slice(beginningOfFilter + this.offset))
+      filterEnd = offsetResult.value
+      // console.log('offsetResult.value', offsetResult.value)
+      // console.log(this.buffer.slice(filterStart, filterEnd))
+      const filter = new BloomFilter(this.buffer.slice(filterStart, filterEnd))
+      yield filter
+      filterStart += offsetResult.result
       offsetResult = offsetIterator.next()
     }
   }
 
   * offsetIterator () {
     const start = this.beginningOfOffset
-    const offsetTotalCount = this._size - 5 - start
+    const offsetTotalCount = this._size - 2 - start
+    // console.log('this._size: ', this._size)
+    // console.log('beginningOfOffset: ', start)
+    // console.log('offsetTotalCount: ', offsetTotalCount)
     let count = 0
     while (count < offsetTotalCount) {
-      yield varint.decode(this._buffer.slice(start + count))
-      count += 4
+      const offset = varint.decode(this._buffer.slice(start + count))
+      // console.log('offsetIterator yield offset: ', offset)
+      yield offset
+      count += 1
     }
   }
 }
