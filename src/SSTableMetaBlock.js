@@ -52,6 +52,10 @@ export default class SSTableMetaBlock {
     return 11
   }
 
+  get base ():number {
+    return 1 << this.baseLg
+  }
+
   appendFilter (buffer:Buffer) {
     // console.log('appendFilter buffer: ', buffer)
     // console.log('appendFilter buffer length: ', buffer.length)

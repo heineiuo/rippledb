@@ -38,9 +38,18 @@ export default class SSTable {
     if (next) this._immutable = true
   }
 
-  put (data: { key: string|Buffer, value: string|Buffer }) {
+  add (data: { key: string|Buffer, value: string|Buffer }) {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
+
+    // const estimated_block_size = data_lock.CurrentSizeEstimate()
+    // if (estimated_block_size >= options_block_size) {
+    //   this.flush()
+    // }
+  }
+
+  flush () {
+
   }
 
   * dataBlockIterator () {
