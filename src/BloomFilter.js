@@ -26,12 +26,12 @@ export default class BloomFilter {
       this._bitBuffer = new BitBuffer(Buffer.from({ length: Math.ceil(k / 8) }))
       this._kNumber = k
     } else {
-      this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 2))
+      this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 1))
       this._kNumber = varint.decode(this._buffer.slice(this._buffer.length - 1))
       if (this._kNumber !== k) {
         this._kNumber = k
         this._buffer = Buffer.concat([
-          this._buffer.slice(0, this._buffer.length - 2),
+          this._buffer.slice(0, this._buffer.length - 1),
           Buffer.from(varint.encode(k))
         ])
         this._bitBuffer.resizeBits(k)
