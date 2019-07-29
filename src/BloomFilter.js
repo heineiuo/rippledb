@@ -15,54 +15,80 @@ import MurmurHash3 from './MurmurHash3'
  * 其中元素个数和ln2是可确定的，位图数位理论上越大越好，将作为配置项
  */
 export default class BloomFilter {
-  constructor (buffer:Buffer, bitsPerKey:number = 10) {
+  constructor (buffer: Buffer, bitsPerKey: number = 10) {
     this._buffer = buffer
-    this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 1))
+    this._offset = 0
     this._bitsPerKey = bitsPerKey
-    this._bestHashTimes = bitsPerKey * 0.69
+    const k = Math.round(bitsPerKey * 0.69)
+
+    if (!buffer || buffer.length === 0) {
+      this._buffer = Buffer.from(varint.encode(k))
+      this._bitBuffer = new BitBuffer(Buffer.from({ length: Math.ceil(k / 8) }))
+      this._kNumber = k
+    } else {
+      this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 2))
+      this._kNumber = varint.decode(this._buffer.slice(this._buffer.length - 1))
+      if (this._kNumber !== k) {
+        this._kNumber = k
+        this._buffer = Buffer.concat([
+          this._buffer.slice(0, this._buffer.length - 2),
+          Buffer.from(varint.encode(k))
+        ])
+        this._bitBuffer.resizeBits(k)
+      }
+    }
+    this._size = this._buffer.length
   }
 
-  get buffer ():Buffer {
+  get bitsPerKey ():number {
+    return this._bitsPerKey
+  }
+
+  get buffer (): Buffer {
     return this._buffer
   }
 
-  get bestHashTimes ():number {
-    return this._bestHashTimes
+  get size (): number {
+    return this._size
   }
 
-  get kNumber ():number {
-    return varint.decode(this._buffer.slice(this._offset, this._offset + this._size - 1))
+  get kNumber (): number {
+    return this._kNumber
   }
 
-  putKeys (keys:string[], n:number) {
-    const bits = n * this._bitsPerKey
+  putKeys (keys: string[], n: number) {
+    let bits = this.bitsPerKey * n
     this._bitBuffer.resizeBits(bits)
-    const bestHashTimes = this.bestHashTimes
+    bits = this._bitBuffer.bits
+    // console.log('putKeys bits', bits)
+
     for (let i = 0; i < n; i++) {
       let h = MurmurHash3(keys[i])
       let delta = (h >> 17) | (h << 15)
-      for (let j = 0; j < bestHashTimes; j++) {
+      for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits
+        // console.log(`putkeys bitPosition`, bitPosition)
         this._bitBuffer.set(bitPosition, true)
         h += delta
       }
     }
-    this._buffer = Buffer.concat(
+    this._buffer = Buffer.concat([
       this._bitBuffer.buffer,
-      this._buffer.slice(this._offset, this._offset + this._size - 1)
-    )
+      this._buffer.slice(this._offset + this._size - 1, this._offset + this._size)
+    ])
     this._size = this._buffer.length
   }
 
-  keyMayMatch (key:string):boolean {
-    const k = this.kNumber
-    const bits = this._bitBuffer.bits
-    if (k > 30) return true
+  keyMayMatch (key: string): boolean {
+    // console.log('this._bitBuffer.bits', this._bitBuffer.bits)
+    if (this.kNumber > 30) return true
     let h = MurmurHash3(key)
+    // console.log('h', h)
     let delta = (h >> 17) | (h << 15)
-    for (let j = 0; j < k; j++) {
-      const bitpos = h % bits
-      if (!this._bitBuffer.get(bitpos)) return false
+    for (let j = 0; j < this.kNumber; j++) {
+      const bitPosition = h % this._bitBuffer.bits
+      // console.log(`bitPosition`, bitPosition)
+      if (!this._bitBuffer.get(bitPosition)) return false
       h += delta
     }
     return true

@@ -1,65 +1,74 @@
-/**
- * JS Implementation of MurmurHash3 (r136) (as of May 20, 2011)
- *
- * @author <a href="mailto:gary.court@gmail.com">Gary Court</a>
- * @see http://github.com/garycourt/murmurhash-js
- * @author <a href="mailto:aappleby@gmail.com">Austin Appleby</a>
- * @see http://sites.google.com/site/murmurhash/
- *
- * @param {string} key ASCII only
- * @param {number} seed Positive integer only
- * @return {number} 32-bit positive integer hash
- */
-export default function MurmurHash3 (key:string, seed?:number):number {
-  const remainder = key.length & 3 // key.length % 4
-  const bytes = key.length - remainder
-  const c1 = 0xcc9e2d51
-  const c2 = 0x1b873593
-  let h1 = seed
-  let i = 0
-  let h1b
-  let k1
+// via https://gist.github.com/588423
+// thanks github.com/raycmorgan!
+export default function murmur (str, seed) {
+  var m = 0x5bd1e995
+  var r = 24
+  var h = seed ^ str.length
+  var length = str.length
+  var currentIndex = 0
 
-  while (i < bytes) {
-    k1 =
-      ((key.charCodeAt(i) & 0xff)) |
-      ((key.charCodeAt(++i) & 0xff) << 8) |
-      ((key.charCodeAt(++i) & 0xff) << 16) |
-      ((key.charCodeAt(++i) & 0xff) << 24)
-    ++i
+  while (length >= 4) {
+    var k = UInt32(str, currentIndex)
 
-    k1 = ((((k1 & 0xffff) * c1) + ((((k1 >>> 16) * c1) & 0xffff) << 16))) & 0xffffffff
-    k1 = (k1 << 15) | (k1 >>> 17)
-    k1 = ((((k1 & 0xffff) * c2) + ((((k1 >>> 16) * c2) & 0xffff) << 16))) & 0xffffffff
+    k = Umul32(k, m)
+    k ^= k >>> r
+    k = Umul32(k, m)
 
-    h1 ^= k1
-    h1 = (h1 << 13) | (h1 >>> 19)
-    h1b = ((((h1 & 0xffff) * 5) + ((((h1 >>> 16) * 5) & 0xffff) << 16))) & 0xffffffff
-    h1 = (((h1b & 0xffff) + 0x6b64) + ((((h1b >>> 16) + 0xe654) & 0xffff) << 16))
+    h = Umul32(h, m)
+    h ^= k
+
+    currentIndex += 4
+    length -= 4
   }
 
-  k1 = 0
-
-  switch (remainder) {
-    case 3: k1 ^= (key.charCodeAt(i + 2) & 0xff) << 16
+  switch (length) {
+    case 3:
+      h ^= UInt16(str, currentIndex)
+      h ^= str.charCodeAt(currentIndex + 2) << 16
+      h = Umul32(h, m)
       break
-    case 2: k1 ^= (key.charCodeAt(i + 1) & 0xff) << 8
-      break
-    case 1: k1 ^= (key.charCodeAt(i) & 0xff)
 
-      k1 = (((k1 & 0xffff) * c1) + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff
-      k1 = (k1 << 15) | (k1 >>> 17)
-      k1 = (((k1 & 0xffff) * c2) + ((((k1 >>> 16) * c2) & 0xffff) << 16)) & 0xffffffff
-      h1 ^= k1
+    case 2:
+      h ^= UInt16(str, currentIndex)
+      h = Umul32(h, m)
+      break
+
+    case 1:
+      h ^= str.charCodeAt(currentIndex)
+      h = Umul32(h, m)
+      break
   }
 
-  h1 ^= key.length
+  h ^= h >>> 13
+  h = Umul32(h, m)
+  h ^= h >>> 15
 
-  h1 ^= h1 >>> 16
-  h1 = (((h1 & 0xffff) * 0x85ebca6b) + ((((h1 >>> 16) * 0x85ebca6b) & 0xffff) << 16)) & 0xffffffff
-  h1 ^= h1 >>> 13
-  h1 = ((((h1 & 0xffff) * 0xc2b2ae35) + ((((h1 >>> 16) * 0xc2b2ae35) & 0xffff) << 16))) & 0xffffffff
-  h1 ^= h1 >>> 16
+  return h >>> 0
+}
 
-  return h1 >>> 0
+function UInt32 (str, pos) {
+  return (str.charCodeAt(pos++)) +
+         (str.charCodeAt(pos++) << 8) +
+         (str.charCodeAt(pos++) << 16) +
+         (str.charCodeAt(pos) << 24)
+}
+
+function UInt16 (str, pos) {
+  return (str.charCodeAt(pos++)) +
+         (str.charCodeAt(pos++) << 8)
+}
+
+function Umul32 (n, m) {
+  n = n | 0
+  m = m | 0
+  var nlo = n & 0xffff
+  var nhi = n >>> 16
+  var res = ((nlo * m) + (((nhi * m) & 0xffff) << 16)) | 0
+  return res
+}
+
+function getBucket (str, buckets) {
+  var hash = murmur(str, str.length)
+  var bucket = hash % buckets
+  return bucket
 }

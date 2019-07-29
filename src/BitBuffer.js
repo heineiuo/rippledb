@@ -54,4 +54,12 @@ export default class BitBuffer {
   get (index:number):boolean {
     return (this._buffer[index >>> 3] & (1 << (index % 8))) !== 0
   }
+
+  toString ():string {
+    let str = ''
+    for (let i = 0; i < this.bits; i++) {
+      str += this.get(i) ? '1' : '0'
+    }
+    return str
+  }
 }
