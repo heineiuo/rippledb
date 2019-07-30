@@ -34,7 +34,7 @@ export default class SSTableBlock {
     return this._offset
   }
 
-  get crc32 () {
+  get crc32 ():Buffer {
     return this._buffer.slice(this.offset + this._size - 4)
   }
 
@@ -57,7 +57,7 @@ export default class SSTableBlock {
     }
   }
 
-  append (data:{key:any, value:any}) {
+  append (data:{key:any, value:any}):void {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
     let body

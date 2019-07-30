@@ -24,7 +24,7 @@ export default class BitBuffer {
     return this.size * 8
   }
 
-  resizeBits (bits:number) {
+  resizeBits (bits:number):void {
     const nextSize = Math.ceil(bits / 8)
     if (nextSize > this.size) {
       this._buffer = Buffer.concat([
@@ -38,7 +38,7 @@ export default class BitBuffer {
     }
   }
 
-  set (index:number, bool:boolean) {
+  set (index:number, bool:boolean):void {
     const pos = index >>> 3
     if (bool) {
       this._buffer[pos] |= 1 << (index % 8)
@@ -47,7 +47,7 @@ export default class BitBuffer {
     }
   }
 
-  toggle (index:number) {
+  toggle (index:number):void {
     this._buffer[index >>> 3] ^= 1 << (index % 8)
   }
 

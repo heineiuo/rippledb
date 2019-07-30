@@ -40,7 +40,7 @@ export default class BloomFilter {
     this._size = this._buffer.length
   }
 
-  get bitsPerKey ():number {
+  get bitsPerKey (): number {
     return this._bitsPerKey
   }
 
@@ -56,7 +56,7 @@ export default class BloomFilter {
     return this._kNumber
   }
 
-  putKeys (keys: string[], n: number) {
+  putKeys (keys: string[], n: number): void {
     let bits = this.bitsPerKey * n
     this._bitBuffer.resizeBits(bits)
     bits = this._bitBuffer.bits

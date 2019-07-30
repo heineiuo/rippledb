@@ -3,7 +3,7 @@
 export default function murmur (str:string, seed:number):number {
   var m = 0x5bd1e995
   var r = 24
-  var h = seed ^ str.length
+  var h:number = seed ^ str.length
   var length = str.length
   var currentIndex = 0
 
@@ -46,19 +46,19 @@ export default function murmur (str:string, seed:number):number {
   return h >>> 0
 }
 
-function UInt32 (str, pos) {
+function UInt32 (str:string, pos:number):number {
   return (str.charCodeAt(pos++)) +
          (str.charCodeAt(pos++) << 8) +
          (str.charCodeAt(pos++) << 16) +
          (str.charCodeAt(pos) << 24)
 }
 
-function UInt16 (str, pos) {
+function UInt16 (str:string, pos:number):number {
   return (str.charCodeAt(pos++)) +
          (str.charCodeAt(pos++) << 8)
 }
 
-function Umul32 (n, m) {
+function Umul32 (n:number, m:number) {
   n = n | 0
   m = m | 0
   var nlo = n & 0xffff

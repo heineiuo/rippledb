@@ -58,7 +58,7 @@ export default class SSTableRecord {
   /**
    * [key_length, key, value_length, value]
    */
-  put (key:string|Buffer, value:string|Buffer) {
+  put (key:string|Buffer, value:string|Buffer):void {
     if (key && value) {
       const keyLength = varint.encode(key.length)
       const valueLength = varint.encode(value.length)

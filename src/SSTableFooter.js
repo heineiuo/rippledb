@@ -22,7 +22,7 @@ export default class TableFooter {
     return this._buffer.slice(this._buffer.length - 48, 48)
   }
 
-  set metaIndexOffset (value) {
+  set metaIndexOffset (value:number):void {
     const data = {
       ...this.get(),
       metaIndexOffset: value
@@ -30,7 +30,7 @@ export default class TableFooter {
     this.put(data)
   }
 
-  set metaIndexSize (value) {
+  set metaIndexSize (value:number):void {
     const data = {
       ...this.get(),
       metaIndexSize: value
@@ -38,7 +38,7 @@ export default class TableFooter {
     this.put(data)
   }
 
-  set indexOffset (value) {
+  set indexOffset (value:number):void {
     const data = {
       ...this.get(),
       indexOffset: value
@@ -46,7 +46,7 @@ export default class TableFooter {
     this.put(data)
   }
 
-  set indexSize (value) {
+  set indexSize (value:number):void {
     const data = {
       ...this.get(),
       indexSize: value
@@ -86,7 +86,7 @@ export default class TableFooter {
     metaIndexSize: number,
     indexOffset: number,
     indexSize: number
-  }) {
+  }): void {
     const handlers = Buffer.concat([
       Buffer.from(varint.encode(data.metaIndexOffset)),
       Buffer.from(varint.encode(data.metaIndexSize)),
