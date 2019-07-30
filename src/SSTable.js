@@ -34,7 +34,7 @@ export default class SSTable {
     return this._immutable
   }
 
-  set immutable (next:boolean):void {
+  set immutable (next:boolean) {
     if (next) this._immutable = true
   }
 

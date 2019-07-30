@@ -38,7 +38,7 @@ export default class BitBuffer {
     }
   }
 
-  set (index:number, bool:boolean):void {
+  set (index:number, bool:boolean) {
     const pos = index >>> 3
     if (bool) {
       this._buffer[pos] |= 1 << (index % 8)
