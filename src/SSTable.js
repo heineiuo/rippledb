@@ -34,11 +34,11 @@ export default class SSTable {
     return this._immutable
   }
 
-  set immutable (next:boolean) {
+  set immutable (next:boolean):void {
     if (next) this._immutable = true
   }
 
-  add (data: { key: string|Buffer, value: string|Buffer }) {
+  add (data: { key: string|Buffer, value: string|Buffer }):void {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
 
@@ -48,7 +48,7 @@ export default class SSTable {
     // }
   }
 
-  flush () {
+  flush ():void {
 
   }
 
