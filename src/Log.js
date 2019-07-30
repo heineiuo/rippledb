@@ -28,7 +28,7 @@ class Log {
   constructor (dbpath) {
     this._logPath = path.resolve(dbpath, './LOG')
     this._blocks = []
-    this._currentBlock = Buffer.from({ length: 0 })
+    this._currentBlock = Buffer.from(new ArrayBuffer(0))
   }
 
   /**
@@ -78,7 +78,7 @@ class Log {
    * @param {number} len
    */
   length2Buf (len) {
-    const buf = Buffer.from({ length: 2 })
+    const buf = Buffer.from(new ArrayBuffer(2))
     buf[0] = len & 0xff
     buf[1] = len >> 8
     return buf
@@ -96,7 +96,7 @@ class Log {
    * @param {buffer} header
    */
   getLengthFromHeader (header) {
-    const buf = Buffer.from({ length: 2 })
+    const buf = Buffer.from(new ArrayBuffer(2))
     buf[0] = header[4]
     buf[1] = header[5]
     return this.buf2Integer(buf)

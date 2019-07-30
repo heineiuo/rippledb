@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @flow
+
 import { Buffer } from 'buffer'
 import varint from 'varint'
 
@@ -17,6 +19,8 @@ export default class TableFooter {
   constructure (buffer:Buffer) {
     this._buffer = buffer
   }
+
+  _buffer:Buffer
 
   get buffer ():Buffer {
     return this._buffer.slice(this._buffer.length - 48, 48)
@@ -93,11 +97,11 @@ export default class TableFooter {
       Buffer.from(varint.encode(data.indexOffset)),
       Buffer.from(varint.encode(data.indexSize))
     ])
-    const paddingBuf = Buffer.from({ length: 40 - handlers.length })
+    const paddingBuf = Buffer.from(new ArrayBuffer(40 - handlers.length))
     this._buffer = Buffer.concat([
       handlers,
       paddingBuf,
-      Buffer.from({ length: 8 })
+      Buffer.from(new ArrayBuffer(8))
     ])
   }
 }

@@ -23,7 +23,7 @@ export default class BloomFilter {
 
     if (!buffer || buffer.length === 0) {
       this._buffer = Buffer.from(varint.encode(k))
-      this._bitBuffer = new BitBuffer(Buffer.from({ length: Math.ceil(k / 8) }))
+      this._bitBuffer = new BitBuffer(Buffer.from(new ArrayBuffer(Math.ceil(k / 8))))
       this._kNumber = k
     } else {
       this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 1))

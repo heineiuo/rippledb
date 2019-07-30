@@ -29,7 +29,7 @@ export default class BitBuffer {
     if (nextSize > this.size) {
       this._buffer = Buffer.concat([
         this._buffer,
-        Buffer.from({ length: nextSize - this.size })
+        Buffer.from(new ArrayBuffer(nextSize - this.size))
       ])
       this._size = this._buffer.length
     } else if (nextSize < this.size) {
