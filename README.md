@@ -20,7 +20,7 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 
 ## Benchmark
 
-## TableBuilder
+TableBuilder:
 ```
 SSTableBuilder 50000 records: 1260.794ms
 ```
