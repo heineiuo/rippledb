@@ -17,10 +17,10 @@ import SSTableMetaBlock from './SSTableMetaBlock'
 import SSTableDataBlock from './SSTableDataBlock'
 import Comparator from './Comparator'
 
-interface FileHandle extends fs.FileHandle{}
+interface FileHandle extends fs.FileHandle { }
 
 export default class SSTableBuilder {
-  constructor (file:FileHandle, options:{size:number} = {}) {
+  constructor(file: FileHandle, options: { size: number } = {}) {
     this._file = file
     this._fileSize = 0
     this._dataBlockSize = 0
@@ -36,19 +36,19 @@ export default class SSTableBuilder {
     }
   }
 
-  _options: {size:number}
-  _file:FileHandle
-  _fileSize:number
-  _name:string
-  _lastKey:void|Buffer
-  _dataBlockSize:number
-  _dataBlock:SSTableDataBlock
-  _metaBlock:SSTableMetaBlock
-  _metaIndexBlock:SSTableMetaIndexBlock
-  _indexBlock:SSTableIndexBlock
-  _footer:SSTableFooter
+  _options: { size: number }
+  _file: FileHandle
+  _fileSize: number
+  _name: string
+  _lastKey: void | Buffer
+  _dataBlockSize: number
+  _dataBlock: SSTableDataBlock
+  _metaBlock: SSTableMetaBlock
+  _metaIndexBlock: SSTableMetaIndexBlock
+  _indexBlock: SSTableIndexBlock
+  _footer: SSTableFooter
 
-  async add (key:string|Buffer, value: string|Buffer) {
+  async add(key: string | Buffer, value: string | Buffer) {
     if (this._lastKey) {
       assert(Buffer.from(key).compare(this._lastKey) > 0, `${key} must bigger then ${this._lastKey.toString()}`)
     }
@@ -59,7 +59,7 @@ export default class SSTableBuilder {
     }
   }
 
-  async flush () {
+  async flush() {
     const lastDataBlockSize = this._dataBlockSize
     this._dataBlockSize += this._dataBlock.size
     await this.appendFile(this._dataBlock.buffer)
@@ -73,7 +73,7 @@ export default class SSTableBuilder {
     const keys = []
     const blockKeyIterator = this._dataBlock.iterator()
     let result = blockKeyIterator.next()
-    while(!result.done) {
+    while (!result.done) {
       keys.push(result.value.key)
       result = blockKeyIterator.next()
     }
@@ -84,12 +84,12 @@ export default class SSTableBuilder {
     this._dataBlock = new SSTableDataBlock()
   }
 
-  async appendFile(buffer:Buffer) {
+  async appendFile(buffer: Buffer) {
     await this._file.appendFile(buffer)
     this._fileSize += buffer.length
   }
 
-  async close () {
+  async close() {
     if (this._dataBlock.size > 0) {
       await this.flush()
     }
@@ -103,8 +103,18 @@ export default class SSTableBuilder {
         Buffer.from(varint.encode(this._metaBlock.size))
       ])
     })
+    const metaIndexOffset = this._fileSize
     await this.appendFile(this._metaIndexBlock.buffer)
+    const metaIndexSize = this._fileSize - metaIndexOffset
+    const indexOffset = this._fileSize
+    const indexSize = this._indexBlock.size
     await this.appendFile(this._indexBlock.buffer)
+    this._footer.put({
+      metaIndexOffset: metaIndexOffset,
+      metaIndexSize: metaIndexSize,
+      indexOffset: indexOffset,
+      indexSize: indexSize
+    })
     await this.appendFile(this._footer.buffer)
     await this._file.close()
   }

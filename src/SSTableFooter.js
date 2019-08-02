@@ -18,12 +18,13 @@ import varint from 'varint'
 export default class TableFooter {
   constructor (buffer:Buffer) {
     this._buffer = buffer || Buffer.alloc(48)
+    this._offset = this._buffer.length > 48 ? this._buffer.length - 48 : 0
   }
 
   _buffer:Buffer
 
   get buffer ():Buffer {
-    return this._buffer.slice(this._buffer.length - 48, 48)
+    return this._buffer.slice(this._offset, this._offset + 48)
   }
 
   set metaIndexOffset (value:number) {
@@ -64,7 +65,8 @@ export default class TableFooter {
     indexOffset: number,
     indexSize: number
     } {
-    if (!this.buffer) {
+    const buf = this.buffer
+    if (!buf) {
       return {
         metaIndexOffset: 0,
         metaIndexSize: 0,
@@ -72,11 +74,14 @@ export default class TableFooter {
         indexSize: 0
       }
     }
-    const buf = this.buffer
-    const metaIndexOffset = varint.decode(buf, 0)
-    const metaIndexSize = varint.decode(buf, varint.decode.bytes)
-    const indexOffset = varint.decode(buf, varint.decode.bytes)
-    const indexSize = varint.decode(buf, varint.decode.bytes)
+    let count = 0
+    const metaIndexOffset = varint.decode(buf, count)
+    count += varint.decode.bytes
+    const metaIndexSize = varint.decode(buf, count)
+    count += varint.decode.bytes
+    const indexOffset = varint.decode(buf, count)
+    count += varint.decode.bytes
+    const indexSize = varint.decode(buf, count)
     return {
       metaIndexOffset,
       metaIndexSize,
