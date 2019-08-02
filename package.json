@@ -33,6 +33,7 @@
   "standard": {
     "parser": "babel-eslint",
     "ignore": [
+      "build",
       "tests"
     ]
   }

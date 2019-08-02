@@ -23,6 +23,7 @@ export default class SSTableBuilder {
     this._file = file
     this._lastKey = Buffer.from('0')
     this._comparator = new Comparator()
+    this._dataBlock = new SSTableDataBlock()
     this._options = options
     if (!this._options.size) {
       this._options.size = 2 << 11
@@ -36,7 +37,7 @@ export default class SSTableBuilder {
   _dataBlock:SSTableDataBlock
 
   add (key:string|Buffer, value: string|Buffer) {
-    assert(Buffer.from(key).compare(this._beforeKey) > 0)
+    assert(Buffer.from(key).compare(this._lastKey) > 0)
     this._lastKey = key
     if (this._dataBlock.estimateSize > this._options.size) {
       this.flush()
