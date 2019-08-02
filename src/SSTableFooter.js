@@ -17,7 +17,7 @@ import varint from 'varint'
  */
 export default class TableFooter {
   constructor (buffer:Buffer) {
-    this._buffer = buffer
+    this._buffer = buffer || Buffer.alloc(48)
   }
 
   _buffer:Buffer
