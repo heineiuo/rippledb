@@ -36,19 +36,23 @@ export default class SSTableBuilder {
   _lastKey:Buffer
   _dataBlock:SSTableDataBlock
 
-  add (key:string|Buffer, value: string|Buffer) {
-    assert(Buffer.from(key).compare(this._lastKey) > 0)
-    this._lastKey = key
+  async add (key:string|Buffer, value: string|Buffer) {
+    assert(Buffer.from(key).compare(this._lastKey) > 0, `${key} must bigger then ${this._lastKey.toString()}`)
+    this._lastKey = Buffer.from(key)
+    this._dataBlock.append({ key, value })
     if (this._dataBlock.estimateSize > this._options.size) {
-      this.flush()
+      await this.flush()
     }
   }
 
-  flush () {
-
+  async flush () {
+    // console.log('SSTableBuilder flush', this._dataBlock._buffer)
+    await this._file.appendFile(this._dataBlock.buffer)
+    this._dataBlock = new SSTableDataBlock()
   }
 
-  close () {
-    return this._file.close()
+  async close () {
+    await this.flush()
+    await this._file.close()
   }
 }
