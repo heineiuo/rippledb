@@ -21,6 +21,7 @@ interface FileHandle extends fs.FileHandle{}
 export default class SSTableBuilder {
   constructor (file:FileHandle, options:{size:number} = {}) {
     this._file = file
+    this._fileSize = 0
     this._dataBlockSize = 0
     this._lastKey = Buffer.from('0')
     this._comparator = new Comparator()
@@ -37,6 +38,7 @@ export default class SSTableBuilder {
 
   _options: {size:number}
   _file:FileHandle
+  _fileSize:number
   _name:string
   _lastKey:Buffer
   _dataBlockSize:number
@@ -58,7 +60,7 @@ export default class SSTableBuilder {
   async flush () {
     const lastDataBlockSize = this._dataBlockSize
     this._dataBlockSize += this._dataBlock.size
-    await this._file.appendFile(this._dataBlock.buffer)
+    await this.appendFile(this._dataBlock.buffer)
     this._indexBlock.append({
       key: this._lastKey,
       value: Buffer.concat([
@@ -69,14 +71,28 @@ export default class SSTableBuilder {
     this._dataBlock = new SSTableDataBlock()
   }
 
+  async appendFile(buffer) {
+    await this._file.appendFile(buffer)
+    this._fileSize += buffer.length
+  }
+
   async close () {
     if (this._dataBlock.size > 0) {
       await this.flush()
     }
-    await this._file.appendFile(this._metaBlock.buffer)
-    await this._file.appendFile(this._metaIndexBlock.buffer)
-    await this._file.appendFile(this._indexBlock.buffer)
-    await this._file.appendFile(this._footer.buffer)
+    await this.appendFile(this._metaBlock.buffer)
+    this._metaIndexBlock.append({
+      key: this._metaIndexBlock.filterKey,
+      value: Buffer.concat([
+        // offset
+        Buffer.from(varint.encode(this._fileSize)),
+        // size
+        Buffer.from(varint.encode(this._metaBlock.size))
+      ])
+    })
+    await this.appendFile(this._metaIndexBlock.buffer)
+    await this.appendFile(this._indexBlock.buffer)
+    await this.appendFile(this._footer.buffer)
     await this._file.close()
   }
 }

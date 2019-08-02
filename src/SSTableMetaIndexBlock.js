@@ -11,6 +11,11 @@ import TableBlock from './SSTableBlock'
 import SStableMetaBlock from './SSTableMetaBlock'
 
 export default class TableMetaIndexBlock extends TableBlock {
+
+  get filterKey(): string {
+    return `filter.leveldb.BuiltinBloomFilter2`
+  }
+
   /**
    * 实际上MetaBlock只创建一个
    */

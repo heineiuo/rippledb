@@ -20,12 +20,12 @@ async function main () {
 
   try {
     const tablePath = path.resolve(__dirname, '../.db/0001.ldb')
-    await fs.writeFile(tablePath, Buffer.alloc(0))
+    // await fs.writeFile(tablePath, Buffer.alloc(0))
     const file = await fs.open(tablePath, 'w')
     const table = new SSTableBuilder(file)
 
     let i = 0
-    while (i < 100) {
+    while (i < 1000) {
       await table.add(sortedKey(i), randomValue(i))
       i++
     }

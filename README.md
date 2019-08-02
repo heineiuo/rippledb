@@ -9,6 +9,7 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 - [x] SSTableIndexBlock
 - [x] SSTableMetaBlock
 - [x] SSTableMetaIndexBlock
+- [ ] SSTableBuilder
 - [ ] SSTable
 - [x] BloomFilter
 - [ ] Log
