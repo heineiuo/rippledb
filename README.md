@@ -9,7 +9,7 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 - [x] SSTableIndexBlock
 - [x] SSTableMetaBlock
 - [x] SSTableMetaIndexBlock
-- [ ] SSTableBuilder
+- [x] SSTableBuilder
 - [ ] SSTable
 - [x] BloomFilter
 - [ ] Log
@@ -17,3 +17,10 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 - [ ] LRU
 - [ ] Comparator
 - [ ] Top-level API
+
+## Benchmark
+
+## TableBuilder
+```
+SSTableBuilder 50000 records: 1260.794ms
+```
