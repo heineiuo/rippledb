@@ -43,6 +43,18 @@ export default class SSTable {
     if (next) this._immutable = true
   }
 
+  get (key:string):string {
+    const indexBlockIterator = this.dataBlockIterator()
+    let result = indexBlockIterator.next()
+    while (!result.done) {
+      if (key === result.value.key) {
+        return result.value.value
+      }
+      result = indexBlockIterator.next()
+    }
+    return null
+  }
+
   * iterator () {
 
   }

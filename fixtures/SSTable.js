@@ -9,14 +9,18 @@ async function main () {
     const table = new SSTable(buf)
     // console.log(table._footer.get())
 
-    console.time('SSTable iterator')
+    console.time('SSTable iterator 50000 record')
     let indexBlockIterator = table.dataBlockIterator()
     let result = indexBlockIterator.next()
     while (!result.done) {
-      console.log(result.value)
       result = indexBlockIterator.next()
     }
-    console.timeEnd('SSTable iterator')
+    console.timeEnd('SSTable iterator 50000 record')
+
+    console.log('get value:', table.get('key0000001001'))
+    console.time('get value spent')
+    table.get('key0000001001')
+    console.timeEnd('get value spent')
   } catch (e) {
     console.error(e)
   }
