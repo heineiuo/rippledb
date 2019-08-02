@@ -97,11 +97,11 @@ export default class TableFooter {
       Buffer.from(varint.encode(data.indexOffset)),
       Buffer.from(varint.encode(data.indexSize))
     ])
-    const paddingBuf = Buffer.from(new ArrayBuffer(40 - handlers.length))
+    const paddingBuf = Buffer.alloc(40 - handlers.length)
     this._buffer = Buffer.concat([
       handlers,
       paddingBuf,
-      Buffer.from(new ArrayBuffer(8))
+      Buffer.alloc(8)
     ])
   }
 }
