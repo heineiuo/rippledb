@@ -56,8 +56,7 @@ export default class SSTableBuilder {
   }
 
   async flush () {
-    // console.log('SSTableBuilder flush', this._dataBlock._buffer)
-    let lastDataBlockSize = this._dataBlockSize
+    const lastDataBlockSize = this._dataBlockSize
     this._dataBlockSize += this._dataBlock.size
     await this._file.appendFile(this._dataBlock.buffer)
     this._indexBlock.append({
@@ -71,11 +70,13 @@ export default class SSTableBuilder {
   }
 
   async close () {
-    await this.flush()
-    this._file.appendFile(this._metaBlock.buffer)
-    this._file.appendFile(this._metaIndexBlock.buffer)
-    this._file.appendFile(this._indexBlock.buffer)
-    this._file.appendFile(this._footer.buffer)
+    if (this._dataBlock.size > 0) {
+      await this.flush()
+    }
+    await this._file.appendFile(this._metaBlock.buffer)
+    await this._file.appendFile(this._metaIndexBlock.buffer)
+    await this._file.appendFile(this._indexBlock.buffer)
+    await this._file.appendFile(this._footer.buffer)
     await this._file.close()
   }
 }
