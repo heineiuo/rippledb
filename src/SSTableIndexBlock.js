@@ -42,4 +42,20 @@ export default class TableIndexBlock extends SSTableBlock {
       // console.log(dataBlockIndexRecord)
     }
   }
+
+  * indexIterator () {
+    const iterator = this.iterator('buffer')
+    let dataBlockIndexRecord = iterator.next()
+    while (!dataBlockIndexRecord.done) {
+      const { key, value } = dataBlockIndexRecord.value
+      const offset = varint.decode(value)
+      const size = varint.decode(value, varint.decode.bytes)
+      yield {
+        key: key.toString(),
+        offset,
+        size
+      }
+      dataBlockIndexRecord = iterator.next()
+    }
+  }
 }

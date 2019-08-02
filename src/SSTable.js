@@ -12,7 +12,6 @@ import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
 import DataBlock from './SSTableDataBlock'
 import MetaIndexBlock from './SSTableMetaIndexBlock'
-import SSTableRecord from './SSTableRecord'
 
 /**
  * Create a sstable class
@@ -20,28 +19,21 @@ import SSTableRecord from './SSTableRecord'
  */
 export default class SSTable {
   constructor (buf: Buffer, options?: { immutable: boolean } = {}) {
-    const footer = new Footer(buf)
-    const footerData = footer.get()
-    const indexBlockBuf = buf.slice(footerData.indexOffset, footerData.indexOffset + footerData.indexSize)
+    this._footer = new Footer(buf)
+    const footerData = this._footer.get()
     const metaIndexBlockBuf = buf.slice(footerData.metaIndexOffset, footerData.metaIndexOffset + footerData.metaIndexSize)
-    const indexBlock = new IndexBlock(indexBlockBuf)
-    const metaIndexBlock = new MetaIndexBlock(metaIndexBlockBuf)
-    this.footer = footer
-    this.indexBlock = indexBlock
-    this.metaIndexBlock = metaIndexBlock
+    this._indexBlock = new IndexBlock(buf, footerData.indexOffset, footerData.indexSize)
+    this._metaIndexBlock = new MetaIndexBlock(metaIndexBlockBuf)
     this._immutable = options.immutable || false
     this._cacheData = Buffer.from([])
   }
 
-  lastKey: string
-  numEntries: number
-
-  footer: Footer
+  _footer: Footer
   _immutable: boolean
   _cacheData: Buffer
-  indexBlock: IndexBlock
-  dataBlock: DataBlock
-  metaIndexBlock: MetaIndexBlock
+  _indexBlock: IndexBlock
+  _dataBlock: DataBlock
+  _metaIndexBlock: MetaIndexBlock
 
   get immutable (): boolean {
     return this._immutable
@@ -51,25 +43,15 @@ export default class SSTable {
     if (next) this._immutable = true
   }
 
-  add (data: { key: string | Buffer, value: string | Buffer }): void {
-    const record = new SSTableRecord()
-    record.put(data.key, data.value)
-
-    // const estimated_block_size = data_lock.CurrentSizeEstimate()
-    // if (estimated_block_size >= options_block_size) {
-    //   this.flush()
-    // }
-  }
-
-  flush (): void {
+  * iterator () {
 
   }
 
   * dataBlockIterator () {
-    yield * this.dataBlock.iterator()
+    yield * this._indexBlock.dataBlockIterator()
   }
 
   * indexBlockIterator () {
-    yield * this.indexBlock.iterator()
+    yield * this._indexBlock.iterator()
   }
 }

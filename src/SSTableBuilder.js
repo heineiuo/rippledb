@@ -23,7 +23,7 @@ export default class SSTableBuilder {
   constructor(file: FileHandle, options: { size: number } = {}) {
     this._file = file
     this._fileSize = 0
-    this._dataBlockSize = 0
+    this._totalDataBlockSize = 0
     this._comparator = new Comparator()
     this._dataBlock = new SSTableDataBlock()
     this._metaBlock = new SSTableMetaBlock()
@@ -31,6 +31,7 @@ export default class SSTableBuilder {
     this._indexBlock = new SSTableIndexBlock()
     this._footer = new SSTableFooter()
     this._options = options
+    this._flushTimes = 0
     if (!this._options.size) {
       this._options.size = 2 << 11
     }
@@ -39,14 +40,16 @@ export default class SSTableBuilder {
   _options: { size: number }
   _file: FileHandle
   _fileSize: number
+  _flushTimes: number
   _name: string
   _lastKey: void | Buffer
-  _dataBlockSize: number
+  _totalDataBlockSize: number
   _dataBlock: SSTableDataBlock
   _metaBlock: SSTableMetaBlock
   _metaIndexBlock: SSTableMetaIndexBlock
   _indexBlock: SSTableIndexBlock
   _footer: SSTableFooter
+  _numEntries: number
 
   async add(key: string | Buffer, value: string | Buffer) {
     if (this._lastKey) {
@@ -60,14 +63,15 @@ export default class SSTableBuilder {
   }
 
   async flush() {
-    const lastDataBlockSize = this._dataBlockSize
-    this._dataBlockSize += this._dataBlock.size
+    this._flushTimes ++
+    const lastDataBlockSize = this._totalDataBlockSize
+    this._totalDataBlockSize += this._dataBlock.size
     await this.appendFile(this._dataBlock.buffer)
     this._indexBlock.append({
       key: this._lastKey,
       value: Buffer.concat([
         Buffer.from(varint.encode(lastDataBlockSize)),
-        Buffer.from(varint.encode(this._dataBlockSize))
+        Buffer.from(varint.encode(this._dataBlock.size))
       ])
     })
     const keys = []
@@ -117,5 +121,6 @@ export default class SSTableBuilder {
     })
     await this.appendFile(this._footer.buffer)
     await this._file.close()
+    console.log(`SSTable flush times: ${this._flushTimes}`)
   }
 }
