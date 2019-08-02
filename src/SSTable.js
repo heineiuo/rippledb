@@ -10,6 +10,7 @@
 import { Buffer } from 'buffer'
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
+import DataBlock from './SSTableDataBlock'
 import MetaIndexBlock from './SSTableMetaIndexBlock'
 import SSTableRecord from './SSTableRecord'
 
@@ -32,10 +33,14 @@ export default class SSTable {
     this._cacheData = Buffer.from([])
   }
 
+  lastKey: string
+  numEntries: number
+
   footer: Footer
   _immutable: boolean
   _cacheData: Buffer
   indexBlock: IndexBlock
+  dataBlock: DataBlock
   metaIndexBlock: MetaIndexBlock
 
   get immutable (): boolean {

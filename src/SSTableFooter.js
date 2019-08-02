@@ -16,7 +16,7 @@ import varint from 'varint'
  * 的偏移量和大小，读取 table 时从末尾开始读取。
  */
 export default class TableFooter {
-  constructure (buffer:Buffer) {
+  constructor (buffer:Buffer) {
     this._buffer = buffer
   }
 

@@ -42,6 +42,10 @@ export default class SSTableBlock {
     return this._buffer.slice(this.offset + this._size - 5, this.offset + this._size - 4)
   }
 
+  get estimateSize ():number {
+
+  }
+
   * iterator (encoding:"utf8"|"buffer") {
     let recordSizeSummary:number = 0
     while (true) {
