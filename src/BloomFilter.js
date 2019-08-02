@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @flow
+
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import BitBuffer from './BitBuffer'
@@ -23,7 +25,7 @@ export default class BloomFilter {
 
     if (!buffer || buffer.length === 0) {
       this._buffer = Buffer.from(varint.encode(k))
-      this._bitBuffer = new BitBuffer(Buffer.from(new ArrayBuffer(Math.ceil(k / 8))))
+      this._bitBuffer = new BitBuffer(Buffer.alloc(Math.ceil(k / 8)))
       this._kNumber = k
     } else {
       this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 1))
@@ -39,6 +41,13 @@ export default class BloomFilter {
     }
     this._size = this._buffer.length
   }
+
+  _buffer:Buffer
+  _offset:number
+  _size:number
+  _kNumber:number
+  _bitBuffer:BitBuffer
+  _bitsPerKey:number
 
   get bitsPerKey (): number {
     return this._bitsPerKey

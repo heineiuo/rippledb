@@ -56,6 +56,9 @@ export default class SSTableMetaBlock {
     return 1 << this.baseLg
   }
 
+  /**
+   * 添加bloom filter
+   */
   appendFilter (buffer:Buffer):void {
     // console.log('appendFilter buffer: ', buffer)
     // console.log('appendFilter buffer length: ', buffer.length)

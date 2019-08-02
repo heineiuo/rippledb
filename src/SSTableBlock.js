@@ -43,7 +43,7 @@ export default class SSTableBlock {
   }
 
   get estimateSize ():number {
-
+    return this.size * 8
   }
 
   * iterator (encoding:"utf8"|"buffer") {

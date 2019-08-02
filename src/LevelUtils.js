@@ -13,7 +13,7 @@ import { Buffer } from 'buffer'
 export const subbuf = (buf:Buffer, start:number = 0, len?:number):Buffer => {
   if (!Buffer.isBuffer(buf)) throw new TypeError('Buffer required.')
   const length = typeof len === 'undefined' ? buf.length - start : len
-  const buf1 = Buffer.from(new ArrayBuffer(length))
+  const buf1 = Buffer.alloc(length)
   buf.copy(buf1, 0, start, buf.length - start + length)
   return buf1
 }
@@ -24,7 +24,7 @@ export const subbuf = (buf:Buffer, start:number = 0, len?:number):Buffer => {
 export const subbuffer = (buf:Buffer, start:number = 0, end:number):Buffer => {
   if (!Buffer.isBuffer(buf)) throw new TypeError('Buffer required.')
   const length = (typeof end === 'undefined' ? buf.length : end) - start
-  const buf1 = Buffer.from(new ArrayBuffer(length))
+  const buf1 = Buffer.alloc(length)
   buf.copy(buf1, 0, start, end)
   return buf1
 }
