@@ -19,19 +19,20 @@ async function main () {
   }
 
   try {
+    console.time(`SSTableBuilder 50000 records`)
     const tablePath = path.resolve(__dirname, '../.db/0001.ldb')
     // await fs.writeFile(tablePath, Buffer.alloc(0))
     const file = await fs.open(tablePath, 'w')
     const table = new SSTableBuilder(file)
 
     let i = 0
-    while (i < 1000) {
+    while (i < 50000) {
       await table.add(sortedKey(i), randomValue(i))
       i++
     }
 
     await table.close()
-    console.log(table)
+    console.timeEnd(`SSTableBuilder 50000 records`)
   } catch (e) {
     console.error(e)
   }
