@@ -9,6 +9,7 @@ import { promises as fs } from 'fs'
 import { Buffer } from 'buffer'
 import assert from 'assert'
 import varint from 'varint'
+import BloomFilter from './BloomFilter'
 import SSTableFooter from './SSTableFooter'
 import SSTableIndexBlock from './SSTableIndexBlock'
 import SSTableMetaIndexBlock from './SSTableMetaIndexBlock'
@@ -23,7 +24,6 @@ export default class SSTableBuilder {
     this._file = file
     this._fileSize = 0
     this._dataBlockSize = 0
-    this._lastKey = Buffer.from('0')
     this._comparator = new Comparator()
     this._dataBlock = new SSTableDataBlock()
     this._metaBlock = new SSTableMetaBlock()
@@ -40,7 +40,7 @@ export default class SSTableBuilder {
   _file:FileHandle
   _fileSize:number
   _name:string
-  _lastKey:Buffer
+  _lastKey:void|Buffer
   _dataBlockSize:number
   _dataBlock:SSTableDataBlock
   _metaBlock:SSTableMetaBlock
@@ -49,7 +49,9 @@ export default class SSTableBuilder {
   _footer:SSTableFooter
 
   async add (key:string|Buffer, value: string|Buffer) {
-    assert(Buffer.from(key).compare(this._lastKey) > 0, `${key} must bigger then ${this._lastKey.toString()}`)
+    if (this._lastKey) {
+      assert(Buffer.from(key).compare(this._lastKey) > 0, `${key} must bigger then ${this._lastKey.toString()}`)
+    }
     this._lastKey = Buffer.from(key)
     this._dataBlock.append({ key, value })
     if (this._dataBlock.estimateSize > this._options.size) {
@@ -68,10 +70,21 @@ export default class SSTableBuilder {
         Buffer.from(varint.encode(this._dataBlockSize))
       ])
     })
+    const keys = []
+    const blockKeyIterator = this._dataBlock.iterator()
+    let result = blockKeyIterator.next()
+    while(!result.done) {
+      keys.push(result.value.key)
+      result = blockKeyIterator.next()
+    }
+
+    const filter = new BloomFilter()
+    filter.putKeys(keys, keys.length)
+    this._metaBlock.appendFilter(filter.buffer)
     this._dataBlock = new SSTableDataBlock()
   }
 
-  async appendFile(buffer) {
+  async appendFile(buffer:Buffer) {
     await this._file.appendFile(buffer)
     this._fileSize += buffer.length
   }
