@@ -5,7 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import varint from 'varint'
 import Skiplist from './Skiplist'
+import SequenceNumber from './SequenceNumber'
 
 class MemTable {
   constructor () {
@@ -22,12 +24,26 @@ class MemTable {
 
   }
 
-  get = function * () {
+  get () {
 
   }
 
-  put (sn, valueType, key, value) {
-
+  add (sequence:SequenceNumber, valueType:string, key:string, value:string) {
+    const keySize = key.length
+    const valueSize = value.length
+    const internalKeySize = keySize + 8
+    let encodedLength = 0
+    const internalKeySizeBuf = varint.encode(internalKeySize)
+    encodedLength += varint.encode.bytes
+    encodedLength += internalKeySize
+    const valueSizeBuf = varint.encode(valueSize)
+    encodedLength += varint.encode.bytes
+    encodedLength += valueSize
+    const buf = Buffer.concat([
+      internalKeySizeBuf,
+      Buffer.from(keySize)
+    ])
+    let lookupKey
   }
 
   createInterator = function * () {
