@@ -5,24 +5,19 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import assert from 'assert'
 import varint from 'varint'
 import Skiplist from './Skiplist'
 import SequenceNumber from './SequenceNumber'
 
 class MemTable {
   constructor () {
+    this._immutable = false
     this._list = new Skiplist()
   }
 
-  immutable = false
-
-  encodeBuf () {
-
-  }
-
-  decodeBuf () {
-
-  }
+  _immutable:boolean
+  _list:Skiplist
 
   get () {
 
@@ -41,12 +36,20 @@ class MemTable {
     encodedLength += valueSize
     const buf = Buffer.concat([
       internalKeySizeBuf,
-      Buffer.from(keySize)
+      Buffer.from(key),
+      Buffer.from(sequence),
+      valueSizeBuf,
+      Buffer.from(value)
     ])
-    let lookupKey
+    assert(encodedLength === buf.length, 'Incorrect length')
+    this.insert(buf)
   }
 
-  createInterator = function * () {
+  insert (buf:Buffer):void {
+
+  }
+
+  * iterator () {
 
   }
 }
