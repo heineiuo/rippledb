@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-export class SequenceNumber {
+export default class SequenceNumber {
   constructor (initial = 0) {
     this._value = initial
   }
