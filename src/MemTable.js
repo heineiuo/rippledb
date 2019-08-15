@@ -10,8 +10,8 @@ import varint from 'varint'
 import Skiplist from './Skiplist'
 import SequenceNumber from './SequenceNumber'
 
-class MemTable {
-  constructor () {
+export default class MemTable {
+  constructor (...props) {
     this._immutable = false
     this._list = new Skiplist()
   }
@@ -19,6 +19,15 @@ class MemTable {
   _immutable:boolean
   _list:Skiplist
 
+  // entry format is:
+  //    klength  varint32
+  //    userkey  char[klength]
+  //    tag      uint64
+  //    vlength  varint32
+  //    value    char[vlength]
+  // Check that it belongs to same user key.  We do not check the
+  // sequence number since the Seek() call above should have skipped
+  // all entries with overly large sequence numbers.
   get () {
 
   }
@@ -42,16 +51,10 @@ class MemTable {
       Buffer.from(value)
     ])
     assert(encodedLength === buf.length, 'Incorrect length')
-    this.insert(buf)
-  }
-
-  insert (buf:Buffer):void {
-
+    this._list.insert(buf)
   }
 
   * iterator () {
 
   }
 }
-
-export default MemTable

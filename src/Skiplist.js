@@ -167,6 +167,10 @@ class Skiplist {
 
   }
 
+  insert (buf:Buffer):void {
+
+  }
+
   /**
    *
    * @param {string|Buffer} key
