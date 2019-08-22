@@ -1,8 +1,7 @@
 //@flow
 
 import { Buffer } from 'buffer'
-
-type Encoding = 'buffer' | 'string' | 'json'
+import { Encodings } from './Encodings'
 
 /**
  * 作为参数传递，减少不必要的拷贝
@@ -27,7 +26,7 @@ export default class Slice {
     }
   }
 
-  _inputType: Encoding
+  _inputType: Encodings
   _buffer: Buffer
 
   get buffer(): Buffer {
@@ -52,7 +51,7 @@ export default class Slice {
     }
   }
 
-  toString(encoding?: Encoding):string {
+  toString(encoding?: Encodings):string {
     return this._buffer.toString(encoding)
   }
 
