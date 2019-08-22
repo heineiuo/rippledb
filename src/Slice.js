@@ -12,6 +12,9 @@ export default class Slice {
   static defaultValue:Buffer = Buffer.alloc(0)
 
   constructor(value: any = Slice.defaultValue) {
+    if (value instanceof Slice) {
+      return value
+    } 
     if (Buffer.isBuffer(value)) {
       this._inputType = 'buffer'
       this._buffer = value

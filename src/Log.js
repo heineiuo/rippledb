@@ -56,7 +56,12 @@ class Log {
   createRecord (strKey:Slice, strValue:Slice) {
     const keyLen = this.length2Buf(strKey.length)
     const valLen = this.length2Buf(strValue.length)
-    const body = Buffer.concat([keyLen, strKey, valLen, strValue])
+    const body = Buffer.concat([
+      keyLen, 
+      new Slice(strKey).buffer,
+      valLen, 
+      new Slice(strValue).buffer
+    ])
     const checksum = crc32(body)
     const bodyLen = this.length2Buf(body.length)
     const typeBuf = Buffer.from([RecordType.get('kFullType').value])
