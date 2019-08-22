@@ -8,6 +8,8 @@
 
 import varint from 'varint'
 import { Buffer } from 'buffer'
+import { Encodings } from './Encodings'
+import Slice from './Slice'
 
 function getSize (buffer:Buffer, offset:number = 0):number {
   if (buffer.length === 0) return 0
@@ -42,7 +44,7 @@ export default class SSTableRecord {
     return this._offset
   }
 
-  get (encoding:"utf8"|"buffer" = 'utf8'):{key:string|Buffer, value:string|Buffer} {
+  get (encoding?:Encodings = 'string'):{key:string|Buffer, value:string|Buffer} {
     if (this.size === 0) return { key: null, value: null }
     const keyLength = varint.decode(this.buffer, this.offset)
     const keyStartIndex = varint.decode.bytes
@@ -51,7 +53,7 @@ export default class SSTableRecord {
     const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
     const value = this.buffer.slice(this.offset + valueStartIndex, this.offset + valueStartIndex + valueLength)
 
-    if (encoding === 'utf8') {
+    if (encoding === 'string') {
       return {
         key: String(key),
         value: String(value)
@@ -63,15 +65,15 @@ export default class SSTableRecord {
   /**
    * [key_length, key, value_length, value]
    */
-  put (key:string|Buffer, value:string|Buffer):void {
+  put (key:Slice, value:Slice):void {
     if (key && value) {
       const keyLength = varint.encode(key.length)
       const valueLength = varint.encode(value.length)
       this._buffer = Buffer.concat([
         Buffer.from(keyLength),
-        Buffer.from(key),
+        Buffer.from(key.buffer),
         Buffer.from(valueLength),
-        Buffer.from(value)
+        Buffer.from(value.buffer)
       ])
       this._offset = 0
       this._size = this._buffer.length
