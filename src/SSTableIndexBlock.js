@@ -13,7 +13,7 @@ import SSTableBlock from './SSTableBlock'
 import SSTableDataBlock from './SSTableDataBlock'
 
 export default class TableIndexBlock extends SSTableBlock {
-  * dataBlockIterator () {
+  * dataBlockIterator ():Generator<any, void, void> {
     const iterator = this.iterator('buffer')
     let dataBlockIndexRecord = iterator.next()
     while (!dataBlockIndexRecord.done) {
@@ -45,7 +45,7 @@ export default class TableIndexBlock extends SSTableBlock {
     }
   }
 
-  * indexIterator () {
+  * indexIterator ():Generator<any, void, void> {
     const iterator = this.iterator('buffer')
     let dataBlockIndexRecord = iterator.next()
     while (!dataBlockIndexRecord.done) {

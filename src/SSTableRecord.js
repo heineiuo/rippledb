@@ -26,6 +26,10 @@ export default class SSTableRecord {
     this._size = size || getSize(this._buffer, this._offset)
   }
 
+  _buffer:Buffer
+  _offset:number
+  _size:number
+
   get size ():number {
     return this._size
   }

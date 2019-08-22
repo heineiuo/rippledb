@@ -4,7 +4,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-//@flow
+// @flow
+/* global Generator */
 
 import crc32 from 'buffer-crc32'
 import Enum from 'enum'
@@ -23,8 +24,10 @@ export default class SSTableBlock {
     this._size = size || (this._buffer.length - this._offset)
   }
 
+  _size:number
+  _offset:number
   _buffer:Buffer
-  
+
   get buffer ():Buffer {
     return this._buffer
   }
@@ -49,7 +52,7 @@ export default class SSTableBlock {
     return this.size * 2
   }
 
-  * iterator (encoding:"utf8"|"buffer") {
+  * iterator (encoding?:"utf8"|"buffer"):Generator<any, void, void> {
     let recordSizeSummary:number = 0
     while (true) {
       if (recordSizeSummary >= this.size - 5) {

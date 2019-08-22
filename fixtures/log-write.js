@@ -1,17 +1,17 @@
 const path = require('path')
 const fs = require('fs')
-const Log = require('../dist/Log').default
+const Log = require('../build/Log').default
+const Slice = require('../build/Slice').default
 
 const dbpath = path.resolve(__dirname, '../.db')
 
 const log = new Log(dbpath)
 
 console.time('log write')
-let record = log.createRecord(Buffer.from('abcde'), Buffer.from(
-  JSON.stringify({
-    hello: 'world'
-  })
-))
+let record = log.createRecord(
+  new Slice('abcde'), 
+  new Slice({ hello: 'world' })
+)
 
 console.timeEnd('log write')
 

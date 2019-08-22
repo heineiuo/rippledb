@@ -55,15 +55,15 @@ export default class SSTable {
     return null
   }
 
-  * iterator () {
+  * iterator ():Generator<any, void, void> {
 
   }
 
-  * dataBlockIterator () {
+  * dataBlockIterator ():Generator<any, void, void> {
     yield * this._indexBlock.dataBlockIterator()
   }
 
-  * indexBlockIterator () {
+  * indexBlockIterator ():Generator<any, void, void> {
     yield * this._indexBlock.iterator()
   }
 }
