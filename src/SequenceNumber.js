@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 // @flow
+
+import varint from 'varint';
 export default class SequenceNumber {
   constructor (initial:number = 0) {
     this._value = initial
@@ -12,8 +14,12 @@ export default class SequenceNumber {
 
   _value: number
 
-  get value () {
+  get value ():number {
     this._value++
     return this._value
+  }
+
+  toBuffer():Buffer{
+    return Buffer.from(varint.encode(this._value))
   }
 }

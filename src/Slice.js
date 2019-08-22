@@ -52,7 +52,7 @@ export default class Slice {
     }
   }
 
-  toString(encoding: Encoding):string {
+  toString(encoding?: Encoding):string {
     return this._buffer.toString(encoding)
   }
 

@@ -12,7 +12,7 @@ import Skiplist from './Skiplist'
 import SequenceNumber from './SequenceNumber'
 
 export default class MemTable {
-  constructor (...props) {
+  constructor () {
     this._immutable = false
     this._list = new Skiplist()
   }
@@ -47,7 +47,7 @@ export default class MemTable {
     const buf = Buffer.concat([
       internalKeySizeBuf,
       Buffer.from(key),
-      Buffer.from(sequence),
+      Buffer.from(sequence.toBuffer()),
       valueSizeBuf,
       Buffer.from(value)
     ])
@@ -55,7 +55,7 @@ export default class MemTable {
     this._list.insert(buf)
   }
 
-  * iterator () {
+  * iterator ():Generator<any, void, void> {
 
   }
 }

@@ -5,12 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 // @flow
+/* global AsyncGenerator */
+
 // import path from 'path'
 // import fs from 'fs'
 import MemTable from './MemTable'
 import Log from './Log'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
+import Slice from './Slice'
 
 class Database {
   constructor (dbpath:string) {
@@ -35,20 +38,20 @@ class Database {
     this._log.readLogRecord(0)
   }
 
-  async * iterator (options) {
+  async * iterator ():AsyncGenerator<any, void, void> {
     // await new Promise()
     // yield 'a'
   }
 
-  async get (key) {
+  async get (key:Slice) {
     return this._cache.get(key)
   }
 
-  async put (key, value) {
+  async put (key:Slice, value:Slice) {
     return this._cache.set(key, value)
   }
 
-  async del (key) {
+  async del (key:Slice) {
     return this._cache.del(key)
   }
 

@@ -42,7 +42,6 @@ class Log {
   _currentBlock: Buffer
   _buf: Buffer
 
- 
   async readLogRecord (initialOffset:number) {
     const fd = await fs.promises.open(this._logPath, 'a+')
     this._buf = await fs.promises.readFile(this._logPath)
@@ -57,9 +56,9 @@ class Log {
     const keyLen = this.length2Buf(strKey.length)
     const valLen = this.length2Buf(strValue.length)
     const body = Buffer.concat([
-      keyLen, 
+      keyLen,
       new Slice(strKey).buffer,
-      valLen, 
+      valLen,
       new Slice(strValue).buffer
     ])
     const checksum = crc32(body)
@@ -88,7 +87,6 @@ class Log {
     return buf
   }
 
- 
   buf2Integer (buf:Buffer) {
     return buf.readUInt16LE(0)
   }

@@ -5,3 +5,4 @@ Thumb.db
 .DS_Store
 dist
 build
+flow-coverage
