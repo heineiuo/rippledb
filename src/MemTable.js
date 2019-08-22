@@ -9,6 +9,7 @@
 import assert from 'assert'
 import varint from 'varint'
 import Skiplist from './Skiplist'
+import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 
 export default class MemTable {
@@ -33,7 +34,7 @@ export default class MemTable {
 
   }
 
-  add (sequence:SequenceNumber, valueType:string, key:string, value:string) {
+  add (sequence:SequenceNumber, valueType:string, key:Slice, value:Slice) {
     const keySize = key.length
     const valueSize = value.length
     const internalKeySize = keySize + 8
@@ -46,10 +47,10 @@ export default class MemTable {
     encodedLength += valueSize
     const buf = Buffer.concat([
       internalKeySizeBuf,
-      Buffer.from(key),
-      Buffer.from(sequence.toBuffer()),
+      key.buffer,
+      sequence.toBuffer(),
       valueSizeBuf,
-      Buffer.from(value)
+      value.buffer
     ])
     assert(encodedLength === buf.length, 'Incorrect length')
     this._list.insert(buf)
