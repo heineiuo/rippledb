@@ -11,6 +11,7 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import BitBuffer from './BitBuffer'
 import BloomHash from './MurmurHash'
+import Slice from './Slice'
 
 /**
  * 关键是hash几次。hash次数 = 位图数位 / 元素个数 x ln2(约等于0.69)
@@ -88,10 +89,10 @@ export default class BloomFilter {
     this._size = this._buffer.length
   }
 
-  keyMayMatch (key: string): boolean {
+  keyMayMatch (key: Slice): boolean {
     // console.log('this._bitBuffer.bits', this._bitBuffer.bits)
     if (this.kNumber > 30) return true
-    let h = BloomHash(key)
+    let h = BloomHash(key.toString())
     // console.log('h', h)
     let delta = (h >> 17) | (h << 15)
     for (let j = 0; j < this.kNumber; j++) {

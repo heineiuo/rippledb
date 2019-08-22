@@ -4,6 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+//@flow
 
 import crc32 from 'buffer-crc32'
 import Enum from 'enum'
@@ -16,12 +17,14 @@ const CompressionTypes = new Enum({
 })
 
 export default class SSTableBlock {
-  constructor (buffer = Buffer.from([]), offset, size) {
+  constructor (buffer?:Buffer = Buffer.from([]), offset?:number, size?:number) {
     this._buffer = buffer
     this._offset = offset || 0
     this._size = size || (this._buffer.length - this._offset)
   }
 
+  _buffer:Buffer
+  
   get buffer ():Buffer {
     return this._buffer
   }

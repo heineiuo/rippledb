@@ -4,9 +4,11 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+// @flow
 
 import assert from 'assert'
 import bufferEqual from 'buffer-equal'
+import Slice from './Slice'
 
 const P = 1 / Math.E
 

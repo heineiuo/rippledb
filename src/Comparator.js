@@ -4,7 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
+// @flow
 import { Buffer } from 'buffer'
 
 export default class Comparator {
@@ -28,7 +28,7 @@ export default class Comparator {
       same += left
       index++
     }
-    const nextChar = String.fromCharCode(base.charCodeAt() + 1)
+    const nextChar = String.fromCharCode(base.charCodeAt(0) + 1)
     return `${same}${nextChar}`
   }
 }
