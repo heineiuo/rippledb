@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+ //@flow
+
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import BloomFilter from './BloomFilter'
@@ -32,6 +34,14 @@ export default class SSTableMetaBlock {
     this._buffer = buffer || Buffer.from([])
     this._offset = offset || 0
     this._size = size || 0
+  }
+
+  _buffer:Buffer
+  _offset:number
+  _size:number
+
+  get size ():number {
+    return this._size
   }
 
   get buffer ():Buffer {

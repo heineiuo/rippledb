@@ -4,7 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
+// @flow
 // import path from 'path'
 // import fs from 'fs'
 import MemTable from './MemTable'
@@ -13,7 +13,7 @@ import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
 
 class Database {
-  constructor (dbpath) {
+  constructor (dbpath:string) {
     this._log = new Log(dbpath)
     this._mem = new MemTable()
     this._sn = new SequenceNumber(0)

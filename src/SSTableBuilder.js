@@ -4,8 +4,9 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+//@flow
 
-import { promises as fs } from 'fs'
+import fs from 'fs'
 import { Buffer } from 'buffer'
 import assert from 'assert'
 import varint from 'varint'
@@ -17,10 +18,10 @@ import SSTableMetaBlock from './SSTableMetaBlock'
 import SSTableDataBlock from './SSTableDataBlock'
 import Comparator from './Comparator'
 
-interface FileHandle extends fs.FileHandle { }
+// interface FileHandle extends fs.FileHandle { }
 
 export default class SSTableBuilder {
-  constructor(file: FileHandle, options: { size: number } = {}) {
+  constructor(file: fs.FileHandle, options: { size: number } = {}) {
     this._file = file
     this._fileSize = 0
     this._totalDataBlockSize = 0
@@ -37,12 +38,13 @@ export default class SSTableBuilder {
     }
   }
 
+  _comparator: Comparator
   _options: { size: number }
-  _file: FileHandle
+  _file: fs.FileHandle
   _fileSize: number
   _flushTimes: number
   _name: string
-  _lastKey: void | Buffer
+  _lastKey: Buffer
   _totalDataBlockSize: number
   _dataBlock: SSTableDataBlock
   _metaBlock: SSTableMetaBlock
@@ -63,7 +65,7 @@ export default class SSTableBuilder {
   }
 
   async flush() {
-    this._flushTimes ++
+    this._flushTimes++
     const lastDataBlockSize = this._totalDataBlockSize
     this._totalDataBlockSize += this._dataBlock.size
     await this.appendFile(this._dataBlock.buffer)
@@ -89,7 +91,7 @@ export default class SSTableBuilder {
   }
 
   async appendFile(buffer: Buffer) {
-    await this._file.appendFile(buffer)
+    await this._file.appendFile(buffer, { encoding: 'buffer' })
     this._fileSize += buffer.length
   }
 

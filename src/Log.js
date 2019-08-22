@@ -5,10 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @flow
+
 import path from 'path'
-import { promises as fs } from 'fs'
+import fs from 'fs'
 import crc32 from 'buffer-crc32'
 import Enum from 'enum'
+import Slice from './Slice'
 
 const RecordType = new Enum({
   // Zero is reserved for preallocated files
@@ -25,30 +28,32 @@ const RecordType = new Enum({
 const kBlockSize = 32768 // 32KB
 
 class Log {
-  constructor (dbpath) {
+  constructor (dbpath:string) {
     this._logPath = path.resolve(dbpath, './LOG')
     this._blocks = []
     this._currentBlock = Buffer.alloc(0)
   }
 
-  /**
-   * @param {number} initialOffset
-   */
-  async readLogRecord (initialOffset) {
-    const fd = await fs.open(this._logPath, 'a+')
-    this._buf = await fs.readFile(this._logPath)
+  _file: {
+    [x:string]:any
+  }
+  _logPath:string
+  _blocks: Buffer[]
+  _currentBlock: Buffer
+  _buf: Buffer
+
+ 
+  async readLogRecord (initialOffset:number) {
+    const fd = await fs.promises.open(this._logPath, 'a+')
+    this._buf = await fs.promises.readFile(this._logPath)
     console.log('Log.readLogRecord buf length', this._buf.length)
   }
 
-  async append (key, value) {
-    await fs.appendFile(this._logPath)
+  async append (key:Slice, value:Slice) {
+    await this._file.appendFile(this._logPath)
   }
 
-  /**
-   * @param {buffer} strKey
-   * @param {buffer} strValue
-   */
-  createRecord (strKey, strValue) {
+  createRecord (strKey:Slice, strValue:Slice) {
     const keyLen = this.length2Buf(strKey.length)
     const valLen = this.length2Buf(strValue.length)
     const body = Buffer.concat([keyLen, strKey, valLen, strValue])
@@ -59,10 +64,7 @@ class Log {
     return Buffer.concat([header, body])
   }
 
-  /**
-   * @param {buffer} record
-   */
-  parseRecord (record) {
+  parseRecord (record:Buffer) {
     const bodyLen = this.buf2Integer(record.slice(3, 5))
     const body = record.slice(7, bodyLen)
     const keyLen = this.buf2Integer(body.slice(0, 2))
@@ -74,28 +76,22 @@ class Log {
     }
   }
 
-  /**
-   * @param {number} len
-   */
-  length2Buf (len) {
+  length2Buf (len:number) {
     const buf = Buffer.alloc(2)
     buf[0] = len & 0xff
     buf[1] = len >> 8
     return buf
   }
 
-  /**
-   * @param {buffer} buf
-   */
-  buf2Integer (buf) {
+ 
+  buf2Integer (buf:Buffer) {
     return buf.readUInt16LE(0)
   }
 
   /**
    * get record length from record header
-   * @param {buffer} header
    */
-  getLengthFromHeader (header) {
+  getLengthFromHeader (header:Buffer) {
     const buf = Buffer.alloc(2)
     buf[0] = header[4]
     buf[1] = header[5]

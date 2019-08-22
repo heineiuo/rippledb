@@ -21,6 +21,7 @@ export default class TableFooter {
     this._offset = this._buffer.length > 48 ? this._buffer.length - 48 : 0
   }
 
+  _offset:number
   _buffer:Buffer
 
   get buffer ():Buffer {

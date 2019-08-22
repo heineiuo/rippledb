@@ -1,5 +1,5 @@
 // https://github.com/wiedi/node-bitbuffer
-
+// @flow
 import { Buffer } from 'buffer'
 
 export default class BitBuffer {
@@ -10,6 +10,9 @@ export default class BitBuffer {
     this._buffer = buffer
     this._size = buffer.length
   }
+
+  _size:number
+  _buffer:Buffer
 
   get buffer ():Buffer {
     return this._buffer
