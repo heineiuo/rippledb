@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-//@flow
-
+/* global Generator */
+// @flow
 // import { Buffer } from 'buffer'
 import varint from 'varint'
 import SSTableBlock from './SSTableBlock'

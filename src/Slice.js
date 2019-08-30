@@ -1,4 +1,4 @@
-//@flow
+// @flow
 
 import { Buffer } from 'buffer'
 import { Encodings } from './Encodings'
@@ -7,13 +7,12 @@ import { Encodings } from './Encodings'
  * 作为参数传递，减少不必要的拷贝
  */
 export default class Slice {
-
   static defaultValue:Buffer = Buffer.alloc(0)
 
-  constructor(value: any = Slice.defaultValue) {
+  constructor (value: any = Slice.defaultValue) {
     if (value instanceof Slice) {
       return value
-    } 
+    }
     if (Buffer.isBuffer(value)) {
       this._inputType = 'buffer'
       this._buffer = value
@@ -29,19 +28,19 @@ export default class Slice {
   _inputType: Encodings
   _buffer: Buffer
 
-  get buffer(): Buffer {
+  get buffer (): Buffer {
     return this._buffer
   }
 
-  get length(): number {
+  get length (): number {
     return this._buffer.length
   }
 
-  get size(): number {
+  get size (): number {
     return this._buffer.length
   }
 
-  get data(): any {
+  get data (): any {
     if (this._inputType === 'string') {
       return this._buffer.toString()
     } else if (this._inputType === 'json') {
@@ -51,11 +50,15 @@ export default class Slice {
     }
   }
 
-  toString(encoding?: Encodings):string {
+  set data (buf) {
+    this._buffer = buf
+  }
+
+  toString (encoding?: Encodings):string {
     return this._buffer.toString(encoding)
   }
 
-  compare(slice: Slice): number {
-    return this._buffer.compare(slice)
+  compare (slice: Slice): number {
+    return this._buffer.compare(slice.buffer)
   }
 }

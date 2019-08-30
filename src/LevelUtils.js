@@ -4,9 +4,16 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-//@flow
+// @flow
 
 import { Buffer } from 'buffer'
+import bufferEqual from 'buffer-equal'
+import Slice from './Slice'
+
+export function isEqual (a:Slice, b:Slice):boolean {
+  if (!(Buffer.isBuffer(a) && Buffer.isBuffer(b))) return a === b
+  return bufferEqual(a, b)
+}
 
 /**
  * get part of buffer like String.substr
