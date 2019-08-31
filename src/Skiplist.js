@@ -79,10 +79,14 @@ export default class Skiplist {
   }
 
   * iterator ():Generator<Slice, void, void> {
-
+    let current = this.head
+    while (current.levels[0] !== this.tail) {
+      yield current.levels[0].key
+      current = current.levels[0]
+    }
   }
 
-  get (key:Slice):SkiplistNode {
+  get (key:Slice):Slice {
     let prevNode = this.findPrevNode(key)
     if (!prevNode) return null
     let current = prevNode.next()

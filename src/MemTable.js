@@ -41,6 +41,13 @@ export default class MemTable {
     return new Slice(value)
   }
 
+  static getValueWithEncoding (s:Slice, encoding:Encodings = 'string') {
+    const valueSlice = MemTable.getValueSlice(s)
+    if (encoding === 'string') return valueSlice.buffer.toString()
+    if (encoding === 'json') return JSON.parse(valueSlice.buffer.toString())
+    return valueSlice.buffer
+  }
+
   constructor () {
     this._immutable = false
     this._list = new Skiplist(65535, MemTable.keyComparator)
@@ -90,13 +97,15 @@ export default class MemTable {
   get (key:Slice, encoding:Encodings = 'string'):any {
     const result = this._list.get(key)
     if (!result) return result
-    const valueSlice = MemTable.getValueSlice(result)
-    if (encoding === 'string') return valueSlice.buffer.toString()
-    if (encoding === 'json') return JSON.parse(valueSlice.buffer.toString())
-    return valueSlice.buffer
+    return MemTable.getValueWithEncoding(result, encoding)
   }
 
-  * iterator ():Generator<any, void, void> {
-
+  * iterator (encoding:Encodings):Generator<any, void, void> {
+    let iterator = this._list.iterator()
+    let result = iterator.next()
+    while (!result.done) {
+      yield MemTable.getValueWithEncoding(result.value)
+      result = iterator.next()
+    }
   }
 }

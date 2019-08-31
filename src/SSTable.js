@@ -6,6 +6,7 @@
  */
 
 // @flow
+/* global Generator */
 
 import { Buffer } from 'buffer'
 import Footer from './SSTableFooter'

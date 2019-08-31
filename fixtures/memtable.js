@@ -20,9 +20,9 @@ function createLookupKey (sequence, key, valueType) {
 function main () {
   const sequence = new SequenceNumber()
   const memtable = new MemTable()
-  memtable.add(sequence, ValueType.kTypeValue, new Slice('key'), new Slice('value1'))
-  memtable.add(sequence, ValueType.kTypeValue, new Slice('key2'), new Slice('vadfa'))
-  memtable.add(sequence, ValueType.kTypeValue, new Slice('key3'), new Slice('vadfa'))
+  memtable.add(sequence, ValueType.kTypeValue, new Slice('key'), new Slice('key1valuevalue1'))
+  memtable.add(sequence, ValueType.kTypeValue, new Slice('key2'), new Slice('key2valuevadfa'))
+  memtable.add(sequence, ValueType.kTypeValue, new Slice('key3'), new Slice('key3value12389fdajj123'))
 
   const lookupkey1 = createLookupKey(sequence, new Slice('key'), ValueType.kTypeValue)
   console.time('find key')
@@ -37,6 +37,12 @@ function main () {
   console.time('find key')
   memtable.get(lookupkey3)
   console.timeEnd('find key')
+
+  console.time('iterator')
+  for (let value of memtable.iterator()) {
+    console.log(value)
+  }
+  console.timeEnd('iterator')
 }
 
 main()
