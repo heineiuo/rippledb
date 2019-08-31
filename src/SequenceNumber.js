@@ -6,7 +6,7 @@
  */
 // @flow
 
-import varint from 'varint';
+import varint from 'varint'
 export default class SequenceNumber {
   constructor (initial:number = 0) {
     this._value = initial
@@ -19,7 +19,15 @@ export default class SequenceNumber {
     return this._value
   }
 
-  toBuffer():Buffer{
+  toBuffer ():Buffer {
     return Buffer.from(varint.encode(this._value))
+  }
+
+  toFixedSizeBuffer (size:number = 7):Buffer {
+    let buf = this.toBuffer()
+    return Buffer.concat([
+      buf,
+      Buffer.alloc(size - buf.length)
+    ])
   }
 }

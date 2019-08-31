@@ -14,7 +14,7 @@ import SkiplistNode from './SkiplistNode'
 const PROBABILITY = 1 / Math.E
 
 export default class Skiplist {
-  constructor (maxsize:number, any) {
+  constructor (maxsize:number, keyComparator:(a:Slice, b:Slice) => number) {
     this.maxsize = maxsize || 65535
     this.maxlevel = 11 // Math.round(Math.log(this.maxsize, 2))
     this.level = 0
@@ -28,6 +28,7 @@ export default class Skiplist {
     // head       tail
     this.tail = new SkiplistNode(this.maxlevel)
     this.tail.fill(this.tail)
+    this.keyComparator = keyComparator
     this.head = new SkiplistNode(this.maxlevel, this.tail)
   }
 
@@ -65,7 +66,7 @@ export default class Skiplist {
       //  如果key比下一个节点的key小，则循环结束
       //   如果next节点的key比插入节点小，则查找next节点是否存在
       //   next节点且比key大
-      if (!(current === this.tail) && current.key < key) {
+      if (!(current === this.tail) && this.keyComparator(current.key, key) < 0) {
         prevNode = current
         continue
       }
@@ -83,9 +84,13 @@ export default class Skiplist {
 
   get (key:Slice):SkiplistNode {
     let prevNode = this.findPrevNode(key)
+    // console.log('prevNode', prevNode)
     if (!prevNode) return null
     let current = prevNode.next()
-    if (current.key.compare(key) === 0) return current.key
+    // console.log('current', current)
+    // console.log('key', key)
+    // console.log('current.key', current.key)
+    if (this.keyComparator(current.key, key) === 0) return current.key
     return null
   }
 
@@ -94,7 +99,7 @@ export default class Skiplist {
     let prevNode = this.findPrevNode(key, update)
     if (!prevNode) return null
     let node = prevNode.next()
-    if (node.key.compare(key) !== 0) return
+    if (this.keyComparator(node.key, key) !== 0) return
 
     for (let i = 0; i <= node.maxlevel; i++) {
       if (update[i]) {
@@ -108,7 +113,13 @@ export default class Skiplist {
     let prevNode = this.findPrevNode(key, shouldUpdatePrevNodes)
     // 如果是相同的key则不处理
     // 否则创建新节点
-    if (prevNode.key.compare(key) !== 0) {
+    let isDifferent = false
+    if (prevNode === this.head) {
+      isDifferent = true
+    } else if (this.keyComparator(prevNode.key, key) !== 0) {
+      isDifferent = true
+    }
+    if (isDifferent) {
       const nodeLevel = this.generateNodeLevel()
       this.level = Math.max(nodeLevel, this.level)
       const node = new SkiplistNode(nodeLevel, prevNode.next(), key)
