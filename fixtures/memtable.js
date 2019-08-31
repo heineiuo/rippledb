@@ -28,7 +28,7 @@ function main () {
   console.time('find key')
   const result = memtable.get(lookupkey1)
   console.timeEnd('find key')
-  console.log(MemTable.getValueSlice(result).toString())
+  console.log(result)
   const lookupkey2 = createLookupKey(sequence, new Slice('key3'), ValueType.kTypeValue)
   console.time('find key')
   memtable.get(lookupkey2)
