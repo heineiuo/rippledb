@@ -13,6 +13,7 @@ import Enum from 'enum'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
+import { Encodings } from './Encodings'
 
 export const ValueType = new Enum({
   'kTypeDeletion': 0x00,
@@ -86,8 +87,13 @@ export default class MemTable {
   // sequence number since the Seek() call above should have skipped
   // all entries with overly large sequence numbers.
   // 这里的key是lookup key
-  get (key:Slice):Slice {
-    return this._list.get(key)
+  get (key:Slice, encoding:Encodings = 'string'):any {
+    const result = this._list.get(key)
+    if (!result) return result
+    const valueSlice = MemTable.getValueSlice(result)
+    if (encoding === 'string') return valueSlice.buffer.toString()
+    if (encoding === 'json') return JSON.parse(valueSlice.buffer.toString())
+    return valueSlice.buffer
   }
 
   * iterator ():Generator<any, void, void> {
