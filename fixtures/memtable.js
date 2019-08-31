@@ -17,23 +17,26 @@ function createLookupKey (sequence, key, valueType) {
   return new Slice(buf)
 }
 
-function getValueFromMemtableKey (key) {
-  const internalKeySize = varint.decode(key)
-  const valueBuffer = key.buffer.slice(internalKeySize)
-  const valueSize = varint.decode(valueBuffer)
-  const value = valueBuffer.slice(valueSize)
-  return value.toString()
-}
-
 function main () {
   const sequence = new SequenceNumber()
   const memtable = new MemTable()
-  const key = new Slice('key')
-  const value = new Slice('value123')
-  memtable.add(sequence, ValueType.kTypeValue, key, value)
-  const lookupkey = createLookupKey(sequence, key, ValueType.kTypeValue)
-  const result = memtable.get(lookupkey)
-  console.log(getValueFromMemtableKey(result))
+  memtable.add(sequence, ValueType.kTypeValue, new Slice('key'), new Slice('value1'))
+  memtable.add(sequence, ValueType.kTypeValue, new Slice('key2'), new Slice('vadfa'))
+  memtable.add(sequence, ValueType.kTypeValue, new Slice('key3'), new Slice('vadfa'))
+
+  const lookupkey1 = createLookupKey(sequence, new Slice('key'), ValueType.kTypeValue)
+  console.time('find key')
+  const result = memtable.get(lookupkey1)
+  console.timeEnd('find key')
+  console.log(MemTable.getValueSlice(result).toString())
+  const lookupkey2 = createLookupKey(sequence, new Slice('key3'), ValueType.kTypeValue)
+  console.time('find key')
+  memtable.get(lookupkey2)
+  console.timeEnd('find key')
+  const lookupkey3 = createLookupKey(sequence, new Slice('key4'), ValueType.kTypeValue)
+  console.time('find key')
+  memtable.get(lookupkey3)
+  console.timeEnd('find key')
 }
 
 main()
