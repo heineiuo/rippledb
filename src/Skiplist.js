@@ -84,12 +84,9 @@ export default class Skiplist {
 
   get (key:Slice):SkiplistNode {
     let prevNode = this.findPrevNode(key)
-    // console.log('prevNode', prevNode)
     if (!prevNode) return null
     let current = prevNode.next()
-    // console.log('current', current)
-    // console.log('key', key)
-    // console.log('current.key', current.key)
+    if (!current.key) return null
     if (this.keyComparator(current.key, key) === 0) return current.key
     return null
   }

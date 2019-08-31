@@ -32,6 +32,14 @@ export default class MemTable {
     return a1.compare(b1)
   }
 
+  static getValueSlice (key:Slice):Slice {
+    const internalKeySize = varint.decode(key)
+    const valueBuffer = key.buffer.slice(internalKeySize)
+    const valueSize = varint.decode(valueBuffer)
+    const value = valueBuffer.slice(valueSize)
+    return new Slice(value)
+  }
+
   constructor () {
     this._immutable = false
     this._list = new Skiplist(65535, MemTable.keyComparator)
@@ -77,8 +85,8 @@ export default class MemTable {
   // Check that it belongs to same user key.  We do not check the
   // sequence number since the Seek() call above should have skipped
   // all entries with overly large sequence numbers.
+  // 这里的key是lookup key
   get (key:Slice):Slice {
-    // TODO 这里的key是lookup key
     return this._list.get(key)
   }
 
