@@ -50,7 +50,7 @@ export default class Slice {
     }
   }
 
-  set data (buf) {
+  set data (buf:Buffer) {
     this._buffer = buf
   }
 

@@ -6,61 +6,99 @@
  */
 
 // @flow
+/* global AsyncGenerator */
 
-import path from 'path'
 import fs from 'fs'
-import crc32 from 'buffer-crc32'
-import { ValueType, RecordType } from './Format'
+import varint from 'varint'
+import { kBlockSize, ValueType, RecordType } from './Format'
 import Slice from './Slice'
-// import LogRecord from './LogRecord'
+import LogRecord from './LogRecord'
 
 class Log {
-  static read (filename: String):any {
-
+  static async * readIterator (filename: String):AsyncGenerator<any, void, void> {
+    const buf = await fs.promises.readFile(filename)
+    console.log('Log.readLogRecord buf length', buf.length)
   }
 
-  constructor (dbpath:string) {
-    this._logPath = path.resolve(dbpath, './LOG')
-    this._blocks = []
-    this._currentBlock = Buffer.alloc(0)
+  constructor (filename:string) {
+    this._filename = filename // path.resolve(dbpath, './LOG')
+    this._currentBlockSize = 0
   }
 
   _file: {
     [x:string]:any
   }
-  _logPath:string
-  _blocks: Buffer[]
-  _currentBlock: Buffer
-  _buf: Buffer
+  _filename:string
+  _currentBlockSize: number
 
   async readLogRecord (initialOffset:number) {
-    const fd = await fs.promises.open(this._logPath, 'a+')
-    this._buf = await fs.promises.readFile(this._logPath)
-    console.log('Log.readLogRecord buf length', this._buf.length)
   }
 
-  add (key:Slice, value:Slice) {
-
+  async add (key:Slice, value:Slice) {
+    await this.addRecord(new Slice(Buffer.concat([
+      Buffer.from([ValueType.kTypeValue.value]),
+      Buffer.from(varint.encode(key.length)),
+      key.buffer,
+      Buffer.from(varint.encode(value.length)),
+      value.buffer
+    ])))
   }
 
-  del (key:Slice) {
-    this.addRecord()
+  async del (key:Slice) {
+    await this.addRecord(new Slice(Buffer.concat([
+      Buffer.from([ValueType.kTypeDeletion]),
+      Buffer.from(varint.encode(key.length)),
+      key.buffer
+    ])))
   }
 
-  addRecord (valueType:ValueType, data:Slice) {
-    const keyLen = this.length2Buf(strKey.length)
-    const valLen = this.length2Buf(strValue.length)
-    const body = Buffer.concat([
-      keyLen,
-      new Slice(strKey).buffer,
-      valLen,
-      new Slice(strValue).buffer
-    ])
-    const checksum = crc32(body)
-    const bodyLen = this.length2Buf(body.length)
-    const typeBuf = Buffer.from([RecordType.kFullType.value])
-    const header = Buffer.concat([checksum, bodyLen, typeBuf])
-    return Buffer.concat([header, body])
+  async appendFile (buf:Buffer) {
+    if (!this._file) {
+      this._file = await fs.promises.open(this._filename, 'a+')
+    }
+    await this._file.appendFile(buf)
+  }
+
+  async close () {
+    await this._file.close()
+  }
+
+  /**
+   * record op: type(ValueType, 1B) | key_length (varint32) | key | value_length(varint32) | value
+   */
+  async addRecord (recordOp: Slice) {
+    if (this._currentBlockSize + recordOp.length + 7 <= kBlockSize) {
+      const record = new LogRecord(RecordType.kFullType, recordOp)
+      this._currentBlockSize += record.length
+      await this.appendFile(record.buffer)
+    } else {
+      let position = 0
+      let hasFirstRecordCreated = false
+      while (position < recordOp.size) {
+        const currentBlockLeftSpace = kBlockSize - this._currentBlockSize - 7
+        const startPosition = position
+        if (!hasFirstRecordCreated) {
+          const recordType = RecordType.kFirstType
+          position += currentBlockLeftSpace
+          const record = new LogRecord(recordType, new Slice(recordOp.buffer.slice(startPosition, position)))
+          this._currentBlockSize = 0
+          await this.appendFile(record.buffer)
+          hasFirstRecordCreated = true
+        } else if (currentBlockLeftSpace > recordOp.size - position) {
+          const recordType = RecordType.kLastType
+          position = recordOp.size
+          const record = new LogRecord(recordType, new Slice(recordOp.buffer.slice(startPosition, position)))
+          this._currentBlockSize += record.length
+          await this.appendFile(record.buffer)
+        } else {
+          let recordType = RecordType.kMiddleType
+          position += kBlockSize - 7
+          const record = new LogRecord(recordType, new Slice(recordOp.buffer.slice(startPosition, position)))
+          this._currentBlockSize = 0
+          await this.appendFile(record.buffer)
+        }
+      }
+    }
   }
 
   parseRecord (record:Buffer) {
