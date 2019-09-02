@@ -9,16 +9,11 @@
 
 import assert from 'assert'
 import varint from 'varint'
-import Enum from 'enum'
+import { ValueType } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 import { Encodings } from './Encodings'
-
-export const ValueType = new Enum({
-  'kTypeDeletion': 0x00,
-  'kTypeValue': 0x01
-})
 
 export default class MemTable {
   static getLengthPrefixedSlice (key:Slice):Slice {

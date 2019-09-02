@@ -10,24 +10,15 @@
 import path from 'path'
 import fs from 'fs'
 import crc32 from 'buffer-crc32'
-import Enum from 'enum'
+import { ValueType, RecordType } from './Format'
 import Slice from './Slice'
-
-const RecordType = new Enum({
-  // Zero is reserved for preallocated files
-  kZeroType: 0,
-
-  kFullType: 1,
-
-  // For fragments
-  kFirstType: 2,
-  kMiddleType: 3,
-  kLastType: 4
-})
-
-const kBlockSize = 32768 // 32KB
+// import LogRecord from './LogRecord'
 
 class Log {
+  static read (filename: String):any {
+
+  }
+
   constructor (dbpath:string) {
     this._logPath = path.resolve(dbpath, './LOG')
     this._blocks = []
@@ -48,11 +39,15 @@ class Log {
     console.log('Log.readLogRecord buf length', this._buf.length)
   }
 
-  async append (key:Slice, value:Slice) {
-    await this._file.appendFile(this._logPath)
+  add (key:Slice, value:Slice) {
+
   }
 
-  createRecord (strKey:Slice, strValue:Slice) {
+  del (key:Slice) {
+    this.addRecord()
+  }
+
+  addRecord (valueType:ValueType, data:Slice) {
     const keyLen = this.length2Buf(strKey.length)
     const valLen = this.length2Buf(strValue.length)
     const body = Buffer.concat([
@@ -63,7 +58,7 @@ class Log {
     ])
     const checksum = crc32(body)
     const bodyLen = this.length2Buf(body.length)
-    const typeBuf = Buffer.from([RecordType.get('kFullType').value])
+    const typeBuf = Buffer.from([RecordType.kFullType.value])
     const header = Buffer.concat([checksum, bodyLen, typeBuf])
     return Buffer.concat([header, body])
   }

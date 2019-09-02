@@ -62,3 +62,11 @@ export function findShortestSeparator (string1:string, string2:string):string {
   const nextChar = String.fromCharCode(base.charCodeAt(0) + 1)
   return `${same}${nextChar}`
 }
+
+export function createHexStringFromDecimal (decimal:number):string {
+  let str = decimal.toString(16)
+  while (str.length < 4) {
+    str = `0${str}`
+  }
+  return str
+}
