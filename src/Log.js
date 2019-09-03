@@ -15,7 +15,7 @@ import { kBlockSize, ValueType, RecordType } from './Format'
 import Slice from './Slice'
 import LogRecord from './LogRecord'
 
-class Log {
+export default class Log {
   static async * readIterator(filename: String): AsyncGenerator<any, void, void> {
     const fd = await fs.promises.open(filename, 'r')
     let buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))
@@ -28,7 +28,10 @@ class Log {
       if (blockIndex === -1 || (bufHandledPosition >= kBlockSize - 7)) {
         const position = ++blockIndex * kBlockSize
         const { bytesRead } = await fd.read(buf, 0, kBlockSize, position)
-        if (bytesRead === 0) return
+        if (bytesRead === 0) {
+          await fd.close()
+          return
+        }
         currentBytesRead = bytesRead
         bufHandledPosition = 0
         continue
@@ -155,7 +158,6 @@ class Log {
 
         let recordType: RecordType
         if (!hasFirstRecordCreated) {
-          // currentRecordSize >= currentFreeSpace
           recordType = RecordType.kFirstType
           hasFirstRecordCreated = true
           assert(this._currentBlockSize + currentRecordSize === kBlockSize)
@@ -164,8 +166,6 @@ class Log {
           recordType = RecordType.kLastType
           this._currentBlockSize += currentRecordSize
 
-          // console.log('RecordType.kLastType currentRecordSize is ', currentRecordOpPosition - startPosition + 7)
-          // console.log('RecordType.kLastType after, currentBlockSize is', this._currentBlockSize + currentRecordOpPosition - startPosition + 7)
         } else {
           assert(this._currentBlockSize + currentRecordSize === kBlockSize)
           this._currentBlockSize = 0
@@ -175,7 +175,6 @@ class Log {
         const record = new LogRecord(recordType, new Slice(recordOp.buffer.slice(startPosition, currentRecordOpPosition)))
         assert(record.length === currentRecordSize)
         await this.appendFile(record.buffer)
-        // console.log(`append a record with ${recordType.key}, startPosition=${startPosition} currentRecordOpPosition=${currentRecordOpPosition} currentRecordSize=${currentRecordSize} currentblockSize=${this._currentBlockSize}`)
         if (recordType === RecordType.kLastType) {
           break
         }
@@ -183,5 +182,3 @@ class Log {
     }
   }
 }
-
-export default Log
