@@ -17,7 +17,7 @@ export default class LogRecord {
   static from (buf:Buffer) {
     const length = buf.readUInt16BE(4)
     const type = RecordType.get(buf.readUInt8(6))
-    const data = new Slice(buf.slice(7))
+    const data = new Slice(buf.slice(7, 7 + length))
     assert(length === data.length)
     const record = new LogRecord(type, data)
     return record
