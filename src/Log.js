@@ -16,14 +16,13 @@ import Slice from './Slice'
 import LogRecord from './LogRecord'
 
 export default class Log {
-  static async * readIterator(filename: String): AsyncGenerator<any, void, void> {
+  static async * readIterator (filename: String): AsyncGenerator<any, void, void> {
     const fd = await fs.promises.open(filename, 'r')
     let buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))
     let blockIndex = -1
     let latestOpBuf = Buffer.alloc(0)
     let latestType = null
     let bufHandledPosition = 0
-    let currentBytesRead = 0
     while (true) {
       if (blockIndex === -1 || (bufHandledPosition >= kBlockSize - 7)) {
         const position = ++blockIndex * kBlockSize
@@ -32,7 +31,6 @@ export default class Log {
           await fd.close()
           return
         }
-        currentBytesRead = bytesRead
         bufHandledPosition = 0
         continue
       }
@@ -62,7 +60,7 @@ export default class Log {
     }
   }
 
-  static parseOp(op: Slice): { type: ValueType, key: Slice, value: Slice } {
+  static parseOp (op: Slice): { type: ValueType, key: Slice, value: Slice } {
     const valueType = ValueType.get(op.buffer.readUInt8(0))
     let index = 1
     const keyLength = varint.decode(op.buffer.slice(1))
@@ -87,8 +85,8 @@ export default class Log {
     }
   }
 
-  constructor(filename: string) {
-    this._filename = filename // path.resolve(dbpath, './LOG')
+  constructor (filename: string) {
+    this._filename = filename
     this._currentBlockSize = 0
   }
 
@@ -98,7 +96,7 @@ export default class Log {
   _filename: string
   _currentBlockSize: number
 
-  async add(key: Slice, value: Slice) {
+  async add (key: Slice, value: Slice) {
     await this.addRecord(new Slice(Buffer.concat([
       Buffer.from([ValueType.kTypeValue.value]),
       Buffer.from(varint.encode(key.length)),
@@ -108,7 +106,7 @@ export default class Log {
     ])))
   }
 
-  async del(key: Slice) {
+  async del (key: Slice) {
     await this.addRecord(new Slice(Buffer.concat([
       Buffer.from([ValueType.kTypeDeletion.value]),
       Buffer.from(varint.encode(key.length)),
@@ -116,27 +114,26 @@ export default class Log {
     ])))
   }
 
-  async appendFile(buf: Buffer) {
+  async appendFile (buf: Buffer) {
     if (!this._file) {
       this._file = await fs.promises.open(this._filename, 'a+')
     }
     await this._file.appendFile(buf)
   }
 
-  async close() {
+  async close () {
     await this._file.close()
   }
 
   /**
    * record op: type(ValueType, 1B) | key_length (varint32) | key | value_length(varint32) | value
    */
-  async addRecord(recordOp: Slice) {
+  async addRecord (recordOp: Slice) {
     if (this._currentBlockSize + 7 + recordOp.length <= kBlockSize) {
       // 不需要分割
       const record = new LogRecord(RecordType.kFullType, recordOp)
       this._currentBlockSize += record.length
       await this.appendFile(record.buffer)
-      console.log(`Finish a record with kFullType, currentblockSize=${this._currentBlockSize}`)
     } else {
       let currentRecordOpPosition = 0
       let hasFirstRecordCreated = false
@@ -144,7 +141,6 @@ export default class Log {
         const currentFreeSpace = kBlockSize - this._currentBlockSize
         if (currentFreeSpace <= 7) {
           const padBuf = Buffer.alloc(currentFreeSpace)
-          console.log(`currentFreeSpace <= 7 currentFreeSpace=${currentFreeSpace}, padBuf.length=${padBuf.length}`)
           assert(padBuf.length <= 7)
           await this.appendFile(padBuf)
           this._currentBlockSize = 0
@@ -165,7 +161,6 @@ export default class Log {
         } else if (remainOp + 7 <= currentFreeSpace) {
           recordType = RecordType.kLastType
           this._currentBlockSize += currentRecordSize
-
         } else {
           assert(this._currentBlockSize + currentRecordSize === kBlockSize)
           this._currentBlockSize = 0
