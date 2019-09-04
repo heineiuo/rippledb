@@ -15,7 +15,7 @@ import { RecordType, VersionEditTag } from './Format'
 import { createHexStringFromDecimal } from './LevelUtils'
 
 export default class ManifestRecord {
-  static from (buf:Buffer) {
+  static from (buf:Buffer):ManifestRecord {
     const length = buf.readUInt16BE(4)
     const type = RecordType.get(buf.readUInt8(6))
     const data = new Slice(buf.slice(7, 7 + length))
@@ -24,46 +24,153 @@ export default class ManifestRecord {
     return record
   }
 
-  static add (key: Slice, value: Slice) {
+  static addComparator (comparatorName:Slice) {
     return new Slice(Buffer.concat([
-      Buffer.from([VersionEditTag.kTypeValue.value]),
-      Buffer.from(varint.encode(key.length)),
-      key.buffer,
-      Buffer.from(varint.encode(value.length)),
-      value.buffer
+      Buffer.from([VersionEditTag.kComparator.value]),
+      Buffer.from(varint.encode(comparatorName.length)),
+      comparatorName.buffer
     ]))
   }
 
-  static del (key: Slice) {
+  static addLogNumber (logNumber:number) {
     return new Slice(Buffer.concat([
-      Buffer.from([VersionEditTag.kTypeDeletion.value]),
-      Buffer.from(varint.encode(key.length)),
-      key.buffer
+      Buffer.from([VersionEditTag.kLogNumber.value]),
+      Buffer.from(varint.encode(logNumber))
+    ]))
+  }
+
+  static addPrevLogNumber (logNumber:number) {
+    return new Slice(Buffer.concat([
+      Buffer.from([VersionEditTag.kPrevLogNumber.value]),
+      Buffer.from(varint.encode(logNumber))
+    ]))
+  }
+
+  static addNextLogNumber (logNumber:number) {
+    return new Slice(Buffer.concat([
+      Buffer.from([VersionEditTag.kNextLogNumber.value]),
+      Buffer.from(varint.encode(logNumber))
+    ]))
+  }
+
+  static addLastSequence (sequenceNumber:number) {
+    return new Slice(Buffer.concat([
+      Buffer.from([VersionEditTag.kLastSequence.value]),
+      Buffer.from(varint.encode(sequenceNumber))
+    ]))
+  }
+
+  static addCompactPointer (level:number, internalKey:Slice) {
+    return new Slice(Buffer.concat([
+      Buffer.from([VersionEditTag.kCompactPointer.value]),
+      Buffer.from(varint.encode(level)),
+      Buffer.from(varint.encode(internalKey.length)),
+      internalKey.buffer
+    ]))
+  }
+
+  static addDeletedFile (level:number, fileNum:number) {
+    return new Slice(Buffer.concat([
+      Buffer.from([VersionEditTag.kDeletedFile.value]),
+      Buffer.from(varint.encode(level)),
+      Buffer.from(varint.encode(fileNum))
+    ]))
+  }
+
+  static addNewFile (level:number, fileNum:number, fileSize:number, smallestKey:Slice, largestKey:Slice) {
+    return new Slice(Buffer.concat([
+      Buffer.from([VersionEditTag.kNewFile.value]),
+      Buffer.from(varint.encode(level)),
+      Buffer.from(varint.encode(fileNum)),
+      Buffer.from(varint.encode(fileSize)),
+      Buffer.from(varint.encode(smallestKey.length)),
+      smallestKey.buffer,
+      Buffer.from(varint.encode(largestKey.length)),
+      largestKey.buffer
     ]))
   }
 
   static parseOp (op: Slice): { type: VersionEditTag, key: Slice, value: Slice } {
-    const valueType = VersionEditTag.get(op.buffer.readUInt8(0))
+    const type = VersionEditTag.get(op.buffer.readUInt8(0))
     let index = 1
-    const keyLength = varint.decode(op.buffer.slice(1))
-    index += varint.decode.bytes
-    const keyBuffer = op.buffer.slice(index, index + keyLength)
-    index += keyLength
 
-    if (valueType === VersionEditTag.kTypeDeletion) {
+    if (type === VersionEditTag.kComparator) {
+      const comparatorNameLength = varint.decode(op.buffer.slice(1))
+      index += varint.decode.bytes
+      const comparatorName = op.buffer.slice(index, index + comparatorNameLength)
+      index += comparatorNameLength
+
       return {
-        type: valueType,
-        key: new Slice(keyBuffer)
+        type,
+        comparatorName: comparatorName.toString()
       }
-    }
+    } else if (type === VersionEditTag.kLogNumber) {
+      const logNumber = varint.decode(op.buffer.slice(1))
+      return {
+        type,
+        logNumber
+      }
+    } else if (type === VersionEditTag.kPrevLogNumber) {
+      const prevLogNumber = varint.decode(op.buffer.slice(1))
+      return {
+        type,
+        prevLogNumber
+      }
+    } else if (type === VersionEditTag.kNextLogNumber) {
+      const nextLogNumber = varint.decode(op.buffer.slice(1))
+      return {
+        type,
+        nextLogNumber
+      }
+    } else if (type === VersionEditTag.kLastSequence) {
+      const lastSequence = varint.decode(op.buffer.slice(1))
+      return {
+        type,
+        lastSequence
+      }
+    } else if (type === VersionEditTag.kCompactPointer) {
+      const level = varint.decode(op.buffer.slice(1))
+      index += varint.decode.bytes
+      const internalKeyLength = varint.decode(op.buffer.slice(index))
+      index += varint.decode.bytes
+      const internalKey = op.buffer.slice(index, index + internalKeyLength)
+      return {
+        type,
+        level,
+        internalKey
+      }
+    } else if (type === VersionEditTag.kDeletedFile) {
+      const level = varint.decode(op.buffer.slice(1))
+      index += varint.decode.bytes
+      const fileNum = varint.decode(op.buffer.slice(index))
+      return {
+        type,
+        level,
+        fileNum
+      }
+    } else if (type === VersionEditTag.kNewFile) {
+      const level = varint.decode(op.buffer.slice(1))
+      index += varint.decode.bytes
+      const fileNum = varint.decode(op.buffer.slice(index))
+      index += varint.decode.bytes
+      const fileSize = varint.decode(op.buffer.slice(index))
+      index += varint.decode.bytes
+      const smallestKeyLength = varint.decode(op.buffer.slice(index))
+      index += varint.decode.bytes
+      const smallestKey = op.buffer.slice(index, index + smallestKeyLength)
+      index += smallestKeyLength
+      const largestKeyLength = varint.decode(op.buffer.slice(index))
+      index += varint.decode.bytes
+      const largestKey = op.buffer.slice(index, index + largestKeyLength)
 
-    const valueLength = varint.decode(op.buffer.slice(index))
-    index += varint.decode.bytes
-    const valueBuffer = op.buffer.slice(index, index + valueLength)
-    return {
-      type: valueType,
-      key: new Slice(keyBuffer),
-      value: new Slice(valueBuffer)
+      return {
+        type,
+        level,
+        fileNum,
+        fileSize,
+        smallestKey,
+        largestKey
+      }
     }
   }
 
