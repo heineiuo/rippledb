@@ -36,14 +36,6 @@ export default class SSTable {
   _dataBlock: DataBlock
   _metaIndexBlock: MetaIndexBlock
 
-  get immutable (): boolean {
-    return this._immutable
-  }
-
-  set immutable (next: boolean) {
-    if (next) this._immutable = true
-  }
-
   get (key:string):string | null {
     const indexBlockIterator = this.dataBlockIterator()
     let result = indexBlockIterator.next()

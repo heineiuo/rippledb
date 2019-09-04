@@ -11,22 +11,22 @@ import crc32 from 'buffer-crc32'
 import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
-import { RecordType, ValueType } from './Format'
+import { RecordType, VersionEditTag } from './Format'
 import { createHexStringFromDecimal } from './LevelUtils'
 
-export default class LogRecord {
+export default class ManifestRecord {
   static from (buf:Buffer) {
     const length = buf.readUInt16BE(4)
     const type = RecordType.get(buf.readUInt8(6))
     const data = new Slice(buf.slice(7, 7 + length))
     assert(length === data.length)
-    const record = new LogRecord(type, data)
+    const record = new ManifestRecord(type, data)
     return record
   }
 
   static add (key: Slice, value: Slice) {
     return new Slice(Buffer.concat([
-      Buffer.from([ValueType.kTypeValue.value]),
+      Buffer.from([VersionEditTag.kTypeValue.value]),
       Buffer.from(varint.encode(key.length)),
       key.buffer,
       Buffer.from(varint.encode(value.length)),
@@ -36,21 +36,21 @@ export default class LogRecord {
 
   static del (key: Slice) {
     return new Slice(Buffer.concat([
-      Buffer.from([ValueType.kTypeDeletion.value]),
+      Buffer.from([VersionEditTag.kTypeDeletion.value]),
       Buffer.from(varint.encode(key.length)),
       key.buffer
     ]))
   }
 
-  static parseOp (op: Slice): { type: ValueType, key: Slice, value: Slice } {
-    const valueType = ValueType.get(op.buffer.readUInt8(0))
+  static parseOp (op: Slice): { type: VersionEditTag, key: Slice, value: Slice } {
+    const valueType = VersionEditTag.get(op.buffer.readUInt8(0))
     let index = 1
     const keyLength = varint.decode(op.buffer.slice(1))
     index += varint.decode.bytes
     const keyBuffer = op.buffer.slice(index, index + keyLength)
     index += keyLength
 
-    if (valueType === ValueType.kTypeDeletion) {
+    if (valueType === VersionEditTag.kTypeDeletion) {
       return {
         type: valueType,
         key: new Slice(keyBuffer)
@@ -81,7 +81,7 @@ export default class LogRecord {
   }
 
   data:Slice
-  type:ValueType
+  type:VersionEditTag
 
   get buffer ():Buffer {
     const lengthBuf = Buffer.from(createHexStringFromDecimal(this.data.length), 'hex')

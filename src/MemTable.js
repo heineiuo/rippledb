@@ -51,6 +51,14 @@ export default class MemTable {
   _immutable:boolean
   _list:Skiplist
 
+  get immutable (): boolean {
+    return this._immutable
+  }
+
+  set immutable (next: boolean) {
+    if (next) this._immutable = true
+  }
+
   add (sequence:SequenceNumber, valueType:ValueType, key:Slice, value:Slice) {
     const keySize = key.length
     const valueSize = value.length

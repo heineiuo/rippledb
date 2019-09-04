@@ -1,11 +1,13 @@
 const path = require('path')
-const Log = require('../build/Log').default
+const LogReader = require('../build/LogReader').default
+const LogRecord = require('../build/LogRecord').default
 
 async function readLog () {
   try {
     const logFilename = path.resolve(__dirname, '../.db/LOG')
     console.time('read_log')
-    for await (let op of Log.readIterator(logFilename)) {
+    const logReader = new LogReader(logFilename, LogRecord)
+    for await (let op of logReader.iterator(logFilename)) {
       const strKey = op.key.toString()
       // console.log(op.type.key + strKey)
       const strValue = op.value.buffer

@@ -37,3 +37,15 @@ export const RecordType = new Enum({
 })
 
 export const kBlockSize = 32768 // 32KB
+
+export const VersionEditTag = new Enum({
+  kComparator: 1,
+  kLogNumber: 2,
+  kNextFileNumber: 3,
+  kLastSequence: 4,
+  kCompactPointer: 5,
+  kDeletedFile: 6,
+  kNewFile: 7,
+  // 8 was used for large value refs
+  kPrevLogNumber: 9
+})

@@ -12,9 +12,11 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 - [x] SSTableBuilder
 - [x] SSTable
 - [x] BloomFilter
-- [x] Log
+- [x] LogWriter
+- [x] LogReader
 - [x] LogRecord
 - [x] MemTable
+- [ ] ManifestRecord
 - [ ] Manifest
 - [ ] LRU
 - [ ] Compaction
