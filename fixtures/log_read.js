@@ -7,7 +7,7 @@ async function readLog () {
     const logFilename = path.resolve(__dirname, '../.db/LOG')
     console.time('read_log')
     const logReader = new LogReader(logFilename, LogRecord)
-    for await (let op of logReader.iterator(logFilename)) {
+    for await (let op of logReader.iterator()) {
       const strKey = op.key.toString()
       // console.log(op.type.key + strKey)
       const strValue = op.value.buffer
