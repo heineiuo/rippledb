@@ -2,7 +2,7 @@
 
 
 <p align="left">
-  <a href="https://github.com/heineiuo/node-level"><img alt="GitHub Actions status" src="https://github.com/heineiuo/node-level/workflows/Node%20CI/badge.svg"></a>
+  <a href="https://github.com/heineiuo/node-level/actions"><img alt="GitHub Actions status" src="https://github.com/heineiuo/node-level/workflows/Node%20CI/badge.svg"></a>
 </p>
 
 
