@@ -7,18 +7,20 @@
 // @flow
 /* global AsyncGenerator */
 
-// import path from 'path'
+import path from 'path'
 // import fs from 'fs'
 import MemTable from './MemTable'
-import Log from './Log'
+import LogRecord from './LogRecord'
+import LogWriter from './LogWriter'
+// import LogReader from './LogReader'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
 import Slice from './Slice'
 
 class Database {
   constructor (dbpath:string) {
-    this._log = new Log(dbpath)
-    this._mem = new MemTable()
+    this._log = new LogWriter(path.resolve(dbpath, './0001.log'))
+    this._memtable = new MemTable()
     this._sn = new SequenceNumber(0)
     this._cache = LRU({
       max: 500,
@@ -34,8 +36,11 @@ class Database {
     this.recovery()
   }
 
+  _log:LogWriter
+  _memtable:MemTable
+
   recovery () {
-    this._log.readLogRecord(0)
+    // const logReader = new LogReader()
   }
 
   async * iterator ():AsyncGenerator<any, void, void> {
@@ -43,20 +48,22 @@ class Database {
     // yield 'a'
   }
 
-  async get (key:Slice) {
-    return this._cache.get(key)
+  async get (key:Slice):any {
+    const result = this._memtable.get(key)
+    return result
   }
 
   async put (key:Slice, value:Slice) {
-    return this._cache.set(key, value)
+    const record = LogRecord.add(key, value)
+    await this._log.addRecord(record)
+    // return this._cache.set(key, value)
   }
 
   async del (key:Slice) {
-    return this._cache.del(key)
-  }
-
-  _viewLog = () => {
-
+    const record = LogRecord.del(key)
+    await this._log.addRecord(record)
+    return this._cache.set(key)
+    // return this._cache.del(key)
   }
 }
 
