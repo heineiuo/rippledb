@@ -2,7 +2,7 @@ const path = require('path')
 const LogReader = require('../build/LogReader').default
 const LogWriter = require('../build/LogWriter').default
 const ManifestRecord = require('../build/ManifestRecord').default
-const Slice = require('../build/Slice').default
+const VersionEdit = require('../build/VersionEdit').default
 
 async function main () {
   await write()
@@ -10,8 +10,10 @@ async function main () {
 }
 
 async function write () {
+  const version = new VersionEdit()
+  version.comparator = 'aaa'
   const writer = new LogWriter(path.resolve(__dirname, '../.db/MANIFEST-0012'))
-  await writer.addRecord(ManifestRecord.addComparator(new Slice('aaa')))
+  await writer.addRecord(ManifestRecord.add(version))
   await writer.close()
 }
 
