@@ -12,6 +12,7 @@ async function main () {
 async function write () {
   const version = new VersionEdit()
   version.comparator = 'aaa'
+  version.logNumber = 100
   const writer = new LogWriter(path.resolve(__dirname, '../.db/MANIFEST-0012'))
   await writer.addRecord(ManifestRecord.add(version))
   await writer.close()
