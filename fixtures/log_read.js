@@ -4,7 +4,7 @@ const LogRecord = require('../build/LogRecord').default
 
 async function readLog () {
   try {
-    const logFilename = path.resolve(__dirname, '../.db/LOG')
+    const logFilename = path.resolve(__dirname, '../.db/0001.log')
     console.time('read_log')
     const logReader = new LogReader(logFilename, LogRecord)
     for await (let op of logReader.iterator()) {

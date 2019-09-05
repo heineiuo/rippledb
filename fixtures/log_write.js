@@ -4,7 +4,7 @@ const LogRecord = require('../build/LogRecord').default
 const Slice = require('../build/Slice').default
 
 async function logWrite () {
-  const logFilename = path.resolve(__dirname, '../.db/LOG')
+  const logFilename = path.resolve(__dirname, '../.db/0001.log')
   const log = new LogWriter(logFilename)
   let i = 0
   while (i < 20) {

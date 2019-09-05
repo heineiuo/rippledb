@@ -15,7 +15,7 @@ import { RecordType, ValueType } from './Format'
 import { createHexStringFromDecimal } from './LevelUtils'
 
 export default class LogRecord {
-  static from (buf:Buffer) {
+  static from (buf:Buffer):LogRecord {
     const length = buf.readUInt16BE(4)
     const type = RecordType.get(buf.readUInt8(6))
     const data = new Slice(buf.slice(7, 7 + length))
@@ -24,7 +24,7 @@ export default class LogRecord {
     return record
   }
 
-  static add (key: Slice, value: Slice) {
+  static add (key: Slice, value: Slice):Slice {
     return new Slice(Buffer.concat([
       Buffer.from([ValueType.kTypeValue.value]),
       Buffer.from(varint.encode(key.length)),
@@ -34,7 +34,7 @@ export default class LogRecord {
     ]))
   }
 
-  static del (key: Slice) {
+  static del (key: Slice):Slice {
     return new Slice(Buffer.concat([
       Buffer.from([ValueType.kTypeDeletion.value]),
       Buffer.from(varint.encode(key.length)),
@@ -42,7 +42,7 @@ export default class LogRecord {
     ]))
   }
 
-  static parseOp (op: Slice): { type: ValueType, key: Slice, value: Slice } {
+  static parseOp (op: Slice): { type: ValueType, key: Slice, value?: Slice } {
     const valueType = ValueType.get(op.buffer.readUInt8(0))
     let index = 1
     const keyLength = varint.decode(op.buffer.slice(1))
