@@ -8,14 +8,10 @@
 /* global Generator */
 
 import crc32 from 'buffer-crc32'
-import Enum from 'enum'
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import SSTableRecord from './SSTableRecord'
-
-const CompressionTypes = new Enum({
-  'none': 0
-})
+import { CompressionTypes } from './Format'
 
 export default class SSTableBlock {
   constructor (buffer?:Buffer = Buffer.from([]), offset?:number, size?:number) {

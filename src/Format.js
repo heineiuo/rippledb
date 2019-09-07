@@ -37,6 +37,7 @@ export const RecordType = new Enum({
 })
 
 export const kBlockSize = 32768 // 32KB
+export const kMemTableDumpSize = 4194304 // 4MB
 
 export const VersionEditTag = new Enum({
   kComparator: 1,
@@ -48,4 +49,8 @@ export const VersionEditTag = new Enum({
   kNewFile: 7,
   // 8 was used for large value refs
   kPrevLogNumber: 9
+})
+
+export const CompressionTypes = new Enum({
+  none: 0
 })

@@ -9,6 +9,7 @@
 
 import assert from 'assert'
 import fs from 'fs'
+import { Buffer } from 'buffer'
 import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
 import LogRecord from './LogRecord'
@@ -29,7 +30,7 @@ export default class LogWriter {
     if (!this._file) {
       this._file = await fs.promises.open(this._filename, 'a+')
     }
-    await this._file.appendFile(buf)
+    await this._file.appendFile(buf, {})
   }
 
   async close () {

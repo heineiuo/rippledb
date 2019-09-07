@@ -9,6 +9,7 @@
 
 import assert from 'assert'
 import varint from 'varint'
+import { Buffer } from 'buffer'
 import { ValueType } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
@@ -46,10 +47,16 @@ export default class MemTable {
   constructor () {
     this._immutable = false
     this._list = new Skiplist(65535, MemTable.keyComparator)
+    this._size = 0
   }
 
   _immutable:boolean
   _list:Skiplist
+  _size: number
+
+  get size ():number {
+    return this._size
+  }
 
   get immutable (): boolean {
     return this._immutable
@@ -85,6 +92,7 @@ export default class MemTable {
     assert(encodedLength === buf.length, 'Incorrect length')
     // buf包含key和value
     this._list.put(buf)
+    this._size += buf.length
   }
 
   // entry format is:

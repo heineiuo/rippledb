@@ -10,6 +10,7 @@
 
 import assert from 'assert'
 import fs from 'fs'
+import { Buffer } from 'buffer'
 import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
 
@@ -24,8 +25,8 @@ export default class LogReader {
   }
   _filename: string
   _LogRecord: {
-    parseOp:() => any,
-    from:() => any
+    parseOp:(op:Slice) => any,
+    from:(param:Buffer) => any
   }
 
   async close () {

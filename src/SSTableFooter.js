@@ -75,14 +75,14 @@ export default class TableFooter {
         indexSize: 0
       }
     }
-    let count = 0
-    const metaIndexOffset = varint.decode(buf, count)
-    count += varint.decode.bytes
-    const metaIndexSize = varint.decode(buf, count)
-    count += varint.decode.bytes
-    const indexOffset = varint.decode(buf, count)
-    count += varint.decode.bytes
-    const indexSize = varint.decode(buf, count)
+    let position = 0
+    const metaIndexOffset = varint.decode(buf, position)
+    position += varint.decode.bytes
+    const metaIndexSize = varint.decode(buf, position)
+    position += varint.decode.bytes
+    const indexOffset = varint.decode(buf, position)
+    position += varint.decode.bytes
+    const indexSize = varint.decode(buf, position)
     return {
       metaIndexOffset,
       metaIndexSize,

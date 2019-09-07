@@ -10,6 +10,7 @@
 import crc32 from 'buffer-crc32'
 import assert from 'assert'
 import varint from 'varint'
+import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { RecordType, VersionEditTag } from './Format'
 import { createHexStringFromDecimal } from './LevelUtils'
@@ -29,7 +30,7 @@ export default class ManifestRecord {
     let bufList:Buffer[] = []
     if (version.hasComparator) {
       bufList.push(Buffer.from([VersionEditTag.kComparator.value]))
-      bufList.push(Buffer.from(varint.encode(version.comparator.length)))
+      bufList.push(Buffer.from(varint.encode(version.comparator && version.comparator.length)))
       bufList.push(Buffer.from(version.comparator))
     }
     if (version.hasLogNumber) {
@@ -46,7 +47,7 @@ export default class ManifestRecord {
     }
     if (version.hasLastSequence) {
       bufList.push(Buffer.from([VersionEditTag.kLastSequence.value]))
-      bufList.push(Buffer.from(varint.encode(version.sequenceNumber)))
+      bufList.push(Buffer.from(varint.encode(version.lastSequence)))
     }
     version.compactPointers.forEach((pointer: { level:Number, internalKey:Slice}) => {
       bufList.push(Buffer.from([VersionEditTag.kCompactPointer.value]))
@@ -107,7 +108,6 @@ export default class ManifestRecord {
       } else if (type === VersionEditTag.kLastSequence) {
         const lastSequence = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.hasLastSequence = true
         version.lastSequence = lastSequence
         continue
       } else if (type === VersionEditTag.kCompactPointer) {
