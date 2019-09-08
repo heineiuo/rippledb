@@ -23,6 +23,7 @@ export default class VersionEdit {
     this._logNumber = 0
     this._prevLogNumber = 0
     this._lastSequence = 0
+    // sstable file number
     this._nextFileNumber = 0
     this._comparator = null
     this._lastLogNumber = 0

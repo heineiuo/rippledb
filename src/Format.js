@@ -54,3 +54,5 @@ export const VersionEditTag = new Enum({
 export const CompressionTypes = new Enum({
   none: 0
 })
+
+export const kInternalKeyComparatorName = 'leveldb.InternalKeyComparator'
