@@ -1,7 +1,7 @@
 const varint = require('varint')
 const Slice = require('../build/Slice').default
 const MemTable = require('../build/MemTable').default
-const ValueType = require('../build/MemTable').ValueType
+const ValueType = require('../build/Format').ValueType
 const SequenceNumber = require('../build/SequenceNumber').default
 
 function createLookupKey (sequence, key, valueType) {
@@ -25,6 +25,7 @@ function main () {
   memtable.add(sequence, ValueType.kTypeValue, new Slice('key3'), new Slice('key3value12389fdajj123'))
 
   const lookupkey1 = createLookupKey(sequence, new Slice('key'), ValueType.kTypeValue)
+  console.log('---', lookupkey1.toString())
   console.time('find key')
   const result = memtable.get(lookupkey1)
   console.timeEnd('find key')

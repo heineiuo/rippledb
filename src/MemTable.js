@@ -30,10 +30,10 @@ export default class MemTable {
   }
 
   static getValueSlice (key:Slice):Slice {
-    const internalKeySize = varint.decode(key)
-    const valueBuffer = key.buffer.slice(internalKeySize)
+    const internalKeySize = varint.decode(key.buffer)
+    const valueBuffer = key.buffer.slice(varint.decode.bytes + internalKeySize)
     const valueSize = varint.decode(valueBuffer)
-    const value = valueBuffer.slice(valueSize)
+    const value = valueBuffer.slice(varint.decode.bytes, varint.decode.bytes + valueSize)
     return new Slice(value)
   }
 
@@ -42,6 +42,19 @@ export default class MemTable {
     if (encoding === 'string') return valueSlice.buffer.toString()
     if (encoding === 'json') return JSON.parse(valueSlice.buffer.toString())
     return valueSlice.buffer
+  }
+
+  static createLookupKey (sequence:SequenceNumber, key:Slice, valueType:ValueType) {
+    const keySize = key.size
+    const internalKeySize = keySize + 8
+    const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize))
+    const buf = Buffer.concat([
+      internalKeySizeBuf,
+      key.buffer,
+      sequence.toFixedSizeBuffer(),
+      Buffer.from(varint.encode(valueType.value))
+    ])
+    return new Slice(buf)
   }
 
   constructor () {
@@ -115,7 +128,7 @@ export default class MemTable {
     let iterator = this._list.iterator()
     let result = iterator.next()
     while (!result.done) {
-      yield MemTable.getValueWithEncoding(result.value)
+      yield MemTable.getValueWithEncoding(result.value, encoding)
       result = iterator.next()
     }
   }
