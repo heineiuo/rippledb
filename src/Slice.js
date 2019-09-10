@@ -1,7 +1,7 @@
 // @flow
 
 import { Buffer } from 'buffer'
-import { Encodings } from './Encodings'
+import { Encodings } from './Options'
 
 /**
  * 作为参数传递，减少不必要的拷贝

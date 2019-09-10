@@ -14,6 +14,7 @@ import MemTable from './MemTable'
 import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
 // import LogReader from './LogReader'
+import { type Options } from './Options'
 import { ValueType, kMemTableDumpSize, kInternalKeyComparatorName } from './Format'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
@@ -29,7 +30,7 @@ class Database {
     this._log = new LogWriter(path.resolve(dbpath, './0001.log'))
     this._memtable = new MemTable()
     this._sn = new SequenceNumber(0)
-    this._cache = LRU({
+    this._cache = new LRU({
       max: 500,
       length: function (n, key) {
         return n * 2 + key.length
@@ -102,7 +103,7 @@ class Database {
     throw new Error('Database is busy.')
   }
 
-  async * iterator ():AsyncGenerator<any, void, void> {
+  async * iterator (options: Options):AsyncGenerator<any, void, void> {
     await this.ok()
     // await new Promise()
     // yield 'a'
@@ -115,9 +116,11 @@ class Database {
    * 3. level0 sstable 超过8个
    * 4. leveli(i>0)层sstable占用空间超过10^iMB
    */
-  async get (key:Slice):any {
+  async get (key:any, options?:Options):any {
     await this.ok()
-    const result = this._memtable.get(key)
+    const sliceKey = new Slice(key)
+    const lookupKey = MemTable.createLookupKey(this._sn, sliceKey, ValueType.kTypeValue)
+    const result = this._memtable.get(lookupKey, options)
     return result
   }
 
@@ -126,24 +129,26 @@ class Database {
    * 1. 检查memtable是否超过4mb
    * 2. 检查this._immtable是否为null（memtable转sstable）
    */
-  async put (key:Slice, value:Slice) {
+  async put (key:any, value:any, options?:Options) {
     await this.ok()
-    console.log('memtable size is: ', this._memtable.size)
-    const record = LogRecord.add(key, value)
+    const sliceKey = new Slice(key)
+    const sliceValue = new Slice(value)
+    const record = LogRecord.add(sliceKey, sliceValue)
     await this._log.addRecord(record)
-    this._memtable.add(this._sn, ValueType.kTypeValue, key, value)
+    this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
+    // console.log('memtable size is: ', this._memtable.size)
     if (this._memtable.size >= kMemTableDumpSize) {
       this.dumpMemTable()
     }
-    // return this._cache.set(key, value)
   }
 
-  async del (key:Slice) {
+  async del (key:any, options?:Options) {
     await this.ok()
-    const record = LogRecord.del(key)
+    const sliceKey = new Slice(key)
+    const record = LogRecord.del(sliceKey)
     await this._log.addRecord(record)
-    this._cache.set(key)
-    this._memtable.add(this._sn, ValueType.kTypeDeletionkey, key, new Slice())
+    this._cache.set(sliceKey)
+    this._memtable.add(this._sn, ValueType.kTypeDeletion, sliceKey, new Slice())
     // return this._cache.del(key)
   }
 

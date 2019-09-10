@@ -14,7 +14,7 @@ import { ValueType } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
-import { Encodings } from './Encodings'
+import { type Options } from './Options'
 
 export default class MemTable {
   static getLengthPrefixedSlice (key:Slice):Slice {
@@ -37,10 +37,11 @@ export default class MemTable {
     return new Slice(value)
   }
 
-  static getValueWithEncoding (s:Slice, encoding:Encodings = 'string') {
+  static getValueWithEncoding (s:Slice, options:Options = {}) {
     const valueSlice = MemTable.getValueSlice(s)
-    if (encoding === 'string') return valueSlice.buffer.toString()
-    if (encoding === 'json') return JSON.parse(valueSlice.buffer.toString())
+    const valueEncoding = options.valueEncoding || 'string'
+    if (valueEncoding === 'string') return valueSlice.buffer.toString()
+    if (valueEncoding === 'json') return JSON.parse(valueSlice.buffer.toString())
     return valueSlice.buffer
   }
 
@@ -118,17 +119,17 @@ export default class MemTable {
   // sequence number since the Seek() call above should have skipped
   // all entries with overly large sequence numbers.
   // 这里的key是lookup key
-  get (key:Slice, encoding:Encodings = 'string'):any {
-    const result = this._list.get(key)
+  get (key:Slice, options:Options = {}):any {
+    const result = this._list.get(key, options)
     if (!result) return result
-    return MemTable.getValueWithEncoding(result, encoding)
+    return MemTable.getValueWithEncoding(result, options)
   }
 
-  * iterator (encoding:Encodings):Generator<any, void, void> {
+  * iterator (options?:Options = {}):Generator<any, void, void> {
     let iterator = this._list.iterator()
     let result = iterator.next()
     while (!result.done) {
-      yield MemTable.getValueWithEncoding(result.value, encoding)
+      yield MemTable.getValueWithEncoding(result.value, options)
       result = iterator.next()
     }
   }
