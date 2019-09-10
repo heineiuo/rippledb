@@ -29,16 +29,21 @@ export default class MemTable {
     return a1.compare(b1)
   }
 
-  static getValueSlice (key:Slice):Slice {
+  static getValueSlice (key:Slice):Slice | null {
     const internalKeySize = varint.decode(key.buffer)
+    const valueType = varint.decode(key.buffer.slice(internalKeySize))
+    if (ValueType.get(valueType) === ValueType.kTypeDeletion) {
+      return null
+    }
     const valueBuffer = key.buffer.slice(varint.decode.bytes + internalKeySize)
     const valueSize = varint.decode(valueBuffer)
     const value = valueBuffer.slice(varint.decode.bytes, varint.decode.bytes + valueSize)
     return new Slice(value)
   }
 
-  static getValueWithEncoding (s:Slice, options:Options = {}) {
+  static getValueWithEncoding (s:Slice, options?:Options = {}) {
     const valueSlice = MemTable.getValueSlice(s)
+    if (!valueSlice) return valueSlice
     const valueEncoding = options.valueEncoding || 'string'
     if (valueEncoding === 'string') return valueSlice.buffer.toString()
     if (valueEncoding === 'json') return JSON.parse(valueSlice.buffer.toString())
@@ -80,9 +85,9 @@ export default class MemTable {
     if (next) this._immutable = true
   }
 
-  add (sequence:SequenceNumber, valueType:ValueType, key:Slice, value:Slice) {
+  add (sequence:SequenceNumber, valueType:ValueType, key:Slice, value?:Slice) {
     const keySize = key.length
-    const valueSize = value.length
+    const valueSize = !value ? 0 : value.length
     const internalKeySize = keySize + 8 // sequence=7bytes, type = 1byte
     const valueSizeBuf = Buffer.from(varint.encode(valueSize))
     let encodedLength = internalKeySize + valueSize + varint.encode.bytes
@@ -101,7 +106,7 @@ export default class MemTable {
       sequence.toFixedSizeBuffer(),
       Buffer.from(varint.encode(valueType.value)),
       valueSizeBuf,
-      value.buffer
+      !value ? Buffer.alloc(0) : value.buffer
     ]))
     assert(encodedLength === buf.length, 'Incorrect length')
     // buf包含key和value
