@@ -1,11 +1,21 @@
-const Database = require('../dist/Database').default
+const assert = require('assert')
+const Database = require('../build/Database').default
 const dbpath = require('./dbpath')
 
 const db = new Database(dbpath)
 
-;(async () => {
-  // console.log(db)
-  await db.put('hello', 'world')
+async function main () {
+  try {
+    // console.log(db)
+    console.time('db')
+    await db.put('key', 'world')
 
-  console.log(await db.get('hello'))
-})()
+    const result = await db.get('key')
+    assert(result === 'world')
+    console.timeEnd('db')
+  } catch (e) {
+    console.log(e)
+  }
+}
+
+main()
