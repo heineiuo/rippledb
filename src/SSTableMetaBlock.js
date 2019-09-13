@@ -5,7 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
- //@flow
+/* global Generator */
+// @flow
 
 import varint from 'varint'
 import { Buffer } from 'buffer'

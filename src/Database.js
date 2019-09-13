@@ -83,7 +83,7 @@ class Database {
       await this.initVersionEdit()
     }
     this._versionSet = new VersionSet()
-    this._versionSet.recover()
+    await this._versionSet.recover()
     this._ok = true
   }
 
@@ -110,7 +110,7 @@ class Database {
   }
 
   /**
-   * TODO 触发compaction
+   * TODO 触发major compaction
    * 1. manually compact
    * 2. 超过allowed_seeks
    * 3. level0 sstable 超过8个
@@ -125,7 +125,7 @@ class Database {
   }
 
   /**
-   * TODO
+   * TODO 触发minor compaction
    * 1. 检查memtable是否超过4mb
    * 2. 检查this._immtable是否为null（memtable转sstable）
    */
@@ -153,7 +153,7 @@ class Database {
   }
 
   dumpMemTable () {
-    const memtable = this._memtable
+    // const memtable = this._memtable
     this._memtable = null
     this._memtable.immutable = true
   }

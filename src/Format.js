@@ -56,3 +56,11 @@ export const CompressionTypes = new Enum({
 })
 
 export const kInternalKeyComparatorName = 'leveldb.InternalKeyComparator'
+
+export class InternalKey {
+
+}
+
+export class InternalKeyComparator {
+
+}

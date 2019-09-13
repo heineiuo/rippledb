@@ -8,6 +8,14 @@
 
 import Slice from './Slice'
 
+type CompactPointer = {
+  first: number, // alias level
+  second:number, // alias number
+  level:number,
+  number: number,
+  internalKey:Slice
+}
+
 export default class VersionEdit {
   constructor () {
     this.deletedFiles = []
@@ -99,7 +107,11 @@ export default class VersionEdit {
     return this._hasLastSequence || false
   }
 
-  compactPointers: { level:Number, internalKey:Slice}[]
+  // major compaction时选择文件
+  // compact_pointer_是 string 类型，记录了该层上次 compact 时文件的 largest key，初始值为空，也就是选择该层第一个文件。
+  // 如果seek_compaction = true，则直接使用满足条件的文件。
+
+  compactPointers: CompactPointer[]
   deletedFiles: {level: number, fileNum: number}[]
   newFiles: {level:number, fileNum:number, fileSize:number, smallestKey:Slice, largestKey:Slice}[]
   _comparator: string | null
