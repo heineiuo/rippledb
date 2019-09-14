@@ -10,6 +10,7 @@ import VersionSet from './VersionSet'
 import Version from './Version'
 import VersionEdit from './VersionEdit'
 import { kNumLevels, InternalKey } from './Format'
+import FileMetaData from './FileMetaData'
 
 class BySmallestKey {
   internalComparator:any
@@ -39,17 +40,28 @@ export default class VersionBuilder {
   _versionSet:VersionSet
   _base:Version
   _addedFiles: FileSet
+  _levels: {
+    addedFiles: any[],
+    deletedFiles: Set<number>
+  }[]
 
   apply (edit:VersionEdit) {
     // Update compaction pointers
     // compactPointers: type = <int, InternalKey>
     for (let i = 0; i < edit.compactPointers.length; i++) {
       const level = edit.compactPointers[i].first
-      this.versionSet.compactPointers[level] = edit.compactPointers[i].second
+      this._versionSet.compactPointers[level] = edit.compactPointers[i].second
     }
-    // traverse deleted_files_，删除文件
+    // traverse deleted_files_ 记录可删除文件到各level对应的deleted_files
+    for (let i = 0; i < edit.deletedFiles.length; i++) {
+      const { level, number } = edit.deletedFiles[i]
+      this._levels[level].deletedFiles.add(number)
+    }
 
     // traverse new_files_
+    for (let file of edit.addedFiles) {
+
+    }
   }
 
   saveTo (ver:Version) {

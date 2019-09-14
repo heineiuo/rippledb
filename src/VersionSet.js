@@ -5,9 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 // @flow
-// import fs from 'fs'
+
+import fs from 'fs'
 import Version from './Version'
+import { getCurrentFilename, getManifestFilename } from './Filename'
 import VersionBuilder from './VersionBuilder'
+import ManifestRecord from './ManifestRecord'
+import LogReader from './LogReader'
 
 export default class VersionSet {
   constructor (dbpath, options, memtable, internalKeyComparator) {
@@ -18,6 +22,7 @@ export default class VersionSet {
     this.appendVersion(new Version())
   }
 
+  compactPointers: any[]
   _manifestFileNumber: number
   _current: Version
   internalComparator: any
@@ -28,6 +33,16 @@ export default class VersionSet {
 
   async recover () {
     // 读取current， 校验是否是\n结尾
+    const current = await fs.promises.readFile(getCurrentFilename(this._dbpath), 'utf8')
+    if (!current || current[current.length - 1] !== '\n') {
+      throw new Error('Invalid format of CURRENT file.')
+    }
+    const builder = new VersionBuilder(this, this._current)
+
+    const reader = new LogReader(getManifestFilename(this._dbpath, current.substr(0, current.length - 1)), ManifestRecord)
+    for await (let edit of reader.iterator()) {
+      builder.apply(edit)
+    }
 
     // 根据current读取dscfile(description file), 即manifest文件
     // 读取record，apply到versionSet(apply方法)
@@ -35,8 +50,6 @@ export default class VersionSet {
     // 更新next file
     // 更新last sequence
     // 通过version builder 创建一个新的version
-    const builder = new VersionBuilder(this, this._current)
-    console.log(builder)
 
     // 将apply的结果添加到version(finalize)
     // 将version添加到version set(append version)

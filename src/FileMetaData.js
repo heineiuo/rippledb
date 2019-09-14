@@ -8,6 +8,13 @@
 
 import InternalKey from './InternalKey'
 
+export type FileMetaDataLeveldb = {
+  fileNum:number,
+  fileSize:number,
+  smallestKey:InternalKey,
+  largestKey:InternalKey
+}
+
 export default class FileMetaData {
   // reference count
   refs: number
@@ -17,4 +24,12 @@ export default class FileMetaData {
   fileSize: number
   smallest: InternalKey
   largest: InternalKey
+
+  set refs (value:number) {
+    this._refs = value
+  }
+
+  get refs () {
+    return this._refs
+  }
 }

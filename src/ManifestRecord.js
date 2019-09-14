@@ -78,7 +78,7 @@ export default class ManifestRecord {
 
   static parseOp (op: Slice): VersionEdit {
     let index = 0
-    const version = new VersionEdit()
+    const edit = new VersionEdit()
     while (index < op.length) {
       const type = VersionEditTag.get(op.buffer.readUInt8(index))
       index += 1
@@ -88,27 +88,27 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const comparatorName = op.buffer.slice(index, index + comparatorNameLength)
         index += comparatorNameLength
-        version.comparator = comparatorName.toString()
+        edit.comparator = comparatorName.toString()
         continue
       } else if (type === VersionEditTag.kLogNumber) {
         const logNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.logNumber = logNumber
+        edit.logNumber = logNumber
         continue
       } else if (type === VersionEditTag.kPrevLogNumber) {
         const prevLogNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.prevLogNumber = prevLogNumber
+        edit.prevLogNumber = prevLogNumber
         continue
       } else if (type === VersionEditTag.kNextLogNumber) {
         const nextFileNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.nextFileNumber = nextFileNumber
+        edit.nextFileNumber = nextFileNumber
         continue
       } else if (type === VersionEditTag.kLastSequence) {
         const lastSequence = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.lastSequence = lastSequence
+        edit.lastSequence = lastSequence
         continue
       } else if (type === VersionEditTag.kCompactPointer) {
         const level = varint.decode(op.buffer.slice(index))
@@ -117,7 +117,7 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const internalKey = op.buffer.slice(index, index + internalKeyLength)
         index += internalKeyLength
-        version.compactPointers.push({
+        edit.compactPointers.push({
           level,
           internalKey: new Slice(internalKey.buffer)
         })
@@ -127,7 +127,7 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const fileNum = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.deletedFiles.push({
+        edit.deletedFiles.push({
           level,
           fileNum
         })
@@ -147,7 +147,7 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const largestKey = op.buffer.slice(index, index + largestKeyLength)
         index += largestKeyLength
-        version.newFiles.push({
+        edit.newFiles.push({
           level,
           fileNum,
           fileSize,
@@ -157,7 +157,7 @@ export default class ManifestRecord {
         continue
       }
     }
-    return version
+    return edit
   }
 
   constructor (type:RecordType, data:Slice | Buffer) {

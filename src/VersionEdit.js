@@ -6,14 +6,22 @@
  */
 // @flow
 
-import Slice from './Slice'
+import { InternalKey } from './Format'
+import FileMetaData from './FileMetaData'
 
 type CompactPointer = {
-  first: number, // alias level
-  second:number, // alias number
   level:number,
-  number: number,
-  internalKey:Slice
+  internalKey:InternalKey
+}
+
+type DeletedFile = {
+  level: number,
+  fileNum: number
+}
+
+type NewFile = {
+  level:number,
+  fileMetaData: FileMetaData
 }
 
 export default class VersionEdit {
@@ -112,8 +120,8 @@ export default class VersionEdit {
   // 如果seek_compaction = true，则直接使用满足条件的文件。
 
   compactPointers: CompactPointer[]
-  deletedFiles: {level: number, fileNum: number}[]
-  newFiles: {level:number, fileNum:number, fileSize:number, smallestKey:Slice, largestKey:Slice}[]
+  deletedFiles: DeletedFile[]
+  newFiles: NewFile[]
   _comparator: string | null
   _logNumber:number
   _prevLogNumber: number
