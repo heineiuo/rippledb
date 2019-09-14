@@ -9,6 +9,7 @@
 import fs from 'fs'
 import Version from './Version'
 import { getCurrentFilename, getManifestFilename } from './Filename'
+import { InternalKeyComparator } from './Format'
 import VersionBuilder from './VersionBuilder'
 import ManifestRecord from './ManifestRecord'
 import LogReader from './LogReader'
@@ -20,12 +21,13 @@ export default class VersionSet {
     this._memtable = memtable
     this._internalKeyComparator = internalKeyComparator
     this.appendVersion(new Version())
+    this.compactPointers = []
   }
 
   compactPointers: any[]
   _manifestFileNumber: number
   _current: Version
-  internalComparator: any
+  internalComparator: InternalKeyComparator
 
   get current ():Version {
     return this._current

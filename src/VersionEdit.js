@@ -5,24 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 // @flow
-
-import { InternalKey } from './Format'
-import FileMetaData from './FileMetaData'
-
-type CompactPointer = {
-  level:number,
-  internalKey:InternalKey
-}
-
-type DeletedFile = {
-  level: number,
-  fileNum: number
-}
-
-type NewFile = {
-  level:number,
-  fileMetaData: FileMetaData
-}
+import { type CompactPointer, type DeletedFile, type NewFile } from './VersionFormat'
 
 export default class VersionEdit {
   constructor () {

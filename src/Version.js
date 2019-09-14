@@ -6,7 +6,8 @@
  */
 // @flow
 
-import FileMetaData from './FileMetaData'
+import assert from 'assert'
+import { FileMetaData } from './VersionFormat'
 import VersionSet from './VersionSet'
 
 export default class Version {
@@ -27,4 +28,16 @@ export default class Version {
   fileTocompactLevel:number
   compactionScore:number
   compactionLevel:number
+
+  ref () {
+    this.refs++
+  }
+
+  unref () {
+    assert(this.refs >= 1)
+    this.refs--
+    if (this.refs === 0) {
+      // delete
+    }
+  }
 }

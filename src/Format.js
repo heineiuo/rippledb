@@ -8,9 +8,6 @@
 // @flow
 
 import Enum from 'enum'
-import varint from 'varint'
-import Slice from './Slice'
-import SequenceNumber from './SequenceNumber'
 
 export const FileType = new Enum([
   'kLogFile',
@@ -39,9 +36,6 @@ export const RecordType = new Enum({
   kLastType: 4
 })
 
-export const kBlockSize = 32768 // 32KB
-export const kMemTableDumpSize = 4194304 // 4MB
-
 export const VersionEditTag = new Enum({
   kComparator: 1,
   kLogNumber: 2,
@@ -58,33 +52,7 @@ export const CompressionTypes = new Enum({
   none: 0
 })
 
+export const kBlockSize = 32768 // 32KB
+export const kMemTableDumpSize = 4194304 // 4MB
+
 export const kInternalKeyComparatorName = 'leveldb.InternalKeyComparator'
-
-export class InternalKey {
-  constructor (slice:Slice) {
-    this._slice = Slice
-  }
-
-  _slice:Slice
-}
-
-export class InternalKeyBuilder {
-  build (sequence:SequenceNumber, valueType:ValueType, key:Slice):InternalKey {
-    /**
-     * encoded(internal_key_size) | key | sequence(7Bytes) | type (1Byte) | encoded(value_size) | value
-     * 1. Lookup key/ Memtable Key: encoded(internal_key_size) --- type(1Byte)
-     * 2. Internal key: key --- type(1Byte)
-     * 3. User key: key
-     */
-    const slice = new Slice(Buffer.concat([
-      key.buffer,
-      sequence.toFixedSizeBuffer(),
-      Buffer.from(varint.encode(valueType.value))
-    ]))
-    return new InternalKey(slice)
-  }
-}
-
-export class InternalKeyComparator {
-
-}

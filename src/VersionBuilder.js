@@ -9,29 +9,16 @@
 import VersionSet from './VersionSet'
 import Version from './Version'
 import VersionEdit from './VersionEdit'
-import { kNumLevels, InternalKey } from './Format'
-import FileMetaData from './FileMetaData'
-
-class BySmallestKey {
-  internalComparator:any
-
-  operator () {
-
-  }
-}
-
-// 能自动排序的set（根据internalkey comparator排序，如果small key相同，则比较file number
-class FileSet {
-  compare: BySmallestKey
-}
+import { kNumLevels } from './Format'
+import { FileMetaData, BySmallestKey, FileSet } from './VersionFormat'
 
 export default class VersionBuilder {
   constructor (versionSet: VersionSet, base:Version) {
     this._versionSet = versionSet
     this._base = base
-    base.Ref()
+    base.ref()
     const cmp = new BySmallestKey()
-    cmp.internal_comparator = versionSet.internalComparator
+    cmp.internalComparator = versionSet.internalComparator
     for (let level = 0; level < kNumLevels; level++) {
       this._levels[level].addedFiles = new FileSet(cmp)
     }
@@ -39,9 +26,9 @@ export default class VersionBuilder {
 
   _versionSet:VersionSet
   _base:Version
-  _addedFiles: FileSet
   _levels: {
-    addedFiles: any[],
+    // TODO: JavaScript native Set cannot compare object value, should be rewritten
+    addedFiles: FileSet,
     deletedFiles: Set<number>
   }[]
 
@@ -49,8 +36,8 @@ export default class VersionBuilder {
     // Update compaction pointers
     // compactPointers: type = <int, InternalKey>
     for (let i = 0; i < edit.compactPointers.length; i++) {
-      const level = edit.compactPointers[i].first
-      this._versionSet.compactPointers[level] = edit.compactPointers[i].second
+      const level = edit.compactPointers[i].level
+      this._versionSet.compactPointers[level] = edit.compactPointers[i].internalKey
     }
     // traverse deleted_files_ 记录可删除文件到各level对应的deleted_files
     for (let i = 0; i < edit.deletedFiles.length; i++) {
@@ -59,12 +46,19 @@ export default class VersionBuilder {
     }
 
     // traverse new_files_
-    for (let file of edit.addedFiles) {
-
+    for (let file of edit.newFiles) {
+      const { level } = file
+      const fileMetaData = new FileMetaData(file)
+      fileMetaData.refs = 1
+      fileMetaData.allowedSeeks = file.fileMetaData.fileSize / 16384
+      if (fileMetaData.allowedSeeks < 100) fileMetaData.allowedSeeks = 100
+      this._levels[level].deletedFiles.delete(fileMetaData.number)
+      this._levels[level].addedFiles.add(fileMetaData)
     }
   }
 
   saveTo (ver:Version) {
-
+    const cmp = new BySmallestKey()
+    cmp.internalComparator = this._versionSet.internalComparator
   }
 }

@@ -7,7 +7,6 @@
 // @flow
 /* global AsyncGenerator */
 
-import path from 'path'
 // import { Buffer } from 'buffer'
 import fs from 'fs'
 import MemTable from './MemTable'
@@ -22,12 +21,13 @@ import Slice from './Slice'
 import VersionSet from './VersionSet'
 import VersionEdit from './VersionEdit'
 import ManifestRecord from './ManifestRecord'
+import { getCurrentFilename, getLogFilename, getManifestFilename } from './Filename'
 
 class Database {
   constructor (dbpath:string) {
     this._ok = false
     this._dbpath = dbpath
-    this._log = new LogWriter(path.resolve(dbpath, './0001.log'))
+    this._log = new LogWriter(getLogFilename(dbpath, 1))
     this._memtable = new MemTable()
     this._sn = new SequenceNumber(0)
     this._cache = new LRU({
@@ -55,7 +55,7 @@ class Database {
 
   async existCurrent ():Promise<boolean> {
     try {
-      const currentName = path.resolve(this._dbpath, './CURRENT')
+      const currentName = getCurrentFilename(this._dbpath)
       await fs.promises.access(currentName, fs.constants.R_OK)
       return true
     } catch (e) {
@@ -70,11 +70,10 @@ class Database {
     edit.nextFileNumber = 2
     edit.lastSequence = 0
 
-    const manifestName = 'MANIFEST-000001'
-    const writer = new LogWriter(path.resolve(this._dbpath, manifestName))
+    const writer = new LogWriter(getManifestFilename(this._dbpath, 1))
     await writer.addRecord(ManifestRecord.add(edit))
     await writer.close()
-    await fs.promises.writeFile(path.resolve(this._dbpath, './CURRENT'), manifestName + '\n')
+    await fs.promises.writeFile(getCurrentFilename(this._dbpath), 1 + '\n')
   }
 
   async recover () {
@@ -82,7 +81,9 @@ class Database {
     if (!await this.existCurrent()) {
       await this.initVersionEdit()
     }
-    this._versionSet = new VersionSet()
+    this._versionSet = new VersionSet(
+      this._dbpath, {}, this._memtable, this._internalKeyComparator
+    )
     await this._versionSet.recover()
     this._ok = true
   }

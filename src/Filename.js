@@ -7,22 +7,29 @@
 // @flow
 
 import path from 'path'
-// import { FileType } from './Format'
+
+function numberToString (number) {
+  let str = Number(number)
+  while (str.length < 6) {
+    str = `0${str}`
+  }
+  return str
+}
 
 export function getCurrentFilename (dbpath:string) {
   return path.resolve(dbpath, 'CURRENT')
 }
 
 export function getLogFilename (dbpath:string, logNumber:number) :string {
-  return path.resolve(dbpath, `${String(logNumber)}.log`)
+  return path.resolve(dbpath, `${numberToString(logNumber)}.log`)
 }
 
 export function getTableFilename (dbpath:string, tableNumber: number) :string {
-  return path.resolve(dbpath, `${String(tableNumber)}.ldb`)
+  return path.resolve(dbpath, `${numberToString(tableNumber)}.ldb`)
 }
 
-export function getManifestFilename (dbpath:string, manifestNumber: number) :string {
-  return path.resolve(dbpath, `MANIFEST-${String(manifestNumber)}`)
+export function getManifestFilename (dbpath:string, manifestNumber: number|string) :string {
+  return path.resolve(dbpath, typeof manifestNumber === 'string' ? manifestNumber : `MANIFEST-${numberToString(manifestNumber)}`)
 }
 
 export function getLockFilename (dbpath:string, manifestNumber: number):string {
