@@ -16,13 +16,13 @@ import { RecordType, VersionEditTag } from './Format'
 import { createHexStringFromDecimal } from './LevelUtils'
 import VersionEdit from './VersionEdit'
 
-export default class ManifestRecord {
-  static from (buf:Buffer):ManifestRecord {
+export default class VersionEditRecord {
+  static from (buf:Buffer):VersionEditRecord {
     const length = buf.readUInt16BE(4)
     const type = RecordType.get(buf.readUInt8(6))
     const data = new Slice(buf.slice(7, 7 + length))
     assert(length === data.length)
-    const record = new ManifestRecord(type, data)
+    const record = new VersionEditRecord(type, data)
     return record
   }
 

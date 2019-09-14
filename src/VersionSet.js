@@ -11,7 +11,7 @@ import Version from './Version'
 import { getCurrentFilename, getManifestFilename } from './Filename'
 import { InternalKeyComparator } from './Format'
 import VersionBuilder from './VersionBuilder'
-import ManifestRecord from './ManifestRecord'
+import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
 
 export default class VersionSet {
@@ -41,7 +41,7 @@ export default class VersionSet {
     }
     const builder = new VersionBuilder(this, this._current)
 
-    const reader = new LogReader(getManifestFilename(this._dbpath, current.substr(0, current.length - 1)), ManifestRecord)
+    const reader = new LogReader(getManifestFilename(this._dbpath, current.substr(0, current.length - 1)), VersionEditRecord)
     for await (let edit of reader.iterator()) {
       builder.apply(edit)
     }

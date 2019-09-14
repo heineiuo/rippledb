@@ -20,7 +20,7 @@ import LRU from 'lru-cache'
 import Slice from './Slice'
 import VersionSet from './VersionSet'
 import VersionEdit from './VersionEdit'
-import ManifestRecord from './ManifestRecord'
+import VersionEditRecord from './VersionEditRecord'
 import { getCurrentFilename, getLogFilename, getManifestFilename } from './Filename'
 
 class Database {
@@ -71,7 +71,7 @@ class Database {
     edit.lastSequence = 0
 
     const writer = new LogWriter(getManifestFilename(this._dbpath, 1))
-    await writer.addRecord(ManifestRecord.add(edit))
+    await writer.addRecord(VersionEditRecord.add(edit))
     await writer.close()
     await fs.promises.writeFile(getCurrentFilename(this._dbpath), 1 + '\n')
   }
