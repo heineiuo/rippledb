@@ -13,7 +13,6 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { RecordType, VersionEditTag } from './Format'
-import { createHexStringFromDecimal } from './LevelUtils'
 import VersionEdit from './VersionEdit'
 
 export default class VersionEditRecord {
@@ -187,4 +186,12 @@ export default class VersionEditRecord {
       this.data.buffer
     ])
   }
+}
+
+function createHexStringFromDecimal (decimal:number):string {
+  let str = decimal.toString(16)
+  while (str.length < 4) {
+    str = `0${str}`
+  }
+  return str
 }
