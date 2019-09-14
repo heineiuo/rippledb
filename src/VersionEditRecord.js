@@ -14,6 +14,8 @@ import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { RecordType, VersionEditTag } from './Format'
 import VersionEdit from './VersionEdit'
+import { FileMetaData, NewFile, InternalKey } from './VersionFormat'
+import { createHexStringFromDecimal } from './LogFormat'
 
 export default class VersionEditRecord {
   static from (buf:Buffer):VersionEditRecord {
@@ -61,15 +63,15 @@ export default class VersionEditRecord {
       bufList.push(Buffer.from(varint.encode(file.fileNum)))
     })
 
-    version.newFiles.forEach((file: {level:number, fileNum:number, fileSize:number, smallestKey:Slice, largestKey:Slice}) => {
+    version.newFiles.forEach((file: NewFile) => {
       bufList.push(Buffer.from([VersionEditTag.kNewFile.value]))
       bufList.push(Buffer.from(varint.encode(file.level)))
-      bufList.push(Buffer.from(varint.encode(file.fileNum)))
-      bufList.push(Buffer.from(varint.encode(file.fileSize)))
-      bufList.push(Buffer.from(varint.encode(file.smallestKey.length)))
-      bufList.push(file.smallestKey.buffer)
-      bufList.push(Buffer.from(varint.encode(file.largestKey.length)))
-      bufList.push(file.largestKey.buffer)
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.number)))
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.fileSize)))
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.smallest.length)))
+      bufList.push(file.fileMetaData.smallest.buffer)
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.largestKey.length)))
+      bufList.push(file.fileMetaData.largest.buffer)
     })
 
     return new Slice(Buffer.concat(bufList))
@@ -118,7 +120,7 @@ export default class VersionEditRecord {
         index += internalKeyLength
         edit.compactPointers.push({
           level,
-          internalKey: new Slice(internalKey.buffer)
+          internalKey: new InternalKey(internalKey.buffer)
         })
         continue
       } else if (type === VersionEditTag.kDeletedFile) {
@@ -148,10 +150,12 @@ export default class VersionEditRecord {
         index += largestKeyLength
         edit.newFiles.push({
           level,
-          fileNum,
-          fileSize,
-          smallestKey: new Slice(smallestKey),
-          largestKey: new Slice(largestKey)
+          fileMetaData: new FileMetaData({
+            fileNum,
+            fileSize,
+            smallestKey: new Slice(smallestKey),
+            largestKey: new Slice(largestKey)
+          })
         })
         continue
       }
@@ -186,12 +190,4 @@ export default class VersionEditRecord {
       this.data.buffer
     ])
   }
-}
-
-function createHexStringFromDecimal (decimal:number):string {
-  let str = decimal.toString(16)
-  while (str.length < 4) {
-    str = `0${str}`
-  }
-  return str
 }

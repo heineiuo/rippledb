@@ -13,6 +13,7 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { RecordType, ValueType } from './Format'
+import { createHexStringFromDecimal } from './LogFormat'
 
 export default class LogRecord {
   static from (buf:Buffer):LogRecord {
@@ -94,12 +95,4 @@ export default class LogRecord {
       this.data.buffer
     ])
   }
-}
-
-function createHexStringFromDecimal (decimal:number):string {
-  let str = decimal.toString(16)
-  while (str.length < 4) {
-    str = `0${str}`
-  }
-  return str
 }

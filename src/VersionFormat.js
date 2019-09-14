@@ -4,12 +4,8 @@ import varint from 'varint'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 
-export class InternalKey {
-  constructor (slice:Slice) {
-    this._slice = Slice
-  }
+export class InternalKey extends Slice {
 
-  _slice:Slice
 }
 
 export class InternalKeyBuilder {
