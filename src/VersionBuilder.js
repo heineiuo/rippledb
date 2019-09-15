@@ -26,8 +26,7 @@ export default class VersionBuilder {
     this._base = base
     this._levels = Array.from({ length: Config.kNumLevels }, (v, k) => ({}))
     base.ref()
-    const cmp = new BySmallestKey()
-    cmp.internalComparator = versionSet.internalComparator
+    const cmp = new BySmallestKey(versionSet.internalKeyComparator)
     for (let level = 0; level < Config.kNumLevels; level++) {
       this._levels[level].addedFiles = new FileSet(cmp)
     }
@@ -58,8 +57,7 @@ export default class VersionBuilder {
   }
 
   saveTo (ver:Version) {
-    const cmp = new BySmallestKey()
-    cmp.internalComparator = this._versionSet.internalComparator
+    const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
     // traverse every level and put added files in right position
     for (let level = 0; level < Config.kNumLevels; level++) {
       if (!this._base.files[level]) continue

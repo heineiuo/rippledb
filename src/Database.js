@@ -12,9 +12,9 @@ import fs from 'fs'
 import MemTable from './MemTable'
 import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
-// import LogReader from './LogReader'
 import { type Options } from './Options'
 import { ValueType, kMemTableDumpSize, kInternalKeyComparatorName } from './Format'
+import { InternalKeyComparator } from './VersionFormat'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
 import Slice from './Slice'
@@ -24,8 +24,9 @@ import VersionEditRecord from './VersionEditRecord'
 import { getCurrentFilename, getLogFilename, getManifestFilename } from './Filename'
 import WriteBatch from './WriteBatch'
 
-class Database {
+export default class Database {
   constructor (dbpath:string) {
+    this._internalKeyComparator = new InternalKeyComparator()
     this._ok = false
     this._dbpath = dbpath
     this._log = new LogWriter(getLogFilename(dbpath, 1))
@@ -132,37 +133,37 @@ class Database {
    * 2. 检查this._immtable是否为null（memtable转sstable）
    */
   async put (key:any, value:any, options?:Options) {
-    await this.ok()
     const batch = new WriteBatch()
-    const sliceKey = new Slice(key)
-    const sliceValue = new Slice(value)
+    batch.put(new Slice(key), new Slice(value))
     await this.write(batch, options)
   }
 
   async del (key:any, options?:Options) {
-    await this.ok()
-    const sliceKey = new Slice(key)
-    const record = LogRecord.del(sliceKey)
-    await this._log.addRecord(record)
-    this._cache.set(sliceKey)
-    this._memtable.add(this._sn, ValueType.kTypeDeletion, sliceKey, new Slice())
-    // return this._cache.del(key)
+    const batch = new WriteBatch()
+    batch.del(new Slice(key))
+    this.write(batch, options)
   }
 
   async write (batch:WriteBatch, options?:Options) {
-    const record = LogRecord.add(sliceKey, sliceValue)
-    await this._log.addRecord(record)
-    this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
+    await this.ok()
+    this.makeRoomForWrite()
+
+    // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
+    // await this._log.addRecord(LogRecord.del(sliceKey))
+    WriteBatch.insert(batch, this._memtable)
+
+    // this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
     // console.log('memtable size is: ', this._memtable.size)
-    if (this._memtable.size >= kMemTableDumpSize) {
-      this.dumpMemTable()
-    }
   }
 
-  dumpMemTable () {
-    // const memtable = this._memtable
-    this._memtable = null
-    this._memtable.immutable = true
+  makeRoomForWrite () {
+    if (this._memtable.size >= kMemTableDumpSize) {
+      // this._memtable.immutable = true
+      this._immtable = this._memtable
+      this._memtable = new MemTable()
+      this._memtable.ref()
+      const newLogNumber = this._versionSet.nextFileNumber
+    }
   }
 
   /**
@@ -172,5 +173,3 @@ class Database {
 
   }
 }
-
-export default Database

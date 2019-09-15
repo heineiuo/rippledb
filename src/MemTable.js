@@ -72,6 +72,11 @@ export default class MemTable {
   _immutable:boolean
   _list:Skiplist
   _size: number
+  refs: number
+
+  ref () {
+    this.refs++
+  }
 
   get size ():number {
     return this._size

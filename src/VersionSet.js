@@ -21,7 +21,6 @@ export default class VersionSet {
   compactPointers: CompactPointer[]
   _manifestFileNumber: number
   _current: Version
-  internalComparator: InternalKeyComparator
   hasLogNumber: boolean
   hasNextFileNumber: boolean
   hasPrevLogNumber: boolean
@@ -29,13 +28,20 @@ export default class VersionSet {
   prevLogNumber: number
   lastSequence: number
   hasLastSequence: boolean
+  manifestFileNumber: number
+  nextFileNumber:number
+
+  _dbpath: string
+  _options: any
+  _memtable: MemTable
+  internalKeyComparator: InternalKeyComparator
 
   constructor (dbpath: string, options: any, memtable: MemTable, internalKeyComparator: InternalKeyComparator) {
     this._dbpath = dbpath
     this._options = options
     this._memtable = memtable
-    this._internalKeyComparator = internalKeyComparator
-    this.appendVersion(new Version())
+    this.internalKeyComparator = internalKeyComparator
+    this.appendVersion(new Version(this))
     this.compactPointers = []
   }
 
@@ -44,7 +50,7 @@ export default class VersionSet {
   }
 
   async recover () {
-    // 读取current， 校验是否是\n结尾
+  // 读取current， 校验是否是\n结尾
     const current = await fs.promises.readFile(getCurrentFilename(this._dbpath), 'utf8')
     if (!current || current[current.length - 1] !== '\n') {
       throw new Error('Invalid format of CURRENT file.')
@@ -71,7 +77,7 @@ export default class VersionSet {
     // 更新last sequence
     // 通过version builder 创建一个新的version
     for await (let edit: VersionEdit of reader.iterator()) {
-      // console.log(edit)
+    // console.log(edit)
       builder.apply(edit)
 
       // 更新manifest_file_number_， next_file_number_， last_sequence_， log_number_， prev_log_number_
@@ -118,18 +124,18 @@ export default class VersionSet {
 
     // 将version添加到version set(append version)
     this.appendVersion(version)
-    this.manifestFileNumber_ = nextFileNumber
+    this.manifestFileNumber = nextFileNumber
     this.nextFileNumber = nextFileNumber + 1
     this.lastSequence = lastSequence
     this.logNumber = logNumber
     this.prevLogNumber = prevLogNumber
 
-    // 检查是否需要创建新的manifest（ reuseManifest ）
+  // 检查是否需要创建新的manifest（ reuseManifest ）
   }
 
-  markFileNumberUsed (number:number) {
-    if (this.nextFileNumber_ <= number) {
-      this.nextFileNumber = number + 1
+  markFileNumberUsed (num:number) {
+    if (this.nextFileNumber <= num) {
+      this.nextFileNumber = num + 1
     }
   }
 
@@ -143,10 +149,10 @@ export default class VersionSet {
 
   // Precomputed best level for next compaction
   finalize (ver: Version) {
-    // traverse levels(0-6),
-    // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
-    // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
-    // traverse结束更新version的best_score和best_level
+  // traverse levels(0-6),
+  // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
+  // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
+  // traverse结束更新version的best_score和best_level
     let bestLevel = -1
     let bestScore = -1
     for (let level = 0; level < Config.kNumLevels; level++) {
