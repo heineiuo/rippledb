@@ -23,6 +23,7 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 - [x] LogReader
 - [x] LogRecord
 - [x] MemTable
+- [x] WriteBatch
 - [x] ManifestRecord
 - [x] VersionEdit
 - [x] VersionBuilder
