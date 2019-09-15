@@ -136,6 +136,18 @@ export class FileSet {
     this._set = this._set.filter(item => item !== file)
   }
 
+  size ():number {
+    return this._set.length
+  }
+
+  totalBytes ():number {
+    let bytes = 0
+    for (let fileMetaData of this.iterator()) {
+      bytes += fileMetaData.fileSize
+    }
+    return bytes
+  }
+
   * iterator ():Generator<FileMetaData, void, void> {
     const setLength = this._set.length
     for (let i = 0; i < setLength; i++) {
@@ -164,4 +176,16 @@ export type DeletedFile = {
 export type NewFile = {
   level:number,
   fileMetaData: FileMetaData
+}
+
+export function getMaxBytesForLevel (level:number) {
+  // Note: the result for level zero is not really used since we set
+  // the level-0 compaction threshold based on number of files.
+  // Result for both level-0 and level-1
+  let result = 10.0 * 1048576.0
+  while (level > 1) {
+    result *= 10
+    level--
+  }
+  return result
 }

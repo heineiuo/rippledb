@@ -9,7 +9,7 @@
 import VersionSet from './VersionSet'
 import Version from './Version'
 import VersionEdit from './VersionEdit'
-import { kNumLevels } from './Format'
+import { Config } from './Format'
 import { FileMetaData, BySmallestKey, FileSet } from './VersionFormat'
 
 export default class VersionBuilder {
@@ -24,10 +24,11 @@ export default class VersionBuilder {
   constructor (versionSet: VersionSet, base:Version) {
     this._versionSet = versionSet
     this._base = base
+    this._levels = Array.from({ length: Config.kNumLevels }, (v, k) => ({}))
     base.ref()
     const cmp = new BySmallestKey()
     cmp.internalComparator = versionSet.internalComparator
-    for (let level = 0; level < kNumLevels; level++) {
+    for (let level = 0; level < Config.kNumLevels; level++) {
       this._levels[level].addedFiles = new FileSet(cmp)
     }
   }
@@ -60,7 +61,8 @@ export default class VersionBuilder {
     const cmp = new BySmallestKey()
     cmp.internalComparator = this._versionSet.internalComparator
     // traverse every level and put added files in right position
-    for (let level = 0; level < kNumLevels; level++) {
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      if (!this._base.files[level]) continue
       const baseFileIterator = this._base.files[level].iterator()
       const addedFileIterator = this._levels[level].addedFiles.iterator()
       let baseFile = baseFileIterator.next()

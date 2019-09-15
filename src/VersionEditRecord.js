@@ -27,43 +27,45 @@ export default class VersionEditRecord {
     return record
   }
 
-  static add (version:VersionEdit):Slice {
+  static add (edit:VersionEdit):Slice {
+    console.log('add edit', edit.hasNextFileNumber)
+
     let bufList:Buffer[] = []
-    if (version.hasComparator) {
+    if (edit.hasComparator) {
       bufList.push(Buffer.from([VersionEditTag.kComparator.value]))
-      bufList.push(Buffer.from(varint.encode(version.comparator && version.comparator.length)))
-      bufList.push(Buffer.from(version.comparator))
+      bufList.push(Buffer.from(varint.encode(edit.comparator && edit.comparator.length)))
+      bufList.push(Buffer.from(edit.comparator))
     }
-    if (version.hasLogNumber) {
+    if (edit.hasLogNumber) {
       bufList.push(Buffer.from([VersionEditTag.kLogNumber.value]))
-      bufList.push(Buffer.from(varint.encode(version.logNumber)))
+      bufList.push(Buffer.from(varint.encode(edit.logNumber)))
     }
-    if (version.hasPrevLogNumber) {
+    if (edit.hasPrevLogNumber) {
       bufList.push(Buffer.from([VersionEditTag.kPrevLogNumber.value]))
-      bufList.push(Buffer.from(varint.encode(version.logNumber)))
+      bufList.push(Buffer.from(varint.encode(edit.prevLogNumber)))
     }
-    if (version.hasNextFileNumber) {
+    if (edit.hasNextFileNumber) {
       bufList.push(Buffer.from([VersionEditTag.kNextFileNumber.value]))
-      bufList.push(Buffer.from(varint.encode(version.logNumber)))
+      bufList.push(Buffer.from(varint.encode(edit.nextFileNumber)))
     }
-    if (version.hasLastSequence) {
+    if (edit.hasLastSequence) {
       bufList.push(Buffer.from([VersionEditTag.kLastSequence.value]))
-      bufList.push(Buffer.from(varint.encode(version.lastSequence)))
+      bufList.push(Buffer.from(varint.encode(edit.lastSequence)))
     }
-    version.compactPointers.forEach((pointer: { level:Number, internalKey:Slice}) => {
+    edit.compactPointers.forEach((pointer: { level:Number, internalKey:Slice}) => {
       bufList.push(Buffer.from([VersionEditTag.kCompactPointer.value]))
       bufList.push(Buffer.from(varint.encode(pointer.level)))
       bufList.push(Buffer.from(varint.encode(pointer.internalKey.length)))
       bufList.push(pointer.internalKey.buffer)
     })
 
-    version.deletedFiles.forEach((file: {level: number, fileNum: number}) => {
+    edit.deletedFiles.forEach((file: {level: number, fileNum: number}) => {
       bufList.push(Buffer.from([VersionEditTag.kDeletedFile.value]))
       bufList.push(Buffer.from(varint.encode(file.level)))
       bufList.push(Buffer.from(varint.encode(file.fileNum)))
     })
 
-    version.newFiles.forEach((file: NewFile) => {
+    edit.newFiles.forEach((file: NewFile) => {
       bufList.push(Buffer.from([VersionEditTag.kNewFile.value]))
       bufList.push(Buffer.from(varint.encode(file.level)))
       bufList.push(Buffer.from(varint.encode(file.fileMetaData.number)))
@@ -101,7 +103,7 @@ export default class VersionEditRecord {
         index += varint.decode.bytes
         edit.prevLogNumber = prevLogNumber
         continue
-      } else if (type === VersionEditTag.kLogNumber) {
+      } else if (type === VersionEditTag.kNextFileNumber) {
         const nextFileNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
         edit.nextFileNumber = nextFileNumber

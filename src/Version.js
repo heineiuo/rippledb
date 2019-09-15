@@ -9,6 +9,7 @@
 import assert from 'assert'
 import { FileMetaData, FileSet } from './VersionFormat'
 import VersionSet from './VersionSet'
+import { Config } from './Format'
 
 export default class Version {
   next:Version|null
@@ -30,6 +31,7 @@ export default class Version {
     this.fileTocompactLevel = -1
     this.compactionScore = -1
     this.compactionLevel = -1
+    this.files = Array.from({ length: Config.kNumLevels }, () => new FileSet())
   }
 
   ref () {

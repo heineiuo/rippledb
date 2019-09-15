@@ -9,12 +9,13 @@
 import fs from 'fs'
 import Version from './Version'
 import { getCurrentFilename, getManifestFilename } from './Filename'
-import { type CompactPointer, InternalKeyComparator } from './VersionFormat'
+import { type CompactPointer, InternalKeyComparator, getMaxBytesForLevel } from './VersionFormat'
 import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
 import MemTable from './MemTable'
 import VersionEdit from './VersionEdit'
+import { Config } from './Format'
 
 export default class VersionSet {
   compactPointers: CompactPointer[]
@@ -59,15 +60,18 @@ export default class VersionSet {
     let lastSequence = 0
 
     const builder = new VersionBuilder(this, this._current)
+    const currentValue = current.substr(0, current.length - 1)
+    const manifestNumber = Number(currentValue.substr('MANIFEST-'.length))
 
     // 根据current读取dscfile(description file), 即manifest文件
-    const reader = new LogReader(getManifestFilename(this._dbpath, current.substr(0, current.length - 1)), VersionEditRecord)
+    const reader = new LogReader(getManifestFilename(this._dbpath, manifestNumber), VersionEditRecord)
     // 读取record，apply到versionSet(apply方法)
     // 更新log number和prev log number（可省略，因为prevlognumber其实被废弃了）
     // 更新next file
     // 更新last sequence
     // 通过version builder 创建一个新的version
     for await (let edit: VersionEdit of reader.iterator()) {
+      // console.log(edit)
       builder.apply(edit)
 
       // 更新manifest_file_number_， next_file_number_， last_sequence_， log_number_， prev_log_number_
@@ -137,11 +141,31 @@ export default class VersionSet {
 
   }
 
-  finalize () {
+  // Precomputed best level for next compaction
+  finalize (ver: Version) {
     // traverse levels(0-6),
     // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
     // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
     // traverse结束更新version的best_score和best_level
+    let bestLevel = -1
+    let bestScore = -1
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      let score = 0
+      if (level === 0) {
+        score = ver.files[level].size() / Config.kL0CompactionTrigger
+      } else {
+        const levelBytes = ver.files[level].totalBytes()
+        score = levelBytes / getMaxBytesForLevel(level)
+      }
+
+      if (score > bestScore) {
+        bestScore = score
+        bestLevel = level
+      }
+    }
+
+    ver.compactionLevel = bestLevel
+    ver.compactionScore = bestScore
   }
 
   logAndApply () {
