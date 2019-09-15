@@ -6,7 +6,7 @@
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "babel src -d build",
+    "build": "babel src -d build --source-maps",
     "prepublish": "export NODE_ENV=production && yarn build"
   },
   "files": [
@@ -19,6 +19,7 @@
   "devDependencies": {
     "@babel/cli": "^7.5.5",
     "@babel/core": "^7.5.5",
+    "@babel/node": "^7.6.1",
     "@babel/plugin-proposal-class-properties": "^7.5.5",
     "@babel/preset-env": "^7.5.5",
     "@babel/preset-flow": "^7.0.0",

@@ -5,10 +5,28 @@
  * LICENSE file in the root directory of this source tree.
  */
 // @flow
-
-import Slice from './Slice'
+import { type CompactPointer, type DeletedFile, type NewFile } from './VersionFormat'
 
 export default class VersionEdit {
+  // major compaction时选择文件
+  // compact_pointer_是 string 类型，记录了该层上次 compact 时文件的 largest key，初始值为空，也就是选择该层第一个文件。
+  // 如果seek_compaction = true，则直接使用满足条件的文件。
+
+  compactPointers: CompactPointer[]
+  deletedFiles: DeletedFile[]
+  newFiles: NewFile[]
+  _comparator: string | null
+  _logNumber:number
+  _prevLogNumber: number
+  _lastLogNumber: number
+  _lastSequence: number
+  _nextFileNumber: number
+  _hasComparator: boolean
+  _hasLogNumber: boolean
+  _hasPrevLogNumber: boolean
+  _hasNextFileNumber: boolean
+  _hasLastSequence: boolean
+
   constructor () {
     this.deletedFiles = []
     this.newFiles = []
@@ -98,19 +116,4 @@ export default class VersionEdit {
   get hasLastSequence ():boolean {
     return this._hasLastSequence || false
   }
-
-  compactPointers: { level:Number, internalKey:Slice}[]
-  deletedFiles: {level: number, fileNum: number}[]
-  newFiles: {level:number, fileNum:number, fileSize:number, smallestKey:Slice, largestKey:Slice}[]
-  _comparator: string | null
-  _logNumber:number
-  _prevLogNumber: number
-  _lastLogNumber: number
-  _lastSequence: number
-  _nextFileNumber: number
-  _hasComparator: boolean
-  _hasLogNumber: boolean
-  _hasPrevLogNumber: boolean
-  _hasNextFileNumber: boolean
-  _hasLastSequence: boolean
 }

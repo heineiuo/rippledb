@@ -7,6 +7,7 @@
 // @flow
 
 import varint from 'varint'
+
 export default class SequenceNumber {
   constructor (initial:number = 0) {
     this._value = initial

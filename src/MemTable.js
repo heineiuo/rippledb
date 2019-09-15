@@ -41,7 +41,7 @@ export default class MemTable {
     return new Slice(value)
   }
 
-  static getValueWithEncoding (s:Slice, options?:Options = {}) {
+  static getValueWithEncoding (s:Slice, options?:Options = {}):Buffer | null {
     const valueSlice = MemTable.getValueSlice(s)
     if (!valueSlice) return valueSlice
     const valueEncoding = options.valueEncoding || 'string'
@@ -50,7 +50,7 @@ export default class MemTable {
     return valueSlice.buffer
   }
 
-  static createLookupKey (sequence:SequenceNumber, key:Slice, valueType:ValueType) {
+  static createLookupKey (sequence:SequenceNumber, key:Slice, valueType:ValueType):Slice {
     const keySize = key.size
     const internalKeySize = keySize + 8
     const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize))

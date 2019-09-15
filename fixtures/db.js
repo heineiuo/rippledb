@@ -1,5 +1,5 @@
 const assert = require('assert')
-const Database = require('../build/Database').default
+const Database = require('../src/Database').default
 const dbpath = require('./dbpath')
 
 const db = new Database(dbpath)

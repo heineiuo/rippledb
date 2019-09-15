@@ -13,7 +13,7 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { RecordType, ValueType } from './Format'
-import { createHexStringFromDecimal } from './LevelUtils'
+import { createHexStringFromDecimal } from './LogFormat'
 
 export default class LogRecord {
   static from (buf:Buffer):LogRecord {

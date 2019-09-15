@@ -13,64 +13,67 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { RecordType, VersionEditTag } from './Format'
-import { createHexStringFromDecimal } from './LevelUtils'
 import VersionEdit from './VersionEdit'
+import { FileMetaData, NewFile, InternalKey } from './VersionFormat'
+import { createHexStringFromDecimal } from './LogFormat'
 
-export default class ManifestRecord {
-  static from (buf:Buffer):ManifestRecord {
+export default class VersionEditRecord {
+  static from (buf:Buffer):VersionEditRecord {
     const length = buf.readUInt16BE(4)
     const type = RecordType.get(buf.readUInt8(6))
     const data = new Slice(buf.slice(7, 7 + length))
     assert(length === data.length)
-    const record = new ManifestRecord(type, data)
+    const record = new VersionEditRecord(type, data)
     return record
   }
 
-  static add (version:VersionEdit):Slice {
+  static add (edit:VersionEdit):Slice {
+    console.log('add edit', edit.hasNextFileNumber)
+
     let bufList:Buffer[] = []
-    if (version.hasComparator) {
+    if (edit.hasComparator) {
       bufList.push(Buffer.from([VersionEditTag.kComparator.value]))
-      bufList.push(Buffer.from(varint.encode(version.comparator && version.comparator.length)))
-      bufList.push(Buffer.from(version.comparator))
+      bufList.push(Buffer.from(varint.encode(edit.comparator && edit.comparator.length)))
+      bufList.push(Buffer.from(edit.comparator))
     }
-    if (version.hasLogNumber) {
+    if (edit.hasLogNumber) {
       bufList.push(Buffer.from([VersionEditTag.kLogNumber.value]))
-      bufList.push(Buffer.from(varint.encode(version.logNumber)))
+      bufList.push(Buffer.from(varint.encode(edit.logNumber)))
     }
-    if (version.hasPrevLogNumber) {
+    if (edit.hasPrevLogNumber) {
       bufList.push(Buffer.from([VersionEditTag.kPrevLogNumber.value]))
-      bufList.push(Buffer.from(varint.encode(version.logNumber)))
+      bufList.push(Buffer.from(varint.encode(edit.prevLogNumber)))
     }
-    if (version.hasNextFileNumber) {
+    if (edit.hasNextFileNumber) {
       bufList.push(Buffer.from([VersionEditTag.kNextFileNumber.value]))
-      bufList.push(Buffer.from(varint.encode(version.logNumber)))
+      bufList.push(Buffer.from(varint.encode(edit.nextFileNumber)))
     }
-    if (version.hasLastSequence) {
+    if (edit.hasLastSequence) {
       bufList.push(Buffer.from([VersionEditTag.kLastSequence.value]))
-      bufList.push(Buffer.from(varint.encode(version.lastSequence)))
+      bufList.push(Buffer.from(varint.encode(edit.lastSequence)))
     }
-    version.compactPointers.forEach((pointer: { level:Number, internalKey:Slice}) => {
+    edit.compactPointers.forEach((pointer: { level:Number, internalKey:Slice}) => {
       bufList.push(Buffer.from([VersionEditTag.kCompactPointer.value]))
       bufList.push(Buffer.from(varint.encode(pointer.level)))
       bufList.push(Buffer.from(varint.encode(pointer.internalKey.length)))
       bufList.push(pointer.internalKey.buffer)
     })
 
-    version.deletedFiles.forEach((file: {level: number, fileNum: number}) => {
+    edit.deletedFiles.forEach((file: {level: number, fileNum: number}) => {
       bufList.push(Buffer.from([VersionEditTag.kDeletedFile.value]))
       bufList.push(Buffer.from(varint.encode(file.level)))
       bufList.push(Buffer.from(varint.encode(file.fileNum)))
     })
 
-    version.newFiles.forEach((file: {level:number, fileNum:number, fileSize:number, smallestKey:Slice, largestKey:Slice}) => {
+    edit.newFiles.forEach((file: NewFile) => {
       bufList.push(Buffer.from([VersionEditTag.kNewFile.value]))
       bufList.push(Buffer.from(varint.encode(file.level)))
-      bufList.push(Buffer.from(varint.encode(file.fileNum)))
-      bufList.push(Buffer.from(varint.encode(file.fileSize)))
-      bufList.push(Buffer.from(varint.encode(file.smallestKey.length)))
-      bufList.push(file.smallestKey.buffer)
-      bufList.push(Buffer.from(varint.encode(file.largestKey.length)))
-      bufList.push(file.largestKey.buffer)
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.number)))
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.fileSize)))
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.smallest.length)))
+      bufList.push(file.fileMetaData.smallest.buffer)
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.largestKey.length)))
+      bufList.push(file.fileMetaData.largest.buffer)
     })
 
     return new Slice(Buffer.concat(bufList))
@@ -78,7 +81,7 @@ export default class ManifestRecord {
 
   static parseOp (op: Slice): VersionEdit {
     let index = 0
-    const version = new VersionEdit()
+    const edit = new VersionEdit()
     while (index < op.length) {
       const type = VersionEditTag.get(op.buffer.readUInt8(index))
       index += 1
@@ -88,27 +91,27 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const comparatorName = op.buffer.slice(index, index + comparatorNameLength)
         index += comparatorNameLength
-        version.comparator = comparatorName.toString()
+        edit.comparator = comparatorName.toString()
         continue
       } else if (type === VersionEditTag.kLogNumber) {
         const logNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.logNumber = logNumber
+        edit.logNumber = logNumber
         continue
       } else if (type === VersionEditTag.kPrevLogNumber) {
         const prevLogNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.prevLogNumber = prevLogNumber
+        edit.prevLogNumber = prevLogNumber
         continue
-      } else if (type === VersionEditTag.kNextLogNumber) {
+      } else if (type === VersionEditTag.kNextFileNumber) {
         const nextFileNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.nextFileNumber = nextFileNumber
+        edit.nextFileNumber = nextFileNumber
         continue
       } else if (type === VersionEditTag.kLastSequence) {
         const lastSequence = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.lastSequence = lastSequence
+        edit.lastSequence = lastSequence
         continue
       } else if (type === VersionEditTag.kCompactPointer) {
         const level = varint.decode(op.buffer.slice(index))
@@ -117,9 +120,9 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const internalKey = op.buffer.slice(index, index + internalKeyLength)
         index += internalKeyLength
-        version.compactPointers.push({
+        edit.compactPointers.push({
           level,
-          internalKey: new Slice(internalKey.buffer)
+          internalKey: new InternalKey(internalKey.buffer)
         })
         continue
       } else if (type === VersionEditTag.kDeletedFile) {
@@ -127,7 +130,7 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const fileNum = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        version.deletedFiles.push({
+        edit.deletedFiles.push({
           level,
           fileNum
         })
@@ -147,17 +150,19 @@ export default class ManifestRecord {
         index += varint.decode.bytes
         const largestKey = op.buffer.slice(index, index + largestKeyLength)
         index += largestKeyLength
-        version.newFiles.push({
+        edit.newFiles.push({
           level,
-          fileNum,
-          fileSize,
-          smallestKey: new Slice(smallestKey),
-          largestKey: new Slice(largestKey)
+          fileMetaData: new FileMetaData({
+            fileNum,
+            fileSize,
+            smallestKey: new Slice(smallestKey),
+            largestKey: new Slice(largestKey)
+          })
         })
         continue
       }
     }
-    return version
+    return edit
   }
 
   constructor (type:RecordType, data:Slice | Buffer) {
