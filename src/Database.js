@@ -22,6 +22,7 @@ import VersionSet from './VersionSet'
 import VersionEdit from './VersionEdit'
 import VersionEditRecord from './VersionEditRecord'
 import { getCurrentFilename, getLogFilename, getManifestFilename } from './Filename'
+import WriteBatch from './WriteBatch'
 
 class Database {
   constructor (dbpath:string) {
@@ -132,15 +133,10 @@ class Database {
    */
   async put (key:any, value:any, options?:Options) {
     await this.ok()
+    const batch = new WriteBatch()
     const sliceKey = new Slice(key)
     const sliceValue = new Slice(value)
-    const record = LogRecord.add(sliceKey, sliceValue)
-    await this._log.addRecord(record)
-    this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
-    // console.log('memtable size is: ', this._memtable.size)
-    if (this._memtable.size >= kMemTableDumpSize) {
-      this.dumpMemTable()
-    }
+    await this.write(batch, options)
   }
 
   async del (key:any, options?:Options) {
@@ -151,6 +147,16 @@ class Database {
     this._cache.set(sliceKey)
     this._memtable.add(this._sn, ValueType.kTypeDeletion, sliceKey, new Slice())
     // return this._cache.del(key)
+  }
+
+  async write (batch:WriteBatch, options?:Options) {
+    const record = LogRecord.add(sliceKey, sliceValue)
+    await this._log.addRecord(record)
+    this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
+    // console.log('memtable size is: ', this._memtable.size)
+    if (this._memtable.size >= kMemTableDumpSize) {
+      this.dumpMemTable()
+    }
   }
 
   dumpMemTable () {

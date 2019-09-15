@@ -168,7 +168,7 @@ export default class VersionSet {
     ver.compactionScore = bestScore
   }
 
-  logAndApply () {
+  logAndApply (edit:VersionEdit) {
 
   }
 
@@ -181,5 +181,12 @@ export default class VersionSet {
 
   reuseManifest () {
     return false
+  }
+
+  /**
+   * 将current写入manifest
+   */
+  writeSnapshot () {
+
   }
 }

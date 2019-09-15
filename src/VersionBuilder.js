@@ -46,11 +46,11 @@ export default class VersionBuilder {
       this._levels[level].deletedFiles.add(number)
     }
 
-    // traverse new_files_
+    // traverse new files
     for (let file of edit.newFiles) {
       const { level, fileMetaData } = file
       fileMetaData.refs = 1
-      fileMetaData.allowedSeeks = file.fileMetaData.fileSize / 16384
+      fileMetaData.allowedSeeks = file.fileMetaData.fileSize / 16384 // 16kb, 经验值
       if (fileMetaData.allowedSeeks < 100) fileMetaData.allowedSeeks = 100
       this._levels[level].deletedFiles.delete(fileMetaData.number)
       this._levels[level].addedFiles.add(fileMetaData)
