@@ -79,6 +79,7 @@ export default class WriteBatch {
       const valueLength = varint.decode(this.buffer, index)
       index += varint.decode.bytes
       const valueBuffer = this.buffer.slice(index, index + valueLength)
+      index += valueLength
       yield {
         type: valueType,
         key: new Slice(keyBuffer),
