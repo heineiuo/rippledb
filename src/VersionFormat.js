@@ -1,11 +1,24 @@
+/**
+ * Copyright (c) 2018-present, heineiuo.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+// @flow
+
+/* global Generator */
+
+import assert from 'assert'
 import { ValueType } from './Format'
 import varint from 'varint'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 
 export class InternalKey extends Slice {
-
+  extractUserKey ():Slice {
+    return new Slice(this.buffer.slice(0, this.size - 8))
+  }
 }
 
 export class InternalKeyBuilder {
@@ -26,49 +39,20 @@ export class InternalKeyBuilder {
 }
 
 export class InternalKeyComparator {
-
-}
-
-export class BySmallestKey {
-  internalComparator:any
-  // constructor () {
-
-  // }
-
-  operator (key1: InternalKey, key2: InternalKey) {
-
+  compare (key1:InternalKey, key2:InternalKey):number {
+    // 先比较user key
+    const userKey1 = key1.extractUserKey()
+    const userKey2 = key2.extractUserKey()
+    const r = userKey1.compare(userKey2)
+    if (r !== 0) return r
+    // 再比较sequence number
+    const sn1 = varint.decode(key1.buffer, key1.size - 8)
+    const sn2 = varint.decode(key2.buffer, key2.size - 8)
+    return sn1 > sn2 ? -1 : 1
   }
 }
 
-// 能自动排序的set（根据internalkey comparator排序，如果small key相同，则比较file number
-export class FileSet {
-  compare: BySmallestKey
-
-  constructor (cmp:BySmallestKey) {
-    this.compare = cmp
-    this._set = []
-  }
-
-  add (file: FileMetaData) {
-    if (this._set.find(item => item === file)) {
-      return
-    }
-    this._set.push(file)
-  }
-
-  delete (file:FileMetaData) {
-    this._set = this._set.filter(item => item !== file)
-  }
-}
-
-export type FileMetaDataLeveldb = {
-  fileNum:number,
-  fileSize:number,
-  smallestKey:InternalKey,
-  largestKey:InternalKey
-}
-
-export default class FileMetaData {
+export class FileMetaData {
   // reference count
   refs: number
   // if seeks > allowedSeeks, trigger compaction
@@ -86,14 +70,85 @@ export default class FileMetaData {
     this.smallest = new InternalKey(args.smallest)
     this.largest = new InternalKey(args.largest)
   }
+}
 
-  set refs (value:number) {
-    this._refs = value
+export class BySmallestKey {
+  internalComparator:InternalKeyComparator
+
+  constructor (cmp:InternalKeyComparator) {
+    this.internalComparator = cmp
   }
 
-  get refs () {
-    return this._refs
+  // if file1 < file2 then true
+  operator (file1: FileMetaData, file2: FileMetaData):boolean {
+    const r = this.internalComparator.compare(file1.smallest, file2.smallest)
+    if (r === 0) return file1.number < file2.number
+    return r < 0
   }
+}
+
+// 能自动排序的set（根据internalkey comparator排序，如果small key相同，则比较file number
+// 目前不拷贝插入的值，而是引用
+export class FileSet {
+  _set: FileMetaData[]
+  compare: BySmallestKey
+
+  constructor (cmp:BySmallestKey) {
+    this.compare = cmp
+    this._set = []
+  }
+
+  add (file: FileMetaData) {
+    if (this._set.find(item => item === file)) {
+      return
+    }
+    const setLength = this._set.length
+    if (setLength === 0) {
+      this._set.push(file)
+    } else {
+      for (let i = 0; i < setLength; i++) {
+        const file1 = this._set[i]
+        const b = this.compare.operator(file, file1)
+        if (b) {
+          this._set.splice(i, 0, file)
+          break
+        }
+      }
+      this._set.push(file)
+    }
+  }
+
+  push (file: FileMetaData) {
+    const endFile = this.end()
+    assert(!endFile || this.compare.operator(endFile, file))
+    this._set.push(file)
+  }
+
+  begin ():FileMetaData | null {
+    return this._set[0] || null
+  }
+
+  end ():FileMetaData | null {
+    return this._set[this._set.length - 1] || null
+  }
+
+  delete (file:FileMetaData) {
+    this._set = this._set.filter(item => item !== file)
+  }
+
+  * iterator ():Generator<FileMetaData, void, void> {
+    const setLength = this._set.length
+    for (let i = 0; i < setLength; i++) {
+      yield this._set[i]
+    }
+  }
+}
+
+export type FileMetaDataLeveldb = {
+  fileNum:number,
+  fileSize:number,
+  smallestKey:InternalKey,
+  largestKey:InternalKey
 }
 
 export type CompactPointer = {

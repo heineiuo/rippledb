@@ -55,4 +55,6 @@ export const CompressionTypes = new Enum({
 export const kBlockSize = 32768 // 32KB
 export const kMemTableDumpSize = 4194304 // 4MB
 
+export const kNumLevels = 7 // 0...6
+
 export const kInternalKeyComparatorName = 'leveldb.InternalKeyComparator'

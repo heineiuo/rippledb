@@ -7,10 +7,21 @@
 // @flow
 
 import assert from 'assert'
-import { FileMetaData } from './VersionFormat'
+import { FileMetaData, FileSet } from './VersionFormat'
 import VersionSet from './VersionSet'
 
 export default class Version {
+  next:Version|null
+  prev:Version|null
+  refs:number
+  fileTocompact:FileMetaData|null
+  fileTocompactLevel:number
+  compactionScore:number
+  compactionLevel:number
+  files: {
+    [level:number]: FileSet
+  }
+
   constructor (versionSet:VersionSet) {
     this.next = this
     this.prev = this
@@ -20,14 +31,6 @@ export default class Version {
     this.compactionScore = -1
     this.compactionLevel = -1
   }
-
-  next:Version|null
-  prev:Version|null
-  refs:number
-  fileTocompact:FileMetaData|null
-  fileTocompactLevel:number
-  compactionScore:number
-  compactionLevel:number
 
   ref () {
     this.refs++

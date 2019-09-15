@@ -101,7 +101,7 @@ export default class VersionEditRecord {
         index += varint.decode.bytes
         edit.prevLogNumber = prevLogNumber
         continue
-      } else if (type === VersionEditTag.kNextLogNumber) {
+      } else if (type === VersionEditTag.kLogNumber) {
         const nextFileNumber = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
         edit.nextFileNumber = nextFileNumber

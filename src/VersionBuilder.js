@@ -13,6 +13,14 @@ import { kNumLevels } from './Format'
 import { FileMetaData, BySmallestKey, FileSet } from './VersionFormat'
 
 export default class VersionBuilder {
+  _versionSet:VersionSet
+  _base:Version
+  _levels: {
+    // TODO: JavaScript native Set cannot compare object value, should be rewritten
+    addedFiles: FileSet,
+    deletedFiles: Set<number>
+  }[]
+
   constructor (versionSet: VersionSet, base:Version) {
     this._versionSet = versionSet
     this._base = base
@@ -23,14 +31,6 @@ export default class VersionBuilder {
       this._levels[level].addedFiles = new FileSet(cmp)
     }
   }
-
-  _versionSet:VersionSet
-  _base:Version
-  _levels: {
-    // TODO: JavaScript native Set cannot compare object value, should be rewritten
-    addedFiles: FileSet,
-    deletedFiles: Set<number>
-  }[]
 
   apply (edit:VersionEdit) {
     // Update compaction pointers
@@ -47,8 +47,7 @@ export default class VersionBuilder {
 
     // traverse new_files_
     for (let file of edit.newFiles) {
-      const { level } = file
-      const fileMetaData = new FileMetaData(file)
+      const { level, fileMetaData } = file
       fileMetaData.refs = 1
       fileMetaData.allowedSeeks = file.fileMetaData.fileSize / 16384
       if (fileMetaData.allowedSeeks < 100) fileMetaData.allowedSeeks = 100
@@ -60,5 +59,38 @@ export default class VersionBuilder {
   saveTo (ver:Version) {
     const cmp = new BySmallestKey()
     cmp.internalComparator = this._versionSet.internalComparator
+    // traverse every level and put added files in right position
+    for (let level = 0; level < kNumLevels; level++) {
+      const baseFileIterator = this._base.files[level].iterator()
+      const addedFileIterator = this._levels[level].addedFiles.iterator()
+      let baseFile = baseFileIterator.next()
+      let addedFile = addedFileIterator.next()
+      if ((!baseFile.done && !addedFile.done && cmp.operator(baseFile.value, addedFile.value)) ||
+          (!baseFile.done && addedFile.done)
+      ) {
+        this.maybeAddFile(ver, level, baseFile.value)
+        baseFile = baseFileIterator.next()
+      } else if (!addedFile.done) {
+        this.maybeAddFile(ver, level, addedFile.value)
+        addedFile = addedFileIterator.next()
+      }
+
+      // Make sure there is no overlap in levels > 0
+      if (level > 0) {
+
+      }
+    }
+  }
+
+  maybeAddFile (ver:Version, level:number, file:FileMetaData) {
+    if (this._levels[level].deletedFiles.has(file.number)) {
+      // File is deleted: do nothing
+    } else {
+      if (!ver.files[level]) {
+        ver.files[level] = new FileSet()
+      }
+      file.refs++
+      ver.files[level].add(file)
+    }
   }
 }
