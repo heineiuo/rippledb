@@ -25,10 +25,9 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 - [x] MemTable
 - [x] ManifestRecord
 - [x] VersionEdit
-- [ ] VersionSet
+- [x] VersionBuilder
 - [ ] Version
-- [ ] VersionBuilder
-- [ ] Manifest
+- [ ] VersionSet
 - [ ] LRU
 - [ ] Compaction
 - [ ] Top-level API
