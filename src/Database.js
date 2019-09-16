@@ -25,12 +25,22 @@ import { getCurrentFilename, getLogFilename, getManifestFilename } from './Filen
 import WriteBatch from './WriteBatch'
 
 export default class Database {
+  _internalKeyComparator: InternalKeyComparator
+  _dbpath:string
+  _sn:SequenceNumber
+  _cache: LRU
+  _log:LogWriter
+  _memtable:MemTable
+  _immtable: MemTable | null
+  _versionSet:VersionSet
+  _ok:boolean
+
   constructor (dbpath:string) {
     this._internalKeyComparator = new InternalKeyComparator()
     this._ok = false
     this._dbpath = dbpath
     this._log = new LogWriter(getLogFilename(dbpath, 1))
-    this._memtable = new MemTable()
+    this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
     this._cache = new LRU({
       max: 500,
@@ -45,15 +55,6 @@ export default class Database {
 
     this.recover()
   }
-
-  _dbpath:string
-  _sn:SequenceNumber
-  _cache: LRU
-  _log:LogWriter
-  _memtable:MemTable
-  _immtable: MemTable | null
-  _versionSet:VersionSet
-  _ok:boolean
 
   async existCurrent ():Promise<boolean> {
     try {
@@ -94,6 +95,7 @@ export default class Database {
 
   }
 
+  // wait for db.recover
   async ok () {
     if (this._ok) return true
     let limit = 5
@@ -147,10 +149,12 @@ export default class Database {
   async write (batch:WriteBatch, options?:Options) {
     await this.ok()
     this.makeRoomForWrite()
+    const lastSequence = this._versionSet.lastSequence
 
     // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
     // await this._log.addRecord(LogRecord.del(sliceKey))
     WriteBatch.insert(batch, this._memtable)
+    WriteBatch.setSequence(batch, lastSequence + 1)
 
     // this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
     // console.log('memtable size is: ', this._memtable.size)
@@ -160,7 +164,7 @@ export default class Database {
     if (this._memtable.size >= kMemTableDumpSize) {
       // this._memtable.immutable = true
       this._immtable = this._memtable
-      this._memtable = new MemTable()
+      this._memtable = new MemTable(this._internalKeyComparator)
       this._memtable.ref()
       const newLogNumber = this._versionSet.nextFileNumber
     }

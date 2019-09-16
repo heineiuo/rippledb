@@ -31,7 +31,7 @@ export class InternalKeyBuilder {
      */
     const slice = new Slice(Buffer.concat([
       key.buffer,
-      sequence.toFixedSizeBuffer(),
+      sequence.toFixedSizeBuffer(7),
       Buffer.from(varint.encode(valueType.value))
     ]))
     return new InternalKey(slice)
@@ -39,10 +39,15 @@ export class InternalKeyBuilder {
 }
 
 export class InternalKeyComparator {
-  compare (key1:InternalKey, key2:InternalKey):number {
+  static extractUserKey (slice:Slice) {
+    assert(slice.size > 8)
+    return new Slice(slice.buffer.slice(0, slice.size - 8))
+  }
+
+  compare (key1:Slice, key2:Slice):number {
     // 先比较user key
-    const userKey1 = key1.extractUserKey()
-    const userKey2 = key2.extractUserKey()
+    const userKey1 = InternalKeyComparator.extractUserKey(key1)
+    const userKey2 = InternalKeyComparator.extractUserKey(key2)
     const r = userKey1.compare(userKey2)
     if (r !== 0) return r
     // 再比较sequence number

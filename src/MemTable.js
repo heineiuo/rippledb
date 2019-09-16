@@ -15,18 +15,13 @@ import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 import { type Options } from './Options'
+import { InternalKeyComparator } from './VersionFormat'
 
 export default class MemTable {
   static getLengthPrefixedSlice (key:Slice):Slice {
     const internalKeySize = varint.decode(key.buffer)
     const internalKeyBuffer = key.buffer.slice(0, internalKeySize)
     return new Slice(internalKeyBuffer)
-  }
-
-  static keyComparator (a:Slice, b:Slice):number {
-    const a1 = MemTable.getLengthPrefixedSlice(a)
-    const b1 = MemTable.getLengthPrefixedSlice(b)
-    return a1.compare(b1)
   }
 
   static getValueSlice (key:Slice):Slice | null {
@@ -63,19 +58,31 @@ export default class MemTable {
     return new Slice(buf)
   }
 
-  constructor () {
-    this._immutable = false
-    this._list = new Skiplist(65535, MemTable.keyComparator)
-    this._size = 0
-  }
-
   _immutable:boolean
   _list:Skiplist
   _size: number
   refs: number
+  internalKeyComparator: InternalKeyComparator
+
+  constructor (internalKeyComparator: InternalKeyComparator) {
+    this._immutable = false
+    this.internalKeyComparator = internalKeyComparator
+    this._list = new Skiplist(65535, this.keyComparator)
+    this._size = 0
+  }
+
+  keyComparator (a:Slice, b:Slice):number {
+    const a1 = MemTable.getLengthPrefixedSlice(a)
+    const b1 = MemTable.getLengthPrefixedSlice(b)
+    return this.internalKeyComparator.compare(a1, b1)
+  }
 
   ref () {
     this.refs++
+  }
+
+  unref () {
+    this.refs--
   }
 
   get size ():number {
