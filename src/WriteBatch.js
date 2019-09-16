@@ -8,7 +8,7 @@
 /* global Generator */
 
 import varint from 'varint'
-import Buffer from 'buffer'
+import { Buffer } from 'buffer'
 import Slice from './Slice'
 import MemTable from './MemTable'
 import LogRecord from './LogRecord'
@@ -18,15 +18,13 @@ import { ValueType } from './Format'
 export type AtomicUpdate = {
   type: ValueType,
   key: Slice,
-  value: Slice
+  value?: Slice
 }
 
 // Simplified WriteBatch
 export default class WriteBatch {
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
   static kHeader = 8
-
-  buffer:Buffer
 
   static insert (batch:WriteBatch, mem:MemTable) {
     const sn = WriteBatch.getSequence(batch)
@@ -36,26 +34,32 @@ export default class WriteBatch {
     }
   }
 
-  static setSequence (batch: WriteBatch, sequence:SequenceNumber) {
-    batch.buffer.fill(sequence.toFixedSizeBuffer(WriteBatch.kHeader))
+  static setSequence (batch: WriteBatch, sequence:number) {
+    batch.buffer.fill(new SequenceNumber(sequence).toFixedSizeBuffer(WriteBatch.kHeader))
   }
 
   static getSequence (batch: WriteBatch):SequenceNumber {
     return varint.decode(batch.buffer)
   }
 
+  count:number
+  buffer:Buffer
+
   constructor () {
     this.buffer = Buffer.alloc(WriteBatch.kHeader)
+    this.count++
   }
 
   put (key:Slice, value:Slice) {
     const slice = LogRecord.add(key, value)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
+    this.count++
   }
 
   del (key:Slice) {
     const slice = LogRecord.del(key)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
+    this.count++
   }
 
   * iterator ():Generator<AtomicUpdate, void, void> {
