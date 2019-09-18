@@ -12,8 +12,8 @@ import VersionSet from './VersionSet'
 import { Config } from './Format'
 
 export default class Version {
-  next:Version|null
-  prev:Version|null
+  next:Version
+  prev:Version
   refs:number
 
   // Next file to compact based on seek stats.

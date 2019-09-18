@@ -81,7 +81,7 @@ export default class Database {
     edit.logNumber = 0
     edit.nextFileNumber = 2
     edit.lastSequence = 0
-    console.log('initVersionEdit', edit)
+    // console.log('initVersionEdit', edit)
     const writer = new LogWriter(getManifestFilename(this._dbpath, 1))
     await writer.addRecord(VersionEditRecord.add(edit))
     await writer.close()
