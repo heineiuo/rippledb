@@ -53,6 +53,7 @@ export class InternalKeyComparator {
     // 再比较sequence number
     const sn1 = varint.decode(key1.buffer, key1.size - 8)
     const sn2 = varint.decode(key2.buffer, key2.size - 8)
+    if (sn1 === sn2) return 0
     return sn1 > sn2 ? -1 : 1
   }
 }
