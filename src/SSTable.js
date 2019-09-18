@@ -9,6 +9,8 @@
 /* global Generator */
 
 import { Buffer } from 'buffer'
+import { type Options } from './Options'
+import Slice from './Slice'
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
 import DataBlock from './SSTableDataBlock'
@@ -36,14 +38,11 @@ export default class SSTable {
   _dataBlock: DataBlock
   _metaIndexBlock: MetaIndexBlock
 
-  get (key:string):string | null {
-    const indexBlockIterator = this.dataBlockIterator()
-    let result = indexBlockIterator.next()
-    while (!result.done) {
-      if (key === result.value.key) {
-        return result.value.value
+  get (key:Slice, options?:Options):Slice |null {
+    for (let value of this.dataBlockIterator()) {
+      if (key.compare(new Slice(value.key)) === 0) {
+        return value.value
       }
-      result = indexBlockIterator.next()
     }
     return null
   }

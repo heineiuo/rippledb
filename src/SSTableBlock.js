@@ -10,7 +10,9 @@
 import crc32 from 'buffer-crc32'
 import varint from 'varint'
 import { Buffer } from 'buffer'
+import Slice from './Slice'
 import SSTableRecord from './SSTableRecord'
+import { type Options } from './Options'
 import { CompressionTypes } from './Format'
 
 export default class SSTableBlock {
@@ -48,7 +50,7 @@ export default class SSTableBlock {
     return this.size * 2
   }
 
-  * iterator (encoding?:"utf8"|"buffer"):Generator<any, void, void> {
+  * iterator (options?:Options):Generator<any, void, void> {
     let recordSizeSummary:number = 0
     while (true) {
       if (recordSizeSummary >= this.size - 5) {
@@ -56,14 +58,14 @@ export default class SSTableBlock {
         return
       }
       const record = new SSTableRecord(this.buffer, this.offset + recordSizeSummary)
-      const data = record.get(encoding)
+      const data = record.get(options)
       yield data
       // console.log('SSTableBlock iterator increase with offset ' + offset + ' and fixed-size ' + this._size + ' and record.size is ' + record.size)
       recordSizeSummary += record.size
     }
   }
 
-  append (data:{key:any, value:any}):void {
+  append (data:{ key:Slice, value:Slice }):void {
     const record = new SSTableRecord()
     record.put(data.key, data.value)
     let body

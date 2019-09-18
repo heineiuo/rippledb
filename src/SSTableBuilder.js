@@ -10,13 +10,13 @@ import fs from 'fs'
 import { Buffer } from 'buffer'
 import assert from 'assert'
 import varint from 'varint'
+import Slice from './Slice'
 import BloomFilter from './BloomFilter'
 import SSTableFooter from './SSTableFooter'
 import SSTableIndexBlock from './SSTableIndexBlock'
 import SSTableMetaIndexBlock from './SSTableMetaIndexBlock'
 import SSTableMetaBlock from './SSTableMetaBlock'
 import SSTableDataBlock from './SSTableDataBlock'
-import Comparator from './Comparator'
 
 // interface FileHandle extends fs.FileHandle { }
 
@@ -25,7 +25,6 @@ export default class SSTableBuilder {
     this._file = file
     this._fileSize = 0
     this._totalDataBlockSize = 0
-    this._comparator = new Comparator()
     this._dataBlock = new SSTableDataBlock()
     this._metaBlock = new SSTableMetaBlock()
     this._metaIndexBlock = new SSTableMetaIndexBlock()
@@ -38,13 +37,12 @@ export default class SSTableBuilder {
     }
   }
 
-  _comparator: Comparator
   _options: { size: number }
   _file: fs.FileHandle
   _fileSize: number
   _flushTimes: number
   _name: string
-  _lastKey: Buffer
+  _lastKey: Slice
   _totalDataBlockSize: number
   _dataBlock: SSTableDataBlock
   _metaBlock: SSTableMetaBlock
@@ -53,11 +51,11 @@ export default class SSTableBuilder {
   _footer: SSTableFooter
   _numEntries: number
 
-  async add(key: string | Buffer, value: string | Buffer) {
+  async add(key: Slice, value: Slice) {
     if (this._lastKey) {
-      assert(Buffer.from(key).compare(this._lastKey) > 0, `${key} must bigger then ${this._lastKey.toString()}`)
+      assert(key.compare(this._lastKey) > 0, `new key must bigger then last key`)
     }
-    this._lastKey = Buffer.from(key)
+    this._lastKey = new Slice(key)
     this._dataBlock.append({ key, value })
     if (this._dataBlock.estimateSize > this._options.size) {
       await this.flush()
@@ -101,13 +99,13 @@ export default class SSTableBuilder {
     }
     await this.appendFile(this._metaBlock.buffer)
     this._metaIndexBlock.append({
-      key: this._metaIndexBlock.filterKey,
-      value: Buffer.concat([
+      key: new Slice(this._metaIndexBlock.filterKey),
+      value: new Slice(Buffer.concat([
         // offset
         Buffer.from(varint.encode(this._fileSize)),
         // size
         Buffer.from(varint.encode(this._metaBlock.size))
-      ])
+      ]))
     })
     const metaIndexOffset = this._fileSize
     await this.appendFile(this._metaIndexBlock.buffer)
