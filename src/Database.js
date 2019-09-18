@@ -60,7 +60,13 @@ export default class Database {
   async existCurrent ():Promise<boolean> {
     try {
       const currentName = getCurrentFilename(this._dbpath)
-      await fs.promises.access(currentName, fs.constants.R_OK)
+      try {
+        await fs.promises.access(this._dbpath, fs.constants.W_OK)
+      } catch (e) {
+        await fs.promises.mkdir(this._dbpath, { recursive: true })
+        return false
+      }
+      await fs.promises.access(currentName, fs.constants.W_OK)
       return true
     } catch (e) {
       return false
