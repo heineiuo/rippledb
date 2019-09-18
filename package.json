@@ -39,6 +39,12 @@
     "lru-cache": "^5.1.1",
     "varint": "^5.0.0"
   },
+  "jest": {
+    "coverageDirectory": "./coverage",
+    "coverageReporters": [
+      "lcov"
+    ]
+  },
   "standard": {
     "parser": "babel-eslint",
     "plugins": [

@@ -1,11 +1,11 @@
 # node-level
 
 
-<p align="left">
-  <a href="https://github.com/heineiuo/node-level/actions"><img alt="GitHub Actions status" src="https://github.com/heineiuo/node-level/workflows/Node%20CI/badge.svg"></a>
+<p>
+  <a href="https://github.com/heineiuo/node-level/actions"><img style="max-width:100%" alt="GitHub Actions status" src="https://github.com/heineiuo/node-level/workflows/Node%20CI/badge.svg"></a>
+  <a href="https://coveralls.io/github/heineiuo/node-level"><img style="max-width:100%" alt="Coverage status" src="https://coveralls.io/repos/github/heineiuo/node-level/badge.svg"></a>
+
 </p>
-
-
 A pure node.js implementation of LSM(log structured merge tree) based storage engine(inspired by leveldb).
 
 ## Roadmap
