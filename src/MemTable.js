@@ -71,7 +71,7 @@ export default class MemTable {
     this._size = 0
   }
 
-  keyComparator (a:Slice, b:Slice):number {
+  keyComparator = (a:Slice, b:Slice):number => {
     const a1 = MemTable.getLengthPrefixedSlice(a)
     const b1 = MemTable.getLengthPrefixedSlice(b)
     return this.internalKeyComparator.compare(a1, b1)

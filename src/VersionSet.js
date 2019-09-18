@@ -25,6 +25,8 @@ export default class VersionSet {
   hasNextFileNumber: boolean
   hasPrevLogNumber: boolean
   logNumber: number
+
+  // if prevLogNumber is 0, then no log file is being compacted
   prevLogNumber: number
   lastSequence: number
   hasLastSequence: boolean
@@ -47,6 +49,10 @@ export default class VersionSet {
 
   get current (): Version {
     return this._current
+  }
+
+  getNextFileNumber () {
+    return this.nextFileNumber++
   }
 
   async recover () {

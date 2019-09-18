@@ -8,9 +8,10 @@
 /* global AsyncGenerator */
 
 // import { Buffer } from 'buffer'
+import assert from 'assert'
 import fs from 'fs'
 import MemTable from './MemTable'
-import LogRecord from './LogRecord'
+// import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
 import { type Options } from './Options'
 import { ValueType, kMemTableDumpSize, kInternalKeyComparatorName } from './Format'
@@ -110,6 +111,9 @@ export default class Database {
 
   async * iterator (options: Options):AsyncGenerator<any, void, void> {
     await this.ok()
+    for (let key in this._memtable.iterator()) {
+      yield key
+    }
     // await new Promise()
     // yield 'a'
   }
@@ -143,7 +147,7 @@ export default class Database {
   async del (key:any, options?:Options) {
     const batch = new WriteBatch()
     batch.del(new Slice(key))
-    this.write(batch, options)
+    await this.write(batch, options)
   }
 
   async write (batch:WriteBatch, options?:Options) {
@@ -154,6 +158,7 @@ export default class Database {
     // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
     // await this._log.addRecord(LogRecord.del(sliceKey))
     WriteBatch.insert(batch, this._memtable)
+    console.log('insert to memtable success')
     WriteBatch.setSequence(batch, lastSequence + 1)
 
     // this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
@@ -162,11 +167,12 @@ export default class Database {
 
   makeRoomForWrite () {
     if (this._memtable.size >= kMemTableDumpSize) {
-      // this._memtable.immutable = true
+      assert(this._versionSet.logNumber === 0) // no logfile is compaction
+      const newLogNumber = this._versionSet.getNextFileNumber()
+      this._log = new LogWriter(getLogFilename(newLogNumber))
       this._immtable = this._memtable
       this._memtable = new MemTable(this._internalKeyComparator)
       this._memtable.ref()
-      const newLogNumber = this._versionSet.nextFileNumber
     }
   }
 

@@ -49,7 +49,7 @@ export const VersionEditTag = new Enum({
 })
 
 export const CompressionTypes = new Enum({
-  none: 0
+  none: 0x00
 })
 
 export const kBlockSize = 32768 // 32KB

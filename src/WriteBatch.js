@@ -39,7 +39,7 @@ export default class WriteBatch {
   }
 
   static getSequence (batch: WriteBatch):SequenceNumber {
-    return varint.decode(batch.buffer)
+    return new SequenceNumber(varint.decode(batch.buffer))
   }
 
   count:number
