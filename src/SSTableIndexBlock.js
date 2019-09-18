@@ -8,13 +8,14 @@
 /* global Generator */
 // @flow
 // import { Buffer } from 'buffer'
+import { type Options } from './Options'
 import varint from 'varint'
 import SSTableBlock from './SSTableBlock'
 import SSTableDataBlock from './SSTableDataBlock'
 
 export default class TableIndexBlock extends SSTableBlock {
-  * dataBlockIterator ():Generator<any, void, void> {
-    const iterator = this.iterator('buffer')
+  * dataBlockIterator (options?:Options):Generator<any, void, void> {
+    const iterator = this.iterator(options)
     let dataBlockIndexRecord = iterator.next()
     while (!dataBlockIndexRecord.done) {
       // console.log('dataBlockIndexRecord loop times')
@@ -45,8 +46,8 @@ export default class TableIndexBlock extends SSTableBlock {
     }
   }
 
-  * indexIterator ():Generator<any, void, void> {
-    const iterator = this.iterator('buffer')
+  * indexIterator (options?:Options):Generator<any, void, void> {
+    const iterator = this.iterator(options)
     let dataBlockIndexRecord = iterator.next()
     while (!dataBlockIndexRecord.done) {
       const { key, value } = dataBlockIndexRecord.value

@@ -8,7 +8,7 @@
 // @flow
 
 import varint from 'varint'
-// import { Buffer } from 'buffer'
+import { type Options } from './Options'
 import TableBlock from './SSTableBlock'
 import SStableMetaBlock from './SSTableMetaBlock'
 
@@ -21,8 +21,8 @@ export default class TableMetaIndexBlock extends TableBlock {
   /**
    * 实际上MetaBlock只创建一个
    */
-  * metaBlockIterator ():Generator<any, void, void> {
-    const iterator = this.iterator('buffer')
+  * metaBlockIterator (options?:Options):Generator<any, void, void> {
+    const iterator = this.iterator(options)
     let record = iterator.next()
     while (!record.done) {
       const { value } = record.value
