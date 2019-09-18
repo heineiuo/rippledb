@@ -21,6 +21,6 @@ jobs:
       run: |
         yarn
         yarn build --if-present
-        yarn test --coverage --coverageReporters=text-lcov | coveralls
+        yarn test --coverage --coverageReporters=text-lcov | yarn coveralls
       env:
         CI: true
