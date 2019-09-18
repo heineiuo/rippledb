@@ -27,6 +27,7 @@ import WriteBatch from './WriteBatch'
 
 export default class Database {
   _internalKeyComparator: InternalKeyComparator
+  _backgroundCompactionScheduled: boolean
   _dbpath:string
   _sn:SequenceNumber
   _cache: LRU
@@ -37,6 +38,7 @@ export default class Database {
   _ok:boolean
 
   constructor (dbpath:string) {
+    this._backgroundCompactionScheduled = false
     this._internalKeyComparator = new InternalKeyComparator()
     this._ok = false
     this._dbpath = dbpath
@@ -179,7 +181,29 @@ export default class Database {
       this._immtable = this._memtable
       this._memtable = new MemTable(this._internalKeyComparator)
       this._memtable.ref()
+      this.backgroundCompaction()
     }
+  }
+
+  async backgroundCompaction () {
+    try {
+      this._backgroundCompactionScheduled = true
+      if (this._immtable !== null) {
+        await this.compactMemTable()
+        await this.backgroundCompaction()
+        return
+      }
+      if (!this._versionSet.needsCompaction()) {
+      }
+    } catch (e) {
+
+    } finally {
+      this._backgroundCompactionScheduled = false
+    }
+  }
+
+  async compactMemTable () {
+
   }
 
   /**

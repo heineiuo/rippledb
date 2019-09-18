@@ -184,6 +184,10 @@ export default class VersionSet {
 
   }
 
+  needsCompaction ():boolean {
+    return (this._current.compactionScore >= 1) || (this._current.fileToCompact !== null)
+  }
+
   /**
      * 主要目的是更新this._current
      */
