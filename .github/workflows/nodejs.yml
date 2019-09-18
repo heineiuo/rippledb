@@ -21,6 +21,10 @@ jobs:
       run: |
         yarn
         yarn build --if-present
-        yarn test --coverage --coverageReporters=text-lcov | yarn coveralls
+        yarn test --coverage
       env:
         CI: true
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}

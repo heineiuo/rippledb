@@ -6,3 +6,4 @@ Thumb.db
 dist
 build
 flow-coverage
+coverage
