@@ -3,39 +3,39 @@
 import Slice from './Slice'
 
 export default class SkiplistNode {
-  constructor (maxlevel:number, next:SkiplistNode, key:Slice) {
+  constructor(maxlevel: number, next: SkiplistNode | null, key: Slice) {
     this.key = key
     this.maxlevel = maxlevel
     this.levels = new Array(maxlevel + 1)
     this.fill(next)
   }
 
-  key:Slice
-  maxlevel:number
-  levels:Slice[]
+  key: Slice
+  maxlevel: number
+  levels: SkiplistNode[] | null[]
 
   /**
    * 将这个节点的每一级都链接到next
    */
-  fill (next:SkiplistNode) {
+  fill(next: SkiplistNode | null) {
     for (let i = 0; i <= this.maxlevel; i++) {
       this.levels[i] = next
     }
   }
 
-  forEach (cb: (node:SkiplistNode) => void) {
+  forEach(cb: (node: SkiplistNode | null, index: number) => void) {
     for (let i = 0; i <= this.maxlevel; i++) {
       cb(this.levels[i], i)
     }
   }
 
-  * iterator ():Generator<SkiplistNode, void, void> {
+  *iterator(): Generator<SkiplistNode | null, void, void> {
     for (let i = 0; i <= this.maxlevel; i++) {
-      yield (this.levels[i])
+      yield this.levels[i]
     }
   }
 
-  next ():SkiplistNode {
+  next(): SkiplistNode | null {
     return this.levels[0]
   }
 }

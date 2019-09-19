@@ -13,36 +13,40 @@ import { Config } from './Format'
 import { FileMetaData, BySmallestKey, FileSet } from './VersionFormat'
 
 export default class VersionBuilder {
-  _versionSet:VersionSet
-  _base:Version
+  _versionSet: VersionSet
+  _base: Version
   _levels: {
     // TODO: JavaScript native Set cannot compare object value, should be rewritten
-    addedFiles: FileSet,
+    addedFiles: FileSet
     deletedFiles: Set<number>
   }[]
 
-  constructor (versionSet: VersionSet, base:Version) {
+  cmp: BySmallestKey
+
+  constructor(versionSet: VersionSet, base: Version) {
     this._versionSet = versionSet
     this._base = base
     this._levels = Array.from({ length: Config.kNumLevels }, (v, k) => ({}))
     base.ref()
     const cmp = new BySmallestKey(versionSet.internalKeyComparator)
+    this.cmp = cmp
     for (let level = 0; level < Config.kNumLevels; level++) {
       this._levels[level].addedFiles = new FileSet(cmp)
     }
   }
 
-  apply (edit:VersionEdit) {
+  apply(edit: VersionEdit) {
     // Update compaction pointers
     // compactPointers: type = <int, InternalKey>
     for (let i = 0; i < edit.compactPointers.length; i++) {
       const level = edit.compactPointers[i].level
-      this._versionSet.compactPointers[level] = edit.compactPointers[i].internalKey
+      this._versionSet.compactPointers[level] =
+        edit.compactPointers[i].internalKey
     }
     // traverse deleted_files_ 记录可删除文件到各level对应的deleted_files
     for (let i = 0; i < edit.deletedFiles.length; i++) {
-      const { level, number } = edit.deletedFiles[i]
-      this._levels[level].deletedFiles.add(number)
+      const { level, fileNum } = edit.deletedFiles[i]
+      this._levels[level].deletedFiles.add(fileNum)
     }
 
     // traverse new files
@@ -56,7 +60,7 @@ export default class VersionBuilder {
     }
   }
 
-  saveTo (ver:Version) {
+  saveTo(ver: Version) {
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
     // traverse every level and put added files in right position
     for (let level = 0; level < Config.kNumLevels; level++) {
@@ -65,8 +69,11 @@ export default class VersionBuilder {
       const addedFileIterator = this._levels[level].addedFiles.iterator()
       let baseFile = baseFileIterator.next()
       let addedFile = addedFileIterator.next()
-      if ((!baseFile.done && !addedFile.done && cmp.operator(baseFile.value, addedFile.value)) ||
-          (!baseFile.done && addedFile.done)
+      if (
+        (!baseFile.done &&
+          !addedFile.done &&
+          cmp.operator(baseFile.value, addedFile.value)) ||
+        (!baseFile.done && addedFile.done)
       ) {
         this.maybeAddFile(ver, level, baseFile.value)
         baseFile = baseFileIterator.next()
@@ -77,17 +84,16 @@ export default class VersionBuilder {
 
       // Make sure there is no overlap in levels > 0
       if (level > 0) {
-
       }
     }
   }
 
-  maybeAddFile (ver:Version, level:number, file:FileMetaData) {
+  maybeAddFile(ver: Version, level: number, file: FileMetaData) {
     if (this._levels[level].deletedFiles.has(file.number)) {
       // File is deleted: do nothing
     } else {
       if (!ver.files[level]) {
-        ver.files[level] = new FileSet()
+        ver.files[level] = new FileSet(this.cmp)
       }
       file.refs++
       ver.files[level].add(file)

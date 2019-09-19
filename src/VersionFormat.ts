@@ -16,59 +16,61 @@ import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 
 export class InternalKey extends Slice {
-  extractUserKey ():Slice {
+  extractUserKey(): Slice {
     return new Slice(this.buffer.slice(0, this.size - 8))
   }
 }
 
 export class InternalKeyBuilder {
-  build (sequence:SequenceNumber, valueType:ValueType, key:Slice):InternalKey {
+  build(
+    sequence: SequenceNumber,
+    valueType: ValueType,
+    key: Slice
+  ): InternalKey {
     /**
      * encoded(internal_key_size) | key | sequence(7Bytes) | type (1Byte) | encoded(value_size) | value
      * 1. Lookup key/ Memtable Key: encoded(internal_key_size) --- type(1Byte)
      * 2. Internal key: key --- type(1Byte)
      * 3. User key: key
      */
-    const slice = new Slice(Buffer.concat([
-      key.buffer,
-      sequence.toFixedSizeBuffer(7),
-      Buffer.from(varint.encode(valueType.value))
-    ]))
+    const slice = new Slice(
+      Buffer.concat([
+        key.buffer,
+        sequence.toFixedSizeBuffer(7),
+        Buffer.from(varint.encode(valueType)),
+      ])
+    )
     return new InternalKey(slice)
   }
 }
 
 class Comparator {
-  static name () {
+  getName(): number {
     return 0
   }
 
-  static compare (key1:Slice, key2:Slice) {
+  compare(key1: Slice, key2: Slice) {
     return key1.compare(key2)
   }
 
-  static findShortestSeparator () {
+  findShortestSeparator() {}
 
-  }
-
-  static findShortSuccessor () {
-
-  }
+  findShortSuccessor() {}
 }
 
 export class InternalKeyComparator {
-  static extractUserKey (slice:Slice) {
+  static extractUserKey(slice: Slice) {
     assert(slice.size > 8)
     return new Slice(slice.buffer.slice(0, slice.size - 8))
   }
 
-  userComparator:Comparator
+  userComparator: Comparator
 
-  constructor (userComparator: Comparator = Comparator) {
+  constructor(userComparator: Comparator = new Comparator()) {
     this.userComparator = userComparator
   }
 
-  compare (key1:Slice, key2:Slice):number {
+  compare(key1: Slice, key2: Slice): number {
     // 先比较user key
     const userKey1 = InternalKeyComparator.extractUserKey(key1)
     const userKey2 = InternalKeyComparator.extractUserKey(key2)
@@ -92,7 +94,7 @@ export class FileMetaData {
   smallest: InternalKey
   largest: InternalKey
 
-  constructor (args: any) {
+  constructor(args: any) {
     this.refs = args.refs
     this.allowedSeeks = args.allowedSeeks
     this.number = args.number
@@ -103,14 +105,14 @@ export class FileMetaData {
 }
 
 export class BySmallestKey {
-  internalComparator:InternalKeyComparator
+  internalComparator: InternalKeyComparator
 
-  constructor (cmp:InternalKeyComparator) {
+  constructor(cmp: InternalKeyComparator) {
     this.internalComparator = cmp
   }
 
   // if file1 < file2 then true
-  operator (file1: FileMetaData, file2: FileMetaData):boolean {
+  operator(file1: FileMetaData, file2: FileMetaData): boolean {
     const r = this.internalComparator.compare(file1.smallest, file2.smallest)
     if (r === 0) return file1.number < file2.number
     return r < 0
@@ -123,12 +125,12 @@ export class FileSet {
   _set: FileMetaData[]
   compare: BySmallestKey
 
-  constructor (cmp:BySmallestKey) {
+  constructor(cmp: BySmallestKey) {
     this.compare = cmp
     this._set = []
   }
 
-  add (file: FileMetaData) {
+  add(file: FileMetaData) {
     if (this._set.find(item => item === file)) {
       return
     }
@@ -148,29 +150,29 @@ export class FileSet {
     }
   }
 
-  push (file: FileMetaData) {
+  push(file: FileMetaData) {
     const endFile = this.end()
     assert(!endFile || this.compare.operator(endFile, file))
     this._set.push(file)
   }
 
-  begin ():FileMetaData | null {
+  begin(): FileMetaData | null {
     return this._set[0] || null
   }
 
-  end ():FileMetaData | null {
+  end(): FileMetaData | null {
     return this._set[this._set.length - 1] || null
   }
 
-  delete (file:FileMetaData) {
+  delete(file: FileMetaData) {
     this._set = this._set.filter(item => item !== file)
   }
 
-  size ():number {
+  size(): number {
     return this._set.length
   }
 
-  totalBytes ():number {
+  totalBytes(): number {
     let bytes = 0
     for (let fileMetaData of this.iterator()) {
       bytes += fileMetaData.fileSize
@@ -178,7 +180,7 @@ export class FileSet {
     return bytes
   }
 
-  * iterator ():Generator<FileMetaData, void, void> {
+  *iterator(): Generator<FileMetaData, void, void> {
     const setLength = this._set.length
     for (let i = 0; i < setLength; i++) {
       yield this._set[i]
@@ -187,28 +189,28 @@ export class FileSet {
 }
 
 export type FileMetaDataLeveldb = {
-  fileNum:number,
-  fileSize:number,
-  smallestKey:InternalKey,
-  largestKey:InternalKey
+  fileNum: number
+  fileSize: number
+  smallestKey: InternalKey
+  largestKey: InternalKey
 }
 
 export type CompactPointer = {
-  level:number,
-  internalKey:InternalKey
+  level: number
+  internalKey: InternalKey
 }
 
 export type DeletedFile = {
-  level: number,
+  level: number
   fileNum: number
 }
 
 export type NewFile = {
-  level:number,
+  level: number
   fileMetaData: FileMetaData
 }
 
-export function getMaxBytesForLevel (level:number) {
+export function getMaxBytesForLevel(level: number) {
   // Note: the result for level zero is not really used since we set
   // the level-0 compaction threshold based on number of files.
   // Result for both level-0 and level-1

@@ -10,7 +10,11 @@ import assert from 'assert'
 import fs from 'fs'
 import Version from './Version'
 import { getCurrentFilename, getManifestFilename } from './Filename'
-import { type CompactPointer, InternalKeyComparator, getMaxBytesForLevel } from './VersionFormat'
+import {
+  CompactPointer,
+  InternalKeyComparator,
+  getMaxBytesForLevel,
+} from './VersionFormat'
 import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
@@ -21,28 +25,34 @@ import LogWriter from './LogWriter'
 
 export default class VersionSet {
   compactPointers: CompactPointer[]
-  _manifestFileNumber: number
-  _current: Version
-  hasLogNumber: boolean
-  hasNextFileNumber: boolean
-  hasPrevLogNumber: boolean
-  logNumber: number
+  _manifestFileNumber?: number
+  _current?: Version
+  _dummyVersions: Version
+  hasLogNumber?: boolean
+  hasNextFileNumber?: boolean
+  hasPrevLogNumber?: boolean
+  logNumber?: number
 
   // if prevLogNumber is 0, then no log file is being compacted
-  prevLogNumber: number
-  lastSequence: number
-  hasLastSequence: boolean
-  manifestFileNumber: number
-  nextFileNumber:number
+  prevLogNumber?: number
+  lastSequence?: number
+  hasLastSequence?: boolean
+  manifestFileNumber?: number
+  nextFileNumber?: number
 
   _dbpath: string
   _options: any
   _memtable: MemTable
   internalKeyComparator: InternalKeyComparator
 
-  manifestWritter: LogWriter
+  manifestWritter?: LogWriter
 
-  constructor (dbpath: string, options: any, memtable: MemTable, internalKeyComparator: InternalKeyComparator) {
+  constructor(
+    dbpath: string,
+    options: any,
+    memtable: MemTable,
+    internalKeyComparator: InternalKeyComparator
+  ) {
     this._dbpath = dbpath
     this._options = options
     this._memtable = memtable
@@ -52,17 +62,22 @@ export default class VersionSet {
     this.compactPointers = []
   }
 
-  get current (): Version {
+  get current(): Version | undefined {
     return this._current
   }
 
-  getNextFileNumber () {
-    return this.nextFileNumber++
+  getNextFileNumber() {
+    if (!!this.nextFileNumber) {
+      return this.nextFileNumber++
+    }
   }
 
-  async recover () {
-  // 读取current， 校验是否是\n结尾
-    const current = await fs.promises.readFile(getCurrentFilename(this._dbpath), 'utf8')
+  async recover() {
+    // 读取current， 校验是否是\n结尾
+    const current = await fs.promises.readFile(
+      getCurrentFilename(this._dbpath),
+      'utf8'
+    )
     if (!current || current[current.length - 1] !== '\n') {
       throw new Error('Invalid format of CURRENT file.')
     }
@@ -81,14 +96,17 @@ export default class VersionSet {
     const manifestNumber = Number(currentValue.substr('MANIFEST-'.length))
 
     // 根据current读取dscfile(description file), 即manifest文件
-    const reader = new LogReader(getManifestFilename(this._dbpath, manifestNumber), VersionEditRecord)
+    const reader = new LogReader(
+      getManifestFilename(this._dbpath, manifestNumber),
+      VersionEditRecord
+    )
     // 读取record，apply到versionSet(apply方法)
     // 更新log number和prev log number（可省略，因为prevlognumber其实被废弃了）
     // 更新next file
     // 更新last sequence
     // 通过version builder 创建一个新的version
     for await (let edit: VersionEdit of reader.iterator()) {
-    // console.log(edit)
+      // console.log(edit)
       builder.apply(edit)
 
       // 更新manifest_file_number_， next_file_number_， last_sequence_， log_number_， prev_log_number_
@@ -141,29 +159,25 @@ export default class VersionSet {
     this.logNumber = logNumber
     this.prevLogNumber = prevLogNumber
 
-  // 检查是否需要创建新的manifest（ reuseManifest ）
+    // 检查是否需要创建新的manifest（ reuseManifest ）
   }
 
-  markFileNumberUsed (num:number) {
+  markFileNumberUsed(num: number) {
     if (this.nextFileNumber <= num) {
       this.nextFileNumber = num + 1
     }
   }
 
-  del (version: Version) {
+  del(version: Version) {}
 
-  }
-
-  add (version: Version) {
-
-  }
+  add(version: Version) {}
 
   // Precomputed best level for next compaction
-  finalize (ver: Version) {
-  // traverse levels(0-6),
-  // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
-  // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
-  // traverse结束更新version的best_score和best_level
+  finalize(ver: Version) {
+    // traverse levels(0-6),
+    // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
+    // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
+    // traverse结束更新version的best_score和best_level
     let bestLevel = -1
     let bestScore = -1
     for (let level = 0; level < Config.kNumLevels; level++) {
@@ -186,7 +200,7 @@ export default class VersionSet {
   }
 
   // 需要写入manifest
-  logAndApply (edit:VersionEdit) {
+  logAndApply(edit: VersionEdit) {
     if (edit.hasLogNumber) {
       assert(edit.logNumber >= this.logNumber)
       assert(edit.logNumber < this.nextFileNumber)
@@ -207,23 +221,28 @@ export default class VersionSet {
     builder.saveTo(v)
     this.finalize(v)
 
-    let manifestFilename:string
+    let manifestFilename: string
     if (this.manifestWritter) {
-      const nextManifestFilename = getManifestFilename(this._dbpath, this.manifestFileNumber)
+      const nextManifestFilename = getManifestFilename(
+        this._dbpath,
+        this.manifestFileNumber
+      )
       edit.nextFile = this.nextFileNumber
       const writter = new LogWriter(nextManifestFilename)
       this.writeSnapshot(writter)
     }
   }
 
-  needsCompaction ():boolean {
-    return (this._current.compactionScore >= 1) || (this._current.fileToCompact !== null)
+  needsCompaction(): boolean {
+    return (
+      this._current.compactionScore >= 1 || this._current.fileToCompact !== null
+    )
   }
 
   /**
    * 主要目的是更新this._current
    */
-  appendVersion (ver: Version): void {
+  appendVersion(ver: Version): void {
     assert(ver.refs === 0)
     assert(ver !== this._current)
     if (this._current) {
@@ -237,14 +256,14 @@ export default class VersionSet {
     ver.next.prev = ver
   }
 
-  reuseManifest () {
+  reuseManifest() {
     return false
   }
 
   /**
    * 将current写入manifest
    */
-  writeSnapshot (writter:LogWriter) {
+  writeSnapshot(writter: LogWriter) {
     const edit = new VersionEdit()
     edit.comparator = this.internalKeyComparator.userComparator.name()
 
