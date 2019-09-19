@@ -1,8 +1,11 @@
-const fs = require('fs').promises
-const path = require('path')
-const Slice = require('../Slice').default
-const SSTable = require('../SSTable').default
-const SSTableBuilder = require('../SSTableBuilder').default
+import fs_ from 'fs'
+import path from 'path'
+import Slice from '../Slice'
+import SSTable from '../SSTable'
+import SSTableBuilder from '../SSTableBuilder'
+import dbpath from '../../fixtures/dbpath'
+
+const fs = fs_.promises
 
 function padLeft(str, total = 10) {
   if (str.length < total) {
@@ -19,10 +22,9 @@ function randomValue(index) {
   return new Slice(`value${padLeft(String(index))}`)
 }
 
-
 test('sstable', async () => {
-  await fs.mkdir(path.resolve(__dirname, '../.db'), { recursive: true })
-  const tablePath = path.resolve(__dirname, '../.db/0001.ldb')
+  await fs.mkdir(dbpath, { recursive: true })
+  const tablePath = path.resolve(dbpath, './0001.ldb')
   // await fs.writeFile(tablePath, Buffer.alloc(0))
   const file = await fs.open(tablePath, 'w')
   const tableWritter = new SSTableBuilder(file)
@@ -35,15 +37,16 @@ test('sstable', async () => {
 
   await tableWritter.close()
 
-  const ldbPath = path.resolve(__dirname, '../.db/0001.ldb')
+  const ldbPath = path.resolve(dbpath, './0001.ldb')
   const buf = await fs.readFile(ldbPath)
   const table = new SSTable(buf)
   // console.log(table._footer.get())
 
   let count = 0
-  for (let result  of table.dataBlockIterator()) {
-    count ++
+  for (let result of table.dataBlockIterator()) {
+    count++
   }
-  console.log(count)
+  // check this later
+  // expect(count).toBe(3010)
   expect(table.get(sortedKey(1))).toBe('value0000000001')
 })

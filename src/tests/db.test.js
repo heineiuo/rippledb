@@ -1,7 +1,6 @@
-const assert = require('assert')
-const Database = require('../Database').default
-const dbpath = require('../../fixtures/dbpath')
-
+import assert from 'assert'
+import Database from '../Database'
+import dbpath from '../../fixtures/dbpath'
 
 test('read record from db', async () => {
   const db = new Database(dbpath)
