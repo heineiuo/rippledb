@@ -3,6 +3,7 @@ const path = require('path')
 const Slice = require('../Slice').default
 const SSTable = require('../SSTable').default
 const SSTableBuilder = require('../SSTableBuilder').default
+const dbpath = require('../../fixtures/dbpath')
 
 function padLeft(str, total = 10) {
   if (str.length < total) {
@@ -21,8 +22,8 @@ function randomValue(index) {
 
 
 test('sstable', async () => {
-  await fs.mkdir(path.resolve(__dirname, '../.db'), { recursive: true })
-  const tablePath = path.resolve(__dirname, '../.db/0001.ldb')
+  await fs.mkdir(dbpath, { recursive: true })
+  const tablePath = path.resolve(dbpath, './0001.ldb')
   // await fs.writeFile(tablePath, Buffer.alloc(0))
   const file = await fs.open(tablePath, 'w')
   const tableWritter = new SSTableBuilder(file)
@@ -35,7 +36,7 @@ test('sstable', async () => {
 
   await tableWritter.close()
 
-  const ldbPath = path.resolve(__dirname, '../.db/0001.ldb')
+  const ldbPath = path.resolve(dbpath, './0001.ldb')
   const buf = await fs.readFile(ldbPath)
   const table = new SSTable(buf)
   // console.log(table._footer.get())
