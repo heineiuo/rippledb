@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 // @flow
-import { type CompactPointer, type DeletedFile, type NewFile } from './VersionFormat'
+import { CompactPointer, DeletedFile, NewFile } from './VersionFormat'
 
 export default class VersionEdit {
   // major compaction时选择文件
@@ -15,25 +15,26 @@ export default class VersionEdit {
   compactPointers: CompactPointer[]
   deletedFiles: DeletedFile[]
   newFiles: NewFile[]
-  _comparator: string | null
-  _logNumber:number
-  _prevLogNumber: number
-  _lastLogNumber: number
-  _lastSequence: number
-  _nextFileNumber: number
-  _hasComparator: boolean
-  _hasLogNumber: boolean
-  _hasPrevLogNumber: boolean
-  _hasNextFileNumber: boolean
-  _hasLastSequence: boolean
+  _comparator: string
+  _logNumber?: number
+  _prevLogNumber?: number
+  _lastLogNumber?: number
+  _lastSequence?: number
+  _nextFileNumber?: number
+  _hasComparator?: boolean
+  _hasLogNumber?: boolean
+  _hasPrevLogNumber?: boolean
+  _hasNextFileNumber?: boolean
+  _hasLastSequence?: boolean
 
-  constructor () {
+  constructor() {
+    this._comparator = ''
     this.deletedFiles = []
     this.newFiles = []
     this.compactPointers = []
   }
 
-  clear () {
+  clear() {
     this.deletedFiles = []
     this.newFiles = []
     this.compactPointers = []
@@ -43,7 +44,7 @@ export default class VersionEdit {
     this._lastSequence = 0
     // sstable file number
     this._nextFileNumber = 0
-    this._comparator = null
+    this._comparator = ''
     this._lastLogNumber = 0
     this._hasComparator = false
     this._hasLogNumber = false
@@ -52,68 +53,68 @@ export default class VersionEdit {
     this._hasLastSequence = false
   }
 
-  set comparator (value:string) {
+  set comparator(value: string) {
     this._comparator = value
     this._hasComparator = true
   }
 
-  get comparator ():string | null {
-    return this._comparator || null
+  get comparator(): string {
+    return this._comparator
   }
 
-  set logNumber (value:number) {
+  set logNumber(value: number) {
     this._logNumber = value
     this._hasLogNumber = true
   }
 
-  get logNumber ():number {
+  get logNumber(): number {
     return this._logNumber || 0
   }
 
-  set prevLogNumber (value: number) {
+  set prevLogNumber(value: number) {
     this._prevLogNumber = value
     this._hasPrevLogNumber = true
   }
 
-  get prevLogNumber () :number {
+  get prevLogNumber(): number {
     return this._prevLogNumber || 0
   }
 
-  set nextFileNumber (value:number) {
+  set nextFileNumber(value: number) {
     this._nextFileNumber = value
     this._hasNextFileNumber = true
   }
 
-  get nextFileNumber () :number {
+  get nextFileNumber(): number {
     return this._nextFileNumber || 0
   }
 
-  set lastSequence (value: number) {
+  set lastSequence(value: number) {
     this._lastSequence = value
     this._hasLastSequence = true
   }
 
-  get lastSequence ():number {
+  get lastSequence(): number {
     return this._lastSequence || 0
   }
 
-  get hasComparator ():boolean {
+  get hasComparator(): boolean {
     return this._hasComparator || false
   }
 
-  get hasLogNumber ():boolean {
+  get hasLogNumber(): boolean {
     return this._hasLogNumber || false
   }
 
-  get hasPrevLogNumber ():boolean {
+  get hasPrevLogNumber(): boolean {
     return this._hasPrevLogNumber || false
   }
 
-  get hasNextFileNumber () :boolean {
+  get hasNextFileNumber(): boolean {
     return this._hasNextFileNumber || false
   }
 
-  get hasLastSequence ():boolean {
+  get hasLastSequence(): boolean {
     return this._hasLastSequence || false
   }
 }

@@ -8,38 +8,44 @@
 
 import path from 'path'
 
-function numberToString (number) {
-  let str = String(number)
+function numberToString(num: number) {
+  let str = String(num)
   while (str.length < 6) {
     str = `0${str}`
   }
   return str
 }
 
-export function getCurrentFilename (dbpath:string) {
+export function getCurrentFilename(dbpath: string) {
   return path.resolve(dbpath, 'CURRENT')
 }
 
-export function getLogFilename (dbpath:string, logNumber:number) :string {
+export function getLogFilename(dbpath: string, logNumber: number): string {
   return path.resolve(dbpath, `${numberToString(logNumber)}.log`)
 }
 
-export function getTableFilename (dbpath:string, tableNumber: number) :string {
+export function getTableFilename(dbpath: string, tableNumber: number): string {
   return path.resolve(dbpath, `${numberToString(tableNumber)}.ldb`)
 }
 
-export function getManifestFilename (dbpath:string, manifestNumber: number) :string {
+export function getManifestFilename(
+  dbpath: string,
+  manifestNumber: number
+): string {
   return path.resolve(dbpath, `MANIFEST-${numberToString(manifestNumber)}`)
 }
 
-export function getLockFilename (dbpath:string, manifestNumber: number):string {
+export function getLockFilename(
+  dbpath: string,
+  manifestNumber: number
+): string {
   return path.resolve(dbpath, `LOCK`)
 }
 
-export function getInfoLogFilename (dbpath:string):string {
+export function getInfoLogFilename(dbpath: string): string {
   return path.resolve(dbpath, `LOG`)
 }
 
-export function getOldInfoLogFilename (dbpath:string):string {
+export function getOldInfoLogFilename(dbpath: string): string {
   return path.resolve(dbpath, `LOG.old`)
 }

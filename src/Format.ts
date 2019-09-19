@@ -7,50 +7,48 @@
 
 // @flow
 
-import Enum from 'enum'
+export enum FileType {
+  kLogFile,
+  kDBLockFile,
+  kTableFile,
+  kDescriptorFile,
+  kCurrentFile,
+  kTempFile,
+  kInfoLogFile, // Either the current one, or an old one
+}
 
-export const FileType = new Enum([
-  'kLogFile',
-  'kDBLockFile',
-  'kTableFile',
-  'kDescriptorFile',
-  'kCurrentFile',
-  'kTempFile',
-  'kInfoLogFile' // Either the current one, or an old one
-])
+export enum ValueType {
+  kTypeDeletion = 0x00,
+  kTypeValue = 0x01,
+}
 
-export const ValueType = new Enum({
-  kTypeDeletion: 0x00,
-  kTypeValue: 0x01
-})
-
-export const RecordType = new Enum({
+export enum RecordType {
   // Zero is reserved for preallocated files
-  kZeroType: 0,
+  kZeroType = 0,
 
-  kFullType: 1,
+  kFullType = 1,
 
   // For fragments
-  kFirstType: 2,
-  kMiddleType: 3,
-  kLastType: 4
-})
+  kFirstType = 2,
+  kMiddleType = 3,
+  kLastType = 4,
+}
 
-export const VersionEditTag = new Enum({
-  kComparator: 1,
-  kLogNumber: 2,
-  kNextFileNumber: 3,
-  kLastSequence: 4,
-  kCompactPointer: 5,
-  kDeletedFile: 6,
-  kNewFile: 7,
+export enum VersionEditTag {
+  kComparator = 1,
+  kLogNumber = 2,
+  kNextFileNumber = 3,
+  kLastSequence = 4,
+  kCompactPointer = 5,
+  kDeletedFile = 6,
+  kNewFile = 7,
   // 8 was used for large value refs
-  kPrevLogNumber: 9
-})
+  kPrevLogNumber = 9,
+}
 
-export const CompressionTypes = new Enum({
-  none: 0x00
-})
+export enum CompressionTypes {
+  none = 0x00,
+}
 
 export const kBlockSize = 32768 // 32KB
 export const kMemTableDumpSize = 4194304 // 4MB
@@ -59,13 +57,13 @@ export class Config {
   static kNumLevels = 7 // 0...6
 
   // Level-0 compaction is started when we hit this many files.
-  static kL0CompactionTrigger = 4;
+  static kL0CompactionTrigger = 4
 
   // Soft limit on number of level-0 files.  We slow down writes at this point.
-  static kL0SlowdownWritesTrigger = 8;
+  static kL0SlowdownWritesTrigger = 8
 
   // Maximum number of level-0 files.  We stop writes at this point.
-  static kL0StopWritesTrigger = 12;
+  static kL0StopWritesTrigger = 12
 
   // Maximum level to which a new compacted memtable is pushed if it
   // does not create overlap.  We try to push to level 2 to avoid the
@@ -73,10 +71,10 @@ export class Config {
   // expensive manifest file operations.  We do not push all the way to
   // the largest level since that can generate a lot of wasted disk
   // space if the same key space is being repeatedly overwritten.
-  static kMaxMemCompactLevel = 2;
+  static kMaxMemCompactLevel = 2
 
   // Approximate gap in bytes between samples of data read during iteration.
-  static kReadBytesPeriod = 1048576;
+  static kReadBytesPeriod = 1048576
 }
 
 export const kInternalKeyComparatorName = 'leveldb.InternalKeyComparator'

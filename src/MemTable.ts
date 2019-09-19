@@ -14,38 +14,49 @@ import { ValueType } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
-import { type Options } from './Options'
+import { Options } from './Options'
 import { InternalKeyComparator } from './VersionFormat'
 
 export default class MemTable {
-  static getLengthPrefixedSlice (key:Slice):Slice {
+  static getLengthPrefixedSlice(key: Slice): Slice {
     const internalKeySize = varint.decode(key.buffer)
     const internalKeyBuffer = key.buffer.slice(0, internalKeySize)
     return new Slice(internalKeyBuffer)
   }
 
-  static getValueSlice (key:Slice):Slice | null {
+  static getValueSlice(key: Slice): Slice | null {
     const internalKeySize = varint.decode(key.buffer)
     const valueType = varint.decode(key.buffer.slice(internalKeySize))
-    if (ValueType.get(valueType) === ValueType.kTypeDeletion) {
+    if (valueType === ValueType.kTypeDeletion) {
       return null
     }
     const valueBuffer = key.buffer.slice(varint.decode.bytes + internalKeySize)
     const valueSize = varint.decode(valueBuffer)
-    const value = valueBuffer.slice(varint.decode.bytes, varint.decode.bytes + valueSize)
+    const value = valueBuffer.slice(
+      varint.decode.bytes,
+      varint.decode.bytes + valueSize
+    )
     return new Slice(value)
   }
 
-  static getValueWithEncoding (s:Slice, options?:Options = {}):Buffer | null {
+  static getValueWithEncoding(
+    s: Slice,
+    options: Options = {}
+  ): Buffer | null | string {
     const valueSlice = MemTable.getValueSlice(s)
     if (!valueSlice) return valueSlice
     const valueEncoding = options.valueEncoding || 'string'
     if (valueEncoding === 'string') return valueSlice.buffer.toString()
-    if (valueEncoding === 'json') return JSON.parse(valueSlice.buffer.toString())
+    if (valueEncoding === 'json')
+      return JSON.parse(valueSlice.buffer.toString())
     return valueSlice.buffer
   }
 
-  static createLookupKey (sequence:SequenceNumber, key:Slice, valueType:ValueType):Slice {
+  static createLookupKey(
+    sequence: SequenceNumber,
+    key: Slice,
+    valueType: ValueType
+  ): Slice {
     const keySize = key.size
     const internalKeySize = keySize + 8
     const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize))
@@ -53,51 +64,52 @@ export default class MemTable {
       internalKeySizeBuf,
       key.buffer,
       sequence.toFixedSizeBuffer(),
-      Buffer.from(varint.encode(valueType.value))
+      Buffer.from(varint.encode(valueType)),
     ])
     return new Slice(buf)
   }
 
-  _immutable:boolean
-  _list:Skiplist
+  _immutable: boolean
+  _list: Skiplist
   _size: number
   refs: number
   internalKeyComparator: InternalKeyComparator
 
-  constructor (internalKeyComparator: InternalKeyComparator) {
+  constructor(internalKeyComparator: InternalKeyComparator) {
     this._immutable = false
     this.internalKeyComparator = internalKeyComparator
     this._list = new Skiplist(65535, this.keyComparator)
     this._size = 0
+    this.refs = 0
   }
 
-  keyComparator = (a:Slice, b:Slice):number => {
+  keyComparator = (a: Slice, b: Slice): number => {
     const a1 = MemTable.getLengthPrefixedSlice(a)
     const b1 = MemTable.getLengthPrefixedSlice(b)
     return this.internalKeyComparator.compare(a1, b1)
   }
 
-  ref () {
+  ref() {
     this.refs++
   }
 
-  unref () {
+  unref() {
     this.refs--
   }
 
-  get size ():number {
+  get size(): number {
     return this._size
   }
 
-  get immutable (): boolean {
+  get immutable(): boolean {
     return this._immutable
   }
 
-  set immutable (next: boolean) {
+  set immutable(next: boolean) {
     if (next) this._immutable = true
   }
 
-  add (sequence:SequenceNumber, valueType:ValueType, key:Slice, value?:Slice) {
+  add(sequence: SequenceNumber, valueType: number, key: Slice, value?: Slice) {
     const keySize = key.length
     const valueSize = !value ? 0 : value.length
     const internalKeySize = keySize + 8 // sequence=7bytes, type = 1byte
@@ -112,14 +124,16 @@ export default class MemTable {
      * 2. Internal key: key --- type(1Byte)
      * 3. User key: key
      */
-    const buf = new Slice(Buffer.concat([
-      internalKeySizeBuf,
-      key.buffer,
-      sequence.toFixedSizeBuffer(),
-      Buffer.from(varint.encode(valueType.value)),
-      valueSizeBuf,
-      !value ? Buffer.alloc(0) : value.buffer
-    ]))
+    const buf = new Slice(
+      Buffer.concat([
+        internalKeySizeBuf,
+        key.buffer,
+        sequence.toFixedSizeBuffer(),
+        Buffer.from(varint.encode(valueType)),
+        valueSizeBuf,
+        !value ? Buffer.alloc(0) : value.buffer,
+      ])
+    )
     assert(encodedLength === buf.length, 'Incorrect length')
     // buf包含key和value
     this._list.put(buf)
@@ -136,13 +150,13 @@ export default class MemTable {
   // sequence number since the Seek() call above should have skipped
   // all entries with overly large sequence numbers.
   // 这里的key是lookup key
-  get (key:Slice, options:Options = {}):any {
+  get(key: Slice, options: Options = {}): any {
     const result = this._list.get(key, options)
     if (!result) return result
     return MemTable.getValueWithEncoding(result, options)
   }
 
-  * iterator (options?:Options = {}):Generator<any, void, void> {
+  *iterator(options: Options = {}): Generator<any, void, void> {
     let iterator = this._list.iterator()
     let result = iterator.next()
     while (!result.done) {

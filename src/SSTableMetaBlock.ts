@@ -31,25 +31,25 @@ import BloomFilter from './BloomFilter'
  * lg(base) : 1 byte
  */
 export default class SSTableMetaBlock {
-  constructor (buffer:Buffer, offset?:number, size?:number) {
+  constructor(buffer?: Buffer, offset?: number, size?: number) {
     this._buffer = buffer || Buffer.from([])
     this._offset = offset || 0
     this._size = size || 0
   }
 
-  _buffer:Buffer
-  _offset:number
-  _size:number
+  _buffer: Buffer
+  _offset: number
+  _size: number
 
-  get size ():number {
+  get size(): number {
     return this._size
   }
 
-  get buffer ():Buffer {
+  get buffer(): Buffer {
     return this._buffer
   }
 
-  get beginningOfOffset ():number {
+  get beginningOfOffset(): number {
     let buf
     if (this._offset === 0 && this._size === this._buffer.length) {
       buf = this._buffer
@@ -59,18 +59,18 @@ export default class SSTableMetaBlock {
     return varint.decode(buf, buf.length - 2)
   }
 
-  get baseLg ():number {
+  get baseLg(): number {
     return 11
   }
 
-  get base ():number {
+  get base(): number {
     return 1 << this.baseLg
   }
 
   /**
    * 添加bloom filter
    */
-  appendFilter (buffer:Buffer):void {
+  appendFilter(buffer: Buffer): void {
     // console.log('appendFilter buffer: ', buffer)
     // console.log('appendFilter buffer length: ', buffer.length)
 
@@ -87,7 +87,7 @@ export default class SSTableMetaBlock {
     let filterOffsetBuffers = buf.slice(this.beginningOfOffset, buf.length - 2)
     filterOffsetBuffers = Buffer.concat([
       filterOffsetBuffers,
-      Buffer.from(varint.encode(filterBuffers.length))
+      Buffer.from(varint.encode(filterBuffers.length)),
     ])
     // console.log('filterOffsetBuffers length: ', filterOffsetBuffers.length)
 
@@ -95,13 +95,13 @@ export default class SSTableMetaBlock {
       filterBuffers,
       filterOffsetBuffers,
       Buffer.from(varint.encode(filterBuffers.length)),
-      Buffer.from(varint.encode(this.baseLg))
+      Buffer.from(varint.encode(this.baseLg)),
     ])
     this._offset = 0
     this._size = this._buffer.length
   }
 
-  * iterator ():Generator<any, void, void> {
+  *iterator(): Generator<any, void, void> {
     const offsetIterator = this.offsetIterator()
     let offsetResult = offsetIterator.next()
     let filterStart = this._offset
@@ -117,7 +117,7 @@ export default class SSTableMetaBlock {
     }
   }
 
-  * offsetIterator ():Generator<any, void, void> {
+  *offsetIterator(): Generator<any, void, void> {
     const start = this.beginningOfOffset
     const offsetTotalCount = this._size - 2 - start
     // console.log('this._size: ', this._size)

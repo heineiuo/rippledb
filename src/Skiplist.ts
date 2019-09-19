@@ -10,11 +10,12 @@
 import assert from 'assert'
 import Slice from './Slice'
 import SkiplistNode from './SkiplistNode'
+import { Options } from './Options'
 
 const PROBABILITY = 1 / Math.E
 
 export default class Skiplist {
-  constructor (maxsize:number, keyComparator:(a:Slice, b:Slice) => number) {
+  constructor(maxsize: number, keyComparator: (a: Slice, b: Slice) => number) {
     this.maxsize = maxsize || 65535
     this.maxlevel = 11 // Math.round(Math.log(this.maxsize, 2))
     this.level = 0
@@ -26,19 +27,19 @@ export default class Skiplist {
     // [] -------> []
     // [] -------> []
     // head       tail
-    this.tail = new SkiplistNode(this.maxlevel)
-    this.tail.fill(this.tail)
+    this.tail = null
     this.keyComparator = keyComparator
-    this.head = new SkiplistNode(this.maxlevel, this.tail)
+    this.head = new SkiplistNode(this.maxlevel, this.tail, new Slice())
   }
 
-  maxsize:number
-  maxlevel:number
-  level:number
-  tail:SkiplistNode
-  head:SkiplistNode
+  keyComparator: (a: Slice, b: Slice) => number
+  maxsize: number
+  maxlevel: number
+  level: number
+  tail: null
+  head: SkiplistNode
 
-  generateNodeLevel ():number {
+  generateNodeLevel(): number {
     let nodeLevel = 0
     const max = Math.min(this.maxlevel, this.level + 1)
     while (Math.random() < PROBABILITY && nodeLevel < max) {
@@ -48,14 +49,20 @@ export default class Skiplist {
   }
 
   // === findGreaterOrEqual
-  findPrevNode (key:Slice, shouldUpdatePrevNodes:SkiplistNode[] = []):SkiplistNode {
+  findPrevNode(
+    key: Slice,
+    shouldUpdatePrevNodes: SkiplistNode[] = []
+  ): SkiplistNode {
     let level = this.maxlevel
     let prevNode = this.head
     let current = prevNode.levels[level]
     // let times = 0
     while (level >= 0) {
       // times ++
-      assert(prevNode.levels.length > level, 'prevNode level length must bigger then level')
+      assert(
+        prevNode.levels.length > level,
+        'prevNode level length must bigger then level'
+      )
 
       shouldUpdatePrevNodes[level] = prevNode
       current = prevNode.levels[level]
@@ -66,7 +73,10 @@ export default class Skiplist {
       //  如果key比下一个节点的key小，则循环结束
       //   如果next节点的key比插入节点小，则查找next节点是否存在
       //   next节点且比key大
-      if (!(current === this.tail) && this.keyComparator(current.key, key) < 0) {
+      if (
+        !(current === this.tail) &&
+        this.keyComparator(current.key, key) < 0
+      ) {
         prevNode = current
         continue
       }
@@ -78,7 +88,7 @@ export default class Skiplist {
     return prevNode
   }
 
-  * iterator ():Generator<Slice, void, void> {
+  *iterator(): Generator<Slice, void, void> {
     let current = this.head
     while (current.levels[0] !== this.tail) {
       yield current.levels[0].key
@@ -86,20 +96,21 @@ export default class Skiplist {
     }
   }
 
-  get (key:Slice):Slice {
+  get(key: Slice, options: Options): Slice | null {
     let prevNode = this.findPrevNode(key)
     if (!prevNode) return null
     let current = prevNode.next()
-    if (!current.key) return null
+    if (!current) return null
     if (this.keyComparator(current.key, key) === 0) return current.key
     return null
   }
 
-  del (key:Slice) {
+  del(key: Slice) {
     let update = new Array(this.maxlevel + 1)
     let prevNode = this.findPrevNode(key, update)
     if (!prevNode) return null
     let node = prevNode.next()
+    if (!node) return null
     if (this.keyComparator(node.key, key) !== 0) return
 
     for (let i = 0; i <= node.maxlevel; i++) {
@@ -109,7 +120,7 @@ export default class Skiplist {
     }
   }
 
-  put (key:Slice) {
+  put(key: Slice) {
     let shouldUpdatePrevNodes = new Array(this.maxlevel + 1)
     let prevNode = this.findPrevNode(key, shouldUpdatePrevNodes)
     // 如果是相同的key则不处理
