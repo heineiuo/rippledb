@@ -38,17 +38,41 @@ export class InternalKeyBuilder {
   }
 }
 
+class Comparator {
+  static name () {
+    return 0
+  }
+
+  static compare (key1:Slice, key2:Slice) {
+    return key1.compare(key2)
+  }
+
+  static findShortestSeparator () {
+
+  }
+
+  static findShortSuccessor () {
+
+  }
+}
+
 export class InternalKeyComparator {
   static extractUserKey (slice:Slice) {
     assert(slice.size > 8)
     return new Slice(slice.buffer.slice(0, slice.size - 8))
   }
 
+  userComparator:Comparator
+
+  constructor (userComparator: Comparator = Comparator) {
+    this.userComparator = userComparator
+  }
+
   compare (key1:Slice, key2:Slice):number {
     // 先比较user key
     const userKey1 = InternalKeyComparator.extractUserKey(key1)
     const userKey2 = InternalKeyComparator.extractUserKey(key2)
-    const r = userKey1.compare(userKey2)
+    const r = this.userComparator.compare(userKey1, userKey2)
     if (r !== 0) return r
     // 再比较sequence number
     const sn1 = varint.decode(key1.buffer, key1.size - 8)

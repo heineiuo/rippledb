@@ -12,11 +12,14 @@ import VersionSet from './VersionSet'
 import { Config } from './Format'
 
 export default class Version {
-  next:Version|null
-  prev:Version|null
+  next:Version
+  prev:Version
   refs:number
-  fileTocompact:FileMetaData|null
-  fileTocompactLevel:number
+
+  // Next file to compact based on seek stats.
+  fileToCompact:FileMetaData|null
+  fileToCompactLevel:number
+
   compactionScore:number
   compactionLevel:number
   files: FileSet[]
@@ -25,8 +28,8 @@ export default class Version {
     this.next = this
     this.prev = this
     this.refs = 0
-    this.fileTocompact = null
-    this.fileTocompactLevel = -1
+    this.fileToCompact = null
+    this.fileToCompactLevel = -1
     this.compactionScore = -1
     this.compactionLevel = -1
     const cmp = new BySmallestKey(versionSet.internalKeyComparator)

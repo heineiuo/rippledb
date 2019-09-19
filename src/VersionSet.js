@@ -6,6 +6,7 @@
  */
 // @flow
 
+import assert from 'assert'
 import fs from 'fs'
 import Version from './Version'
 import { getCurrentFilename, getManifestFilename } from './Filename'
@@ -16,6 +17,7 @@ import LogReader from './LogReader'
 import MemTable from './MemTable'
 import VersionEdit from './VersionEdit'
 import { Config } from './Format'
+import LogWriter from './LogWriter'
 
 export default class VersionSet {
   compactPointers: CompactPointer[]
@@ -38,11 +40,14 @@ export default class VersionSet {
   _memtable: MemTable
   internalKeyComparator: InternalKeyComparator
 
+  manifestWritter: LogWriter
+
   constructor (dbpath: string, options: any, memtable: MemTable, internalKeyComparator: InternalKeyComparator) {
     this._dbpath = dbpath
     this._options = options
     this._memtable = memtable
     this.internalKeyComparator = internalKeyComparator
+    this._dummyVersions = new Version(this)
     this.appendVersion(new Version(this))
     this.compactPointers = []
   }
@@ -180,15 +185,56 @@ export default class VersionSet {
     ver.compactionScore = bestScore
   }
 
+  // 需要写入manifest
   logAndApply (edit:VersionEdit) {
+    if (edit.hasLogNumber) {
+      assert(edit.logNumber >= this.logNumber)
+      assert(edit.logNumber < this.nextFileNumber)
+    } else {
+      edit.logNumber = this.logNumber
+    }
 
+    if (!edit.hasPrevLogNumber) {
+      edit.prevLogNumber = this.prevLogNumber
+    }
+
+    edit.nextFile = this.nextFileNumber
+    edit.lastSequence = this.lastSequence
+
+    const v = new Version(this)
+    const builder = new VersionBuilder(this, this._current)
+    builder.apply(edit)
+    builder.saveTo(v)
+    this.finalize(v)
+
+    let manifestFilename:string
+    if (this.manifestWritter) {
+      const nextManifestFilename = getManifestFilename(this._dbpath, this.manifestFileNumber)
+      edit.nextFile = this.nextFileNumber
+      const writter = new LogWriter(nextManifestFilename)
+      this.writeSnapshot(writter)
+    }
+  }
+
+  needsCompaction ():boolean {
+    return (this._current.compactionScore >= 1) || (this._current.fileToCompact !== null)
   }
 
   /**
-     * 主要目的是更新this._current
-     */
+   * 主要目的是更新this._current
+   */
   appendVersion (ver: Version): void {
+    assert(ver.refs === 0)
+    assert(ver !== this._current)
+    if (this._current) {
+      this._current.unref()
+    }
     this._current = ver
+    ver.ref()
+    ver.prev = this._dummyVersions.prev
+    ver.next = this._dummyVersions
+    ver.prev.next = ver
+    ver.next.prev = ver
   }
 
   reuseManifest () {
@@ -198,7 +244,11 @@ export default class VersionSet {
   /**
    * 将current写入manifest
    */
-  writeSnapshot () {
+  writeSnapshot (writter:LogWriter) {
+    const edit = new VersionEdit()
+    edit.comparator = this.internalKeyComparator.userComparator.name()
 
+    const record = VersionEditRecord.add(edit)
+    writter.addRecord(record)
   }
 }
