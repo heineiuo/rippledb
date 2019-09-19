@@ -20,7 +20,7 @@ jobs:
     - name: yarn, build, and test
       run: |
         yarn
-        yarn build --if-present
+        yarn build
         yarn test --coverage
       env:
         CI: true
