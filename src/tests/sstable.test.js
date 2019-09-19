@@ -1,9 +1,11 @@
-const fs = require('fs').promises
-const path = require('path')
-const Slice = require('../Slice').default
-const SSTable = require('../SSTable').default
-const SSTableBuilder = require('../SSTableBuilder').default
-const dbpath = require('../../fixtures/dbpath')
+import fs_ from 'fs'
+import path from 'path'
+import Slice from '../Slice'
+import SSTable from '../SSTable'
+import SSTableBuilder from '../SSTableBuilder'
+import dbpath from '../../fixtures/dbpath'
+
+const fs = fs_.promises
 
 function padLeft(str, total = 10) {
   if (str.length < total) {

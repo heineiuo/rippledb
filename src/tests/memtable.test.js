@@ -1,10 +1,9 @@
-const varint = require('varint')
-const assert = require('assert')
-const Slice = require('../Slice').default
-const MemTable = require('../MemTable').default
-const ValueType = require('../Format').ValueType
-const SequenceNumber = require('../SequenceNumber').default
-const InternalKeyComparator = require('../VersionFormat').InternalKeyComparator
+import varint from 'varint'
+import Slice from '../Slice'
+import MemTable from '../MemTable'
+import { ValueType } from '../Format'
+import SequenceNumber from '../SequenceNumber'
+import { InternalKeyComparator } from '../VersionFormat'
 
 function createLookupKey (sequence, key, valueType) {
   const keySize = key.size
