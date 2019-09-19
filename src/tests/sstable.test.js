@@ -45,6 +45,6 @@ test('sstable', async () => {
   for (let result  of table.dataBlockIterator()) {
     count ++
   }
-  console.log(count)
+  expect(count).toBe(3010)
   expect(table.get(sortedKey(1))).toBe('value0000000001')
 })

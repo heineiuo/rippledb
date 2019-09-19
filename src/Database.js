@@ -166,7 +166,7 @@ export default class Database {
     // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
     // await this._log.addRecord(LogRecord.del(sliceKey))
     WriteBatch.insert(batch, this._memtable)
-    console.log('insert to memtable success')
+    // console.log('insert to memtable success')
     WriteBatch.setSequence(batch, lastSequence + 1)
 
     // this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)

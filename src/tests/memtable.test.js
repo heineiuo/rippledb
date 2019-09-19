@@ -27,7 +27,6 @@ test('memtable add and get', () => {
   memtable.add(sequence, ValueType.kTypeValue, new Slice('key3'), new Slice('key3value12389fdajj123'))
 
   const lookupkey1 = createLookupKey(sequence, new Slice('key'), ValueType.kTypeValue)
-  console.time('find key')
   const result = memtable.get(lookupkey1)
   expect(result).toBe('key1valuevalue1')
   const lookupkey2 = createLookupKey(sequence, new Slice('key3'), ValueType.kTypeValue)

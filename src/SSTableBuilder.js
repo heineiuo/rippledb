@@ -121,6 +121,6 @@ export default class SSTableBuilder {
     })
     await this.appendFile(this._footer.buffer)
     await this._file.close()
-    console.log(`SSTable flush times: ${this._flushTimes}`)
+    // console.log(`SSTable flush times: ${this._flushTimes}`)
   }
 }
