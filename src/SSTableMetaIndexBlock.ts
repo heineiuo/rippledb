@@ -8,12 +8,11 @@
 // @flow
 
 import varint from 'varint'
-import { type Options } from './Options'
+import { Options } from './Options'
 import TableBlock from './SSTableBlock'
 import SStableMetaBlock from './SSTableMetaBlock'
 
 export default class TableMetaIndexBlock extends TableBlock {
-
   get filterKey(): string {
     return `filter.leveldb.BuiltinBloomFilter2`
   }
@@ -21,7 +20,7 @@ export default class TableMetaIndexBlock extends TableBlock {
   /**
    * 实际上MetaBlock只创建一个
    */
-  * metaBlockIterator (options?:Options):Generator<any, void, void> {
+  *metaBlockIterator(options?: Options): Generator<any, void, void> {
     const iterator = this.iterator(options)
     let record = iterator.next()
     while (!record.done) {

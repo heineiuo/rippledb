@@ -18,78 +18,85 @@ import { FileMetaData, NewFile, InternalKey } from './VersionFormat'
 import { createHexStringFromDecimal } from './LogFormat'
 
 export default class VersionEditRecord {
-  static from (buf:Buffer):VersionEditRecord {
+  static from(buf: Buffer): VersionEditRecord {
     const length = buf.readUInt16BE(4)
-    const type = RecordType.get(buf.readUInt8(6))
+    const type = buf.readUInt8(6)
     const data = new Slice(buf.slice(7, 7 + length))
     assert(length === data.length)
     const record = new VersionEditRecord(type, data)
     return record
   }
 
-  static add (edit:VersionEdit):Slice {
+  static add(edit: VersionEdit): Slice {
     console.log('add edit', edit.hasNextFileNumber)
 
-    let bufList:Buffer[] = []
+    let bufList: Buffer[] = []
     if (edit.hasComparator) {
-      bufList.push(Buffer.from([VersionEditTag.kComparator.value]))
-      bufList.push(Buffer.from(varint.encode(edit.comparator && edit.comparator.length)))
+      bufList.push(Buffer.from([VersionEditTag.kComparator]))
+      bufList.push(Buffer.from(varint.encode(edit.comparator.length)))
       bufList.push(Buffer.from(edit.comparator))
     }
     if (edit.hasLogNumber) {
-      bufList.push(Buffer.from([VersionEditTag.kLogNumber.value]))
+      bufList.push(Buffer.from([VersionEditTag.kLogNumber]))
       bufList.push(Buffer.from(varint.encode(edit.logNumber)))
     }
     if (edit.hasPrevLogNumber) {
-      bufList.push(Buffer.from([VersionEditTag.kPrevLogNumber.value]))
+      bufList.push(Buffer.from([VersionEditTag.kPrevLogNumber]))
       bufList.push(Buffer.from(varint.encode(edit.prevLogNumber)))
     }
     if (edit.hasNextFileNumber) {
-      bufList.push(Buffer.from([VersionEditTag.kNextFileNumber.value]))
+      bufList.push(Buffer.from([VersionEditTag.kNextFileNumber]))
       bufList.push(Buffer.from(varint.encode(edit.nextFileNumber)))
     }
     if (edit.hasLastSequence) {
-      bufList.push(Buffer.from([VersionEditTag.kLastSequence.value]))
+      bufList.push(Buffer.from([VersionEditTag.kLastSequence]))
       bufList.push(Buffer.from(varint.encode(edit.lastSequence)))
     }
-    edit.compactPointers.forEach((pointer: { level:Number, internalKey:Slice}) => {
-      bufList.push(Buffer.from([VersionEditTag.kCompactPointer.value]))
-      bufList.push(Buffer.from(varint.encode(pointer.level)))
-      bufList.push(Buffer.from(varint.encode(pointer.internalKey.length)))
-      bufList.push(pointer.internalKey.buffer)
-    })
+    edit.compactPointers.forEach(
+      (pointer: { level: number; internalKey: Slice }) => {
+        bufList.push(Buffer.from([VersionEditTag.kCompactPointer]))
+        bufList.push(Buffer.from(varint.encode(pointer.level)))
+        bufList.push(Buffer.from(varint.encode(pointer.internalKey.length)))
+        bufList.push(pointer.internalKey.buffer)
+      }
+    )
 
-    edit.deletedFiles.forEach((file: {level: number, fileNum: number}) => {
-      bufList.push(Buffer.from([VersionEditTag.kDeletedFile.value]))
+    edit.deletedFiles.forEach((file: { level: number; fileNum: number }) => {
+      bufList.push(Buffer.from([VersionEditTag.kDeletedFile]))
       bufList.push(Buffer.from(varint.encode(file.level)))
       bufList.push(Buffer.from(varint.encode(file.fileNum)))
     })
 
     edit.newFiles.forEach((file: NewFile) => {
-      bufList.push(Buffer.from([VersionEditTag.kNewFile.value]))
+      bufList.push(Buffer.from([VersionEditTag.kNewFile]))
       bufList.push(Buffer.from(varint.encode(file.level)))
       bufList.push(Buffer.from(varint.encode(file.fileMetaData.number)))
       bufList.push(Buffer.from(varint.encode(file.fileMetaData.fileSize)))
-      bufList.push(Buffer.from(varint.encode(file.fileMetaData.smallest.length)))
+      bufList.push(
+        Buffer.from(varint.encode(file.fileMetaData.smallest.length))
+      )
       bufList.push(file.fileMetaData.smallest.buffer)
-      bufList.push(Buffer.from(varint.encode(file.fileMetaData.largestKey.length)))
+      bufList.push(Buffer.from(varint.encode(file.fileMetaData.largest.length)))
       bufList.push(file.fileMetaData.largest.buffer)
     })
 
     return new Slice(Buffer.concat(bufList))
   }
 
-  static parseOp (op: Slice): VersionEdit {
+  static parseOp(op: Slice): VersionEdit {
     let index = 0
     const edit = new VersionEdit()
     while (index < op.length) {
-      const type = VersionEditTag.get(op.buffer.readUInt8(index))
+      const type = op.buffer.readUInt8(index)
       index += 1
 
       if (type === VersionEditTag.kComparator) {
         const comparatorNameLength = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        const comparatorName = op.buffer.slice(index, index + comparatorNameLength)
+        const comparatorName = op.buffer.slice(
+          index,
+          index + comparatorNameLength
+        )
         index += comparatorNameLength
         edit.comparator = comparatorName.toString()
         continue
@@ -122,7 +129,7 @@ export default class VersionEditRecord {
         index += internalKeyLength
         edit.compactPointers.push({
           level,
-          internalKey: new InternalKey(internalKey.buffer)
+          internalKey: new InternalKey(internalKey.buffer),
         })
         continue
       } else if (type === VersionEditTag.kDeletedFile) {
@@ -132,7 +139,7 @@ export default class VersionEditRecord {
         index += varint.decode.bytes
         edit.deletedFiles.push({
           level,
-          fileNum
+          fileNum,
         })
         continue
       } else if (type === VersionEditTag.kNewFile) {
@@ -156,8 +163,8 @@ export default class VersionEditRecord {
             fileNum,
             fileSize,
             smallestKey: new Slice(smallestKey),
-            largestKey: new Slice(largestKey)
-          })
+            largestKey: new Slice(largestKey),
+          }),
         })
         continue
       }
@@ -165,31 +172,29 @@ export default class VersionEditRecord {
     return edit
   }
 
-  constructor (type:RecordType, data:Slice | Buffer) {
+  constructor(type: VersionEditTag, data: Slice | Buffer) {
     this.type = type
     this.data = new Slice(data)
   }
 
-  get length () {
+  get length() {
     return this.data.length + 7
   }
 
-  get size () {
+  get size() {
     return this.length
   }
 
-  data:Slice
-  type:VersionEditTag
+  data: Slice
+  type: VersionEditTag
 
-  get buffer ():Buffer {
-    const lengthBuf = Buffer.from(createHexStringFromDecimal(this.data.length), 'hex')
-    const typeBuf = Buffer.from([this.type.value])
+  get buffer(): Buffer {
+    const lengthBuf = Buffer.from(
+      createHexStringFromDecimal(this.data.length),
+      'hex'
+    )
+    const typeBuf = Buffer.from([this.type])
     const sum = crc32(Buffer.concat([typeBuf, this.data.buffer]))
-    return Buffer.concat([
-      sum,
-      lengthBuf,
-      typeBuf,
-      this.data.buffer
-    ])
+    return Buffer.concat([sum, lengthBuf, typeBuf, this.data.buffer])
   }
 }

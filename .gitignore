@@ -7,3 +7,4 @@ dist
 build
 flow-coverage
 coverage
+.vscode

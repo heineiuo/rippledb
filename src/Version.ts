@@ -12,19 +12,19 @@ import VersionSet from './VersionSet'
 import { Config } from './Format'
 
 export default class Version {
-  next:Version
-  prev:Version
-  refs:number
+  next: Version
+  prev: Version
+  refs: number
 
   // Next file to compact based on seek stats.
-  fileToCompact:FileMetaData|null
-  fileToCompactLevel:number
+  fileToCompact: FileMetaData | null
+  fileToCompactLevel: number
 
-  compactionScore:number
-  compactionLevel:number
+  compactionScore: number
+  compactionLevel: number
   files: FileSet[]
 
-  constructor (versionSet:VersionSet) {
+  constructor(versionSet: VersionSet) {
     this.next = this
     this.prev = this
     this.refs = 0
@@ -33,14 +33,17 @@ export default class Version {
     this.compactionScore = -1
     this.compactionLevel = -1
     const cmp = new BySmallestKey(versionSet.internalKeyComparator)
-    this.files = Array.from({ length: Config.kNumLevels }, () => new FileSet(cmp))
+    this.files = Array.from(
+      { length: Config.kNumLevels },
+      () => new FileSet(cmp)
+    )
   }
 
-  ref () {
+  ref() {
     this.refs++
   }
 
-  unref () {
+  unref() {
     assert(this.refs >= 1)
     this.refs--
     if (this.refs === 0) {
