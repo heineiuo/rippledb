@@ -15,32 +15,30 @@ import Slice from './Slice'
 import LogRecord from './LogRecord'
 
 export default class LogWriter {
-  constructor (filename: string) {
+  constructor(filename: string) {
     this._filename = filename
     this._currentBlockSize = 0
   }
 
-  _file: {
-    [x: string]: any
-  }
+  _file!: fs.promises.FileHandle
   _filename: string
   _currentBlockSize: number
 
-  async appendFile (buf: Buffer) {
+  async appendFile(buf: Buffer) {
     if (!this._file) {
       this._file = await fs.promises.open(this._filename, 'a+')
     }
     await this._file.appendFile(buf, {})
   }
 
-  async close () {
+  async close() {
     await this._file.close()
   }
 
   /**
    * record op: type(ValueType, 1B) | key_length (varint32) | key | value_length(varint32) | value
    */
-  async addRecord (recordOp: Slice) {
+  async addRecord(recordOp: Slice) {
     if (this._currentBlockSize + 7 + recordOp.length <= kBlockSize) {
       // 不需要分割
       const record = new LogRecord(RecordType.kFullType, recordOp)
@@ -61,7 +59,11 @@ export default class LogWriter {
 
         const startPosition = currentRecordOpPosition
         const remainOp = recordOp.size - currentRecordOpPosition
-        const currentRecordSize = Math.min(currentFreeSpace - 7, recordOp.size - currentRecordOpPosition) + 7
+        const currentRecordSize =
+          Math.min(
+            currentFreeSpace - 7,
+            recordOp.size - currentRecordOpPosition
+          ) + 7
         currentRecordOpPosition += currentRecordSize - 7
 
         let recordType: RecordType
@@ -79,7 +81,12 @@ export default class LogWriter {
           recordType = RecordType.kMiddleType
         }
 
-        const record = new LogRecord(recordType, new Slice(recordOp.buffer.slice(startPosition, currentRecordOpPosition)))
+        const record = new LogRecord(
+          recordType,
+          new Slice(
+            recordOp.buffer.slice(startPosition, currentRecordOpPosition)
+          )
+        )
         assert(record.length === currentRecordSize)
         await this.appendFile(record.buffer)
         if (recordType === RecordType.kLastType) {

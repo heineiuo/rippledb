@@ -27,8 +27,7 @@ export default class Skiplist {
     // [] -------> []
     // [] -------> []
     // head       tail
-    this.tail = new SkiplistNode(this.maxlevel, null, new Slice())
-    this.tail.fill(this.tail)
+    this.tail = null
     this.keyComparator = keyComparator
     this.head = new SkiplistNode(this.maxlevel, this.tail, new Slice())
   }
@@ -37,7 +36,7 @@ export default class Skiplist {
   maxsize: number
   maxlevel: number
   level: number
-  tail: SkiplistNode
+  tail: null
   head: SkiplistNode
 
   generateNodeLevel(): number {
@@ -97,11 +96,11 @@ export default class Skiplist {
     }
   }
 
-  get(key: Slice, options: Options): Slice {
+  get(key: Slice, options: Options): Slice | null {
     let prevNode = this.findPrevNode(key)
     if (!prevNode) return null
     let current = prevNode.next()
-    if (!current.key) return null
+    if (!current) return null
     if (this.keyComparator(current.key, key) === 0) return current.key
     return null
   }
@@ -111,6 +110,7 @@ export default class Skiplist {
     let prevNode = this.findPrevNode(key, update)
     if (!prevNode) return null
     let node = prevNode.next()
+    if (!node) return null
     if (this.keyComparator(node.key, key) !== 0) return
 
     for (let i = 0; i <= node.maxlevel; i++) {

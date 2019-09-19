@@ -45,8 +45,8 @@ export class InternalKeyBuilder {
 }
 
 class Comparator {
-  getName(): number {
-    return 0
+  getName(): string {
+    return '0'
   }
 
   compare(key1: Slice, key2: Slice) {

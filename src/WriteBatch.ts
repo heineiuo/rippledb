@@ -16,8 +16,8 @@ import SequenceNumber from './SequenceNumber'
 import { ValueType } from './Format'
 
 export type AtomicUpdate = {
-  type: ValueType,
-  key: Slice,
+  type: ValueType
+  key: Slice
   value?: Slice
 }
 
@@ -26,7 +26,7 @@ export default class WriteBatch {
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
   static kHeader = 8
 
-  static insert (batch:WriteBatch, mem:MemTable) {
+  static insert(batch: WriteBatch, mem: MemTable) {
     const sn = WriteBatch.getSequence(batch)
     for (let update of batch.iterator()) {
       const { type, key, value } = update
@@ -34,38 +34,40 @@ export default class WriteBatch {
     }
   }
 
-  static setSequence (batch: WriteBatch, sequence:number) {
-    batch.buffer.fill(new SequenceNumber(sequence).toFixedSizeBuffer(WriteBatch.kHeader))
+  static setSequence(batch: WriteBatch, sequence: number) {
+    batch.buffer.fill(
+      new SequenceNumber(sequence).toFixedSizeBuffer(WriteBatch.kHeader)
+    )
   }
 
-  static getSequence (batch: WriteBatch):SequenceNumber {
+  static getSequence(batch: WriteBatch): SequenceNumber {
     return new SequenceNumber(varint.decode(batch.buffer))
   }
 
-  count:number
-  buffer:Buffer
+  count: number
+  buffer: Buffer
 
-  constructor () {
+  constructor() {
     this.buffer = Buffer.alloc(WriteBatch.kHeader)
-    this.count++
+    this.count = 0
   }
 
-  put (key:Slice, value:Slice) {
+  put(key: Slice, value: Slice) {
     const slice = LogRecord.add(key, value)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
     this.count++
   }
 
-  del (key:Slice) {
+  del(key: Slice) {
     const slice = LogRecord.del(key)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
     this.count++
   }
 
-  * iterator ():Generator<AtomicUpdate, void, void> {
+  *iterator(): Generator<AtomicUpdate, void, void> {
     let index = 8
     while (index < this.buffer.length) {
-      const valueType = ValueType.get(this.buffer.readUInt8(index))
+      const valueType = this.buffer.readUInt8(index)
       index++
       const keyLength = varint.decode(this.buffer, index)
       index += varint.decode.bytes
@@ -75,7 +77,7 @@ export default class WriteBatch {
       if (valueType === ValueType.kTypeDeletion) {
         yield {
           type: valueType,
-          key: new Slice(keyBuffer)
+          key: new Slice(keyBuffer),
         }
         continue
       }
@@ -87,7 +89,7 @@ export default class WriteBatch {
       yield {
         type: valueType,
         key: new Slice(keyBuffer),
-        value: new Slice(valueBuffer)
+        value: new Slice(valueBuffer),
       }
     }
   }

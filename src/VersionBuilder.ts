@@ -26,7 +26,10 @@ export default class VersionBuilder {
   constructor(versionSet: VersionSet, base: Version) {
     this._versionSet = versionSet
     this._base = base
-    this._levels = Array.from({ length: Config.kNumLevels }, (v, k) => ({}))
+    this._levels = Array.from({ length: Config.kNumLevels }, (v, k) => ({
+      addedFiles: new FileSet(this.cmp),
+      deletedFiles: new Set(),
+    }))
     base.ref()
     const cmp = new BySmallestKey(versionSet.internalKeyComparator)
     this.cmp = cmp
@@ -40,7 +43,7 @@ export default class VersionBuilder {
     // compactPointers: type = <int, InternalKey>
     for (let i = 0; i < edit.compactPointers.length; i++) {
       const level = edit.compactPointers[i].level
-      this._versionSet.compactPointers[level] =
+      this._versionSet.compactPointers[level].internalKey =
         edit.compactPointers[i].internalKey
     }
     // traverse deleted_files_ 记录可删除文件到各level对应的deleted_files

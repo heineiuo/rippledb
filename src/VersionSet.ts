@@ -26,19 +26,19 @@ import LogWriter from './LogWriter'
 export default class VersionSet {
   compactPointers: CompactPointer[]
   _manifestFileNumber?: number
-  _current?: Version
+  _current!: Version
   _dummyVersions: Version
   hasLogNumber?: boolean
   hasNextFileNumber?: boolean
   hasPrevLogNumber?: boolean
-  logNumber?: number
+  logNumber!: number
 
   // if prevLogNumber is 0, then no log file is being compacted
-  prevLogNumber?: number
-  lastSequence?: number
+  prevLogNumber!: number
+  lastSequence!: number
   hasLastSequence?: boolean
-  manifestFileNumber?: number
-  nextFileNumber?: number
+  manifestFileNumber!: number
+  nextFileNumber!: number
 
   _dbpath: string
   _options: any
@@ -66,10 +66,8 @@ export default class VersionSet {
     return this._current
   }
 
-  getNextFileNumber() {
-    if (!!this.nextFileNumber) {
-      return this.nextFileNumber++
-    }
+  getNextFileNumber(): number {
+    return this.nextFileNumber++
   }
 
   async recover() {
@@ -85,7 +83,7 @@ export default class VersionSet {
     let hasLogNumber = false
     let hasNextFileNumber = false
     let hasPrevLogNumber = false
-    let hasLastSequence = 0
+    let hasLastSequence = false
     let logNumber = 0
     let nextFileNumber = 0
     let prevLogNumber = 0
@@ -105,7 +103,7 @@ export default class VersionSet {
     // 更新next file
     // 更新last sequence
     // 通过version builder 创建一个新的version
-    for await (let edit: VersionEdit of reader.iterator()) {
+    for await (let edit of reader.iterator()) {
       // console.log(edit)
       builder.apply(edit)
 
@@ -212,7 +210,7 @@ export default class VersionSet {
       edit.prevLogNumber = this.prevLogNumber
     }
 
-    edit.nextFile = this.nextFileNumber
+    edit.nextFileNumber = this.nextFileNumber
     edit.lastSequence = this.lastSequence
 
     const v = new Version(this)
@@ -227,7 +225,7 @@ export default class VersionSet {
         this._dbpath,
         this.manifestFileNumber
       )
-      edit.nextFile = this.nextFileNumber
+      edit.nextFileNumber = this.nextFileNumber
       const writter = new LogWriter(nextManifestFilename)
       this.writeSnapshot(writter)
     }
@@ -265,7 +263,7 @@ export default class VersionSet {
    */
   writeSnapshot(writter: LogWriter) {
     const edit = new VersionEdit()
-    edit.comparator = this.internalKeyComparator.userComparator.name()
+    edit.comparator = this.internalKeyComparator.userComparator.getName()
 
     const record = VersionEditRecord.add(edit)
     writter.addRecord(record)

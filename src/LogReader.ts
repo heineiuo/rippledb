@@ -15,25 +15,25 @@ import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
 
 export default class LogReader {
-  constructor (filename: string, LogRecord: any) {
+  constructor(filename: string, LogRecord: any) {
     this._filename = filename
     this._LogRecord = LogRecord
   }
 
-  _file: {
+  _file!: {
     [x: string]: any
   }
   _filename: string
   _LogRecord: {
-    parseOp:(op:Slice) => any,
-    from:(param:Buffer) => any
+    parseOp: (op: Slice) => any
+    from: (param: Buffer) => any
   }
 
-  async close () {
+  async close() {
     await this._file.close()
   }
 
-  async * iterator (): AsyncGenerator<any, void, void> {
+  async *iterator(): AsyncGenerator<any, void, void> {
     const LogRecord = this._LogRecord
     const fd = await fs.promises.open(this._filename, 'r')
     let buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))
@@ -42,7 +42,7 @@ export default class LogReader {
     let latestType = null
     let bufHandledPosition = 0
     while (true) {
-      if (blockIndex === -1 || (bufHandledPosition >= kBlockSize - 7)) {
+      if (blockIndex === -1 || bufHandledPosition >= kBlockSize - 7) {
         const position = ++blockIndex * kBlockSize
         const { bytesRead } = await fd.read(buf, 0, kBlockSize, position)
         if (bytesRead === 0) {

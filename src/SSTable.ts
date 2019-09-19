@@ -9,7 +9,7 @@
 /* global Generator */
 
 import { Buffer } from 'buffer'
-import { type Options } from './Options'
+import { Options } from './Options'
 import Slice from './Slice'
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
@@ -21,24 +21,34 @@ import MetaIndexBlock from './SSTableMetaIndexBlock'
  * @constructor
  */
 export default class SSTable {
-  constructor (buf: Buffer, options?: { immutable: boolean } = {}) {
-    this._footer = new Footer(buf)
-    const footerData = this._footer.get()
-    const metaIndexBlockBuf = buf.slice(footerData.metaIndexOffset, footerData.metaIndexOffset + footerData.metaIndexSize)
-    this._indexBlock = new IndexBlock(buf, footerData.indexOffset, footerData.indexSize)
-    this._metaIndexBlock = new MetaIndexBlock(metaIndexBlockBuf)
-    this._immutable = options.immutable || false
-    this._cacheData = Buffer.from([])
-  }
-
   _footer: Footer
   _immutable: boolean
   _cacheData: Buffer
   _indexBlock: IndexBlock
-  _dataBlock: DataBlock
+  _dataBlock!: DataBlock
   _metaIndexBlock: MetaIndexBlock
 
-  get (key:Slice, options?:Options):Slice |null {
+  constructor(
+    buf: Buffer,
+    options: { immutable: boolean } = { immutable: false }
+  ) {
+    this._footer = new Footer(buf)
+    const footerData = this._footer.get()
+    const metaIndexBlockBuf = buf.slice(
+      footerData.metaIndexOffset,
+      footerData.metaIndexOffset + footerData.metaIndexSize
+    )
+    this._indexBlock = new IndexBlock(
+      buf,
+      footerData.indexOffset,
+      footerData.indexSize
+    )
+    this._metaIndexBlock = new MetaIndexBlock(metaIndexBlockBuf)
+    this._immutable = options.immutable
+    this._cacheData = Buffer.from([])
+  }
+
+  get(key: Slice, options?: Options): Slice | null {
     for (let value of this.dataBlockIterator()) {
       if (key.compare(new Slice(value.key)) === 0) {
         return value.value
@@ -47,15 +57,13 @@ export default class SSTable {
     return null
   }
 
-  * iterator ():Generator<any, void, void> {
+  *iterator(): Generator<any, void, void> {}
 
+  *dataBlockIterator(): Generator<any, void, void> {
+    yield* this._indexBlock.dataBlockIterator()
   }
 
-  * dataBlockIterator ():Generator<any, void, void> {
-    yield * this._indexBlock.dataBlockIterator()
-  }
-
-  * indexBlockIterator ():Generator<any, void, void> {
-    yield * this._indexBlock.iterator()
+  *indexBlockIterator(): Generator<any, void, void> {
+    yield* this._indexBlock.iterator()
   }
 }
