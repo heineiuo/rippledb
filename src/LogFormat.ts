@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @flow
 
 export function createHexStringFromDecimal (decimal:number):string {
   let str = decimal.toString(16)

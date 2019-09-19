@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "test": "jest",
-    "build": "babel src -d build --source-maps --extensions \".ts\"",
+    "build": "babel src -d build --source-maps --extensions \".ts\" && tsc -d",
     "prepublish": "export NODE_ENV=production && yarn build"
   },
   "files": [

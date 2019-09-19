@@ -4,8 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-// @flow
-/* global Generator */
 
 import assert from 'assert'
 import varint from 'varint'
@@ -16,6 +14,8 @@ import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 import { Options } from './Options'
 import { InternalKeyComparator } from './VersionFormat'
+
+type UserValue = Buffer | null | string
 
 export default class MemTable {
   static getLengthPrefixedSlice(key: Slice): Slice {
@@ -39,10 +39,7 @@ export default class MemTable {
     return new Slice(value)
   }
 
-  static getValueWithEncoding(
-    s: Slice,
-    options: Options = {}
-  ): Buffer | null | string {
+  static getValueWithEncoding(s: Slice, options: Options = {}): UserValue {
     const valueSlice = MemTable.getValueSlice(s)
     if (!valueSlice) return valueSlice
     const valueEncoding = options.valueEncoding || 'string'
@@ -153,14 +150,14 @@ export default class MemTable {
   get(key: Slice, options: Options = {}): any {
     const result = this._list.get(key, options)
     if (!result) return result
-    return MemTable.getValueWithEncoding(result, options)
+    return MemTable.getValueWithEncoding(result)
   }
 
-  *iterator(options: Options = {}): Generator<any, void, void> {
+  *iterator(options: Options = {}) {
     let iterator = this._list.iterator()
     let result = iterator.next()
     while (!result.done) {
-      yield MemTable.getValueWithEncoding(result.value, options)
+      yield MemTable.getValueWithEncoding(result.value)
       result = iterator.next()
     }
   }

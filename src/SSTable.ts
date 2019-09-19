@@ -5,9 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @flow
-/* global Generator */
-
 import { Buffer } from 'buffer'
 import { Options } from './Options'
 import Slice from './Slice'
@@ -48,22 +45,28 @@ export default class SSTable {
     this._cacheData = Buffer.from([])
   }
 
-  get(key: Slice, options?: Options): Slice | null {
+  get(key: Slice, options?: Options): Buffer | null | string {
+    let target
     for (let value of this.dataBlockIterator()) {
       if (key.compare(new Slice(value.key)) === 0) {
-        return value.value
+        target = value.value
       }
     }
-    return null
+    if (!target) return null
+    if (!options) return target.buffer
+    if (options.valueEncoding === 'string') return target.toString()
+    return target.buffer
   }
 
-  *iterator(): Generator<any, void, void> {}
+  // *iterator() {
+  //   return
+  // }
 
-  *dataBlockIterator(): Generator<any, void, void> {
+  *dataBlockIterator() {
     yield* this._indexBlock.dataBlockIterator()
   }
 
-  *indexBlockIterator(): Generator<any, void, void> {
+  *indexBlockIterator() {
     yield* this._indexBlock.iterator()
   }
 }

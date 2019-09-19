@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* global Generator */
-
 import assert from 'assert'
 import Slice from './Slice'
 import SkiplistNode from './SkiplistNode'
@@ -27,16 +25,14 @@ export default class Skiplist {
     // [] -------> []
     // [] -------> []
     // head       tail
-    this.tail = null
     this.keyComparator = keyComparator
-    this.head = new SkiplistNode(this.maxlevel, this.tail, new Slice())
+    this.head = new SkiplistNode(this.maxlevel, new Slice())
   }
 
   keyComparator: (a: Slice, b: Slice) => number
   maxsize: number
   maxlevel: number
   level: number
-  tail: null
   head: SkiplistNode
 
   generateNodeLevel(): number {
@@ -67,16 +63,13 @@ export default class Skiplist {
       shouldUpdatePrevNodes[level] = prevNode
       current = prevNode.levels[level]
 
-      // 如果当前节点的next节点是this.tail
+      // 如果当前节点的next节点是null
       //  如果level已经是0，则循环结束，说明插入节点最大，
       //  否则继续向下查找
       //  如果key比下一个节点的key小，则循环结束
       //   如果next节点的key比插入节点小，则查找next节点是否存在
       //   next节点且比key大
-      if (
-        !(current === this.tail) &&
-        this.keyComparator(current.key, key) < 0
-      ) {
+      if (!!current && this.keyComparator(current.key, key) < 0) {
         prevNode = current
         continue
       }
@@ -88,9 +81,11 @@ export default class Skiplist {
     return prevNode
   }
 
-  *iterator(): Generator<Slice, void, void> {
+  *iterator() {
     let current = this.head
-    while (current.levels[0] !== this.tail) {
+    while (true) {
+      if (!current) break
+      if (!current.levels[0]) break
       yield current.levels[0].key
       current = current.levels[0]
     }
@@ -134,7 +129,7 @@ export default class Skiplist {
     if (isDifferent) {
       const nodeLevel = this.generateNodeLevel()
       this.level = Math.max(nodeLevel, this.level)
-      const node = new SkiplistNode(nodeLevel, prevNode.next(), key)
+      const node = new SkiplistNode(nodeLevel, key, prevNode.next())
 
       for (let i = 0; i <= nodeLevel; i++) {
         if (shouldUpdatePrevNodes[i]) {

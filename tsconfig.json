@@ -1,26 +1,33 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2019",
     "lib": [
+      "es2019",
       "dom",
+      "esnext.asynciterable",
       "dom.iterable",
       "esnext"
     ],
+    "outDir": "./build",
+    "declaration": true,
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "esnext",
+    "module": "amd",
     "moduleResolution": "node",
     "downlevelIteration": true,
     "resolveJsonModule": true,
     "isolatedModules": false,
-    "noEmit": true,
-    "jsx": "react"
+    "emitDeclarationOnly": true,
+    "noEmit": false
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

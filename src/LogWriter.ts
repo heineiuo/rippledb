@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @flow
 
 import assert from 'assert'
 import fs from 'fs'

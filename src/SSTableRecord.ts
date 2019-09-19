@@ -4,7 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-// @flow
 
 import varint from 'varint'
 import { Buffer } from 'buffer'
@@ -44,10 +43,11 @@ export default class SSTableRecord {
     return this._offset
   }
 
-  get(
-    options: Options = {}
-  ): { key: null | string | Buffer; value: null | string | Buffer } {
-    if (this.size === 0) return { key: null, value: null }
+  isEmpty(): boolean {
+    return this.size === 0
+  }
+
+  get(): { key: Slice; value: Slice } {
     const keyLength = varint.decode(this.buffer, this.offset)
     const keyStartIndex = varint.decode.bytes
     const key = this.buffer.slice(
@@ -64,12 +64,9 @@ export default class SSTableRecord {
       this.offset + valueStartIndex + valueLength
     )
 
-    const keyEncoding = options.keyEncoding || 'string'
-    const valueEncoding = options.valueEncoding || 'string'
-
     return {
-      key: keyEncoding === 'string' ? String(key) : key,
-      value: valueEncoding === 'string' ? String(value) : value,
+      key: new Slice(key),
+      value: new Slice(value),
     }
   }
 

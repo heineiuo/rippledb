@@ -5,9 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* global Generator */
-// @flow
-
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import BloomFilter from './BloomFilter'
@@ -101,7 +98,7 @@ export default class SSTableMetaBlock {
     this._size = this._buffer.length
   }
 
-  *iterator(): Generator<any, void, void> {
+  *iterator() {
     const offsetIterator = this.offsetIterator()
     let offsetResult = offsetIterator.next()
     let filterStart = this._offset
@@ -117,7 +114,7 @@ export default class SSTableMetaBlock {
     }
   }
 
-  *offsetIterator(): Generator<any, void, void> {
+  *offsetIterator() {
     const start = this.beginningOfOffset
     const offsetTotalCount = this._size - 2 - start
     // console.log('this._size: ', this._size)

@@ -7,4 +7,4 @@
 
 'use strict'
 
-module.exports = module.exports.default = require('./build/Database').default
+module.exports.Database = require('./build/Database').default

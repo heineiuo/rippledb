@@ -5,10 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @flow
-
-/* global Generator */
-
 import assert from 'assert'
 import { ValueType } from './Format'
 import varint from 'varint'
@@ -180,7 +176,7 @@ export class FileSet {
     return bytes
   }
 
-  *iterator(): Generator<FileMetaData, void, void> {
+  *iterator() {
     const setLength = this._set.length
     for (let i = 0; i < setLength; i++) {
       yield this._set[i]

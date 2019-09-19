@@ -1,41 +1,39 @@
-/* global Generator */
-
 import Slice from './Slice'
 
 export default class SkiplistNode {
-  constructor(maxlevel: number, next: SkiplistNode | null, key: Slice) {
+  constructor(maxlevel: number, key: Slice, next?: SkiplistNode) {
     this.key = key
     this.maxlevel = maxlevel
     this.levels = new Array(maxlevel + 1)
-    this.fill(next)
+    if (!!next) this.fill(next)
   }
 
   key: Slice
   maxlevel: number
-  levels: SkiplistNode[] | null[]
+  levels: SkiplistNode[]
 
   /**
    * 将这个节点的每一级都链接到next
    */
-  fill(next: SkiplistNode | null) {
+  fill(next: SkiplistNode) {
     for (let i = 0; i <= this.maxlevel; i++) {
       this.levels[i] = next
     }
   }
 
-  forEach(cb: (node: SkiplistNode | null, index: number) => void) {
+  forEach(cb: (node: SkiplistNode, index: number) => void) {
     for (let i = 0; i <= this.maxlevel; i++) {
       cb(this.levels[i], i)
     }
   }
 
-  *iterator(): Generator<SkiplistNode | null, void, void> {
+  *iterator() {
     for (let i = 0; i <= this.maxlevel; i++) {
       yield this.levels[i]
     }
   }
 
-  next(): SkiplistNode | null {
+  next(): SkiplistNode {
     return this.levels[0]
   }
 }

@@ -4,8 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-// @flow
-/* global AsyncGenerator */
 
 // import { Buffer } from 'buffer'
 import assert from 'assert'
@@ -131,7 +129,7 @@ export default class Database {
     throw new Error('Database is busy.')
   }
 
-  async *iterator(options: Options): AsyncGenerator<any, void, void> {
+  async *iterator(options: Options) {
     await this.ok()
     for (let key in this._memtable.iterator()) {
       yield key

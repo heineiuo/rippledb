@@ -4,8 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-// @flow
-/* global Generator */
 
 import crc32 from 'buffer-crc32'
 import varint from 'varint'
@@ -55,7 +53,7 @@ export default class SSTableBlock {
     return this.size * 2
   }
 
-  *iterator(options?: Options): Generator<any, void, void> {
+  *iterator() {
     let recordSizeSummary: number = 0
     while (true) {
       if (recordSizeSummary >= this.size - 5) {
@@ -66,7 +64,8 @@ export default class SSTableBlock {
         this.buffer,
         this.offset + recordSizeSummary
       )
-      const data = record.get(options)
+      if (record.isEmpty()) return
+      const data = record.get()
       yield data
       // console.log('SSTableBlock iterator increase with offset ' + offset + ' and fixed-size ' + this._size + ' and record.size is ' + record.size)
       recordSizeSummary += record.size

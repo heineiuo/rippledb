@@ -5,9 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @flow
-/* global AsyncGenerator */
-
 import assert from 'assert'
 import fs from 'fs'
 import { Buffer } from 'buffer'
@@ -33,7 +30,7 @@ export default class LogReader {
     await this._file.close()
   }
 
-  async *iterator(): AsyncGenerator<any, void, void> {
+  async *iterator() {
     const LogRecord = this._LogRecord
     const fd = await fs.promises.open(this._filename, 'r')
     let buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))

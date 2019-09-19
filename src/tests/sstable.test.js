@@ -48,5 +48,7 @@ test('sstable', async () => {
   }
   // check this later
   // expect(count).toBe(3010)
-  expect(table.get(sortedKey(1))).toBe('value0000000001')
+  expect(table.get(sortedKey(1), { valueEncoding: 'string' })).toBe(
+    'value0000000001'
+  )
 })

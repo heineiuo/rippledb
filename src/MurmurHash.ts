@@ -1,4 +1,3 @@
-// @flow
 
 // via https://gist.github.com/588423
 // thanks github.com/raycmorgan!

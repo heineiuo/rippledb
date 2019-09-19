@@ -1,5 +1,4 @@
 // https://github.com/wiedi/node-bitbuffer
-// @flow
 import { Buffer } from 'buffer'
 
 export default class BitBuffer {

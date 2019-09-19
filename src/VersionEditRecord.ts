@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @flow
 
 import crc32 from 'buffer-crc32'
 import assert from 'assert'

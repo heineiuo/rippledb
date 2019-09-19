@@ -5,54 +5,39 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* global Generator */
-// @flow
-// import { Buffer } from 'buffer'
+import Slice from './Slice'
 import { Options } from './Options'
 import varint from 'varint'
 import SSTableBlock from './SSTableBlock'
 import SSTableDataBlock from './SSTableDataBlock'
+import { Buffer } from 'buffer'
 
 export default class TableIndexBlock extends SSTableBlock {
-  *dataBlockIterator(options?: Options): Generator<any, void, void> {
-    const iterator = this.iterator(options)
-    let dataBlockIndexRecord = iterator.next()
-    while (!dataBlockIndexRecord.done) {
-      // console.log('dataBlockIndexRecord loop times')
-
-      // yield dataBlockIndexRecord.value
-
+  *dataBlockIterator(options?: Options) {
+    // const iterator =
+    for (let dataBlockIndexRecordValue of this.iterator()) {
       /**
        * key=max key of data block
        * value=data block offset,size
        */
-      const { value } = dataBlockIndexRecord.value
-      const offset = varint.decode(value)
-      const size = varint.decode(value, varint.decode.bytes)
+      const offset = varint.decode(dataBlockIndexRecordValue.value.buffer)
+      const size = varint.decode(
+        dataBlockIndexRecordValue.value.buffer,
+        varint.decode.bytes
+      )
       const dataBlock = new SSTableDataBlock(this.buffer, offset, size)
-      // console.log('dataBlockIterator', [this._offset, this._size], [offset, size])
 
       yield* dataBlock.iterator()
-
-      // const iterator2 = dataBlock.iterator()
-      // let dataBlockRecord = iterator2.next()
-      // while (!dataBlockRecord.done) {
-      //   yield dataBlockRecord.value
-      //   dataBlockRecord = iterator2.next()
-      // }
-
-      dataBlockIndexRecord = iterator.next()
-      // console.log(dataBlockIndexRecord)
     }
   }
 
-  *indexIterator(options?: Options): Generator<any, void, void> {
-    const iterator = this.iterator(options)
+  *indexIterator(options?: Options) {
+    const iterator = this.iterator()
     let dataBlockIndexRecord = iterator.next()
     while (!dataBlockIndexRecord.done) {
       const { key, value } = dataBlockIndexRecord.value
-      const offset = varint.decode(value)
-      const size = varint.decode(value, varint.decode.bytes)
+      const offset = varint.decode(value.buffer)
+      const size = varint.decode(value.buffer, varint.decode.bytes)
       yield {
         key: key.toString(),
         offset,

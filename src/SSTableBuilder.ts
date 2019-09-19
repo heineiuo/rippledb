@@ -80,12 +80,16 @@ export default class SSTableBuilder {
       ),
     })
     const keys = []
-    const blockKeyIterator = this._dataBlock.iterator()
-    let result = blockKeyIterator.next()
-    while (!result.done) {
-      keys.push(result.value.key)
-      result = blockKeyIterator.next()
+    for (let result of this._dataBlock.iterator()) {
+      keys.push(result.key.toString())
     }
+
+    // const blockKeyIterator = this._dataBlock.iterator()
+    // let result = blockKeyIterator.next()
+    // while (!result.done) {
+    //   keys.push(result.value.key)
+    //   result = blockKeyIterator.next()
+    // }
 
     const filter = new BloomFilter()
     filter.putKeys(keys, keys.length)

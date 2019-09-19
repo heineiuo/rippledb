@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @flow
 
 import varint from 'varint'
 import { Buffer } from 'buffer'

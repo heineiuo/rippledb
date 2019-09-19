@@ -4,8 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-// @flow
-/* global Generator */
 
 import varint from 'varint'
 import { Buffer } from 'buffer'
@@ -64,7 +62,7 @@ export default class WriteBatch {
     this.count++
   }
 
-  *iterator(): Generator<AtomicUpdate, void, void> {
+  *iterator() {
     let index = 8
     while (index < this.buffer.length) {
       const valueType = this.buffer.readUInt8(index)
@@ -90,7 +88,7 @@ export default class WriteBatch {
         type: valueType,
         key: new Slice(keyBuffer),
         value: new Slice(valueBuffer),
-      }
+      } as AtomicUpdate
     }
   }
 }
