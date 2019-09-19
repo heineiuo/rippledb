@@ -1,6 +1,6 @@
 const assert = require('assert')
-const Database = require('../src/Database').default
-const dbpath = require('../fixtures/dbpath')
+const Database = require('../Database').default
+const dbpath = require('../../fixtures/dbpath')
 
 
 test('read record from db', async () => {

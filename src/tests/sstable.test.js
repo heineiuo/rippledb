@@ -1,8 +1,8 @@
 const fs = require('fs').promises
 const path = require('path')
-const Slice = require('../src/Slice').default
-const SSTable = require('../src/SSTable').default
-const SSTableBuilder = require('../src/SSTableBuilder').default
+const Slice = require('../Slice').default
+const SSTable = require('../SSTable').default
+const SSTableBuilder = require('../SSTableBuilder').default
 
 function padLeft(str, total = 10) {
   if (str.length < total) {
