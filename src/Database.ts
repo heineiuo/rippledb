@@ -20,6 +20,7 @@ import {
 import { InternalKeyComparator } from './VersionFormat'
 import SequenceNumber from './SequenceNumber'
 // import LRU from 'lru-cache'
+import Compaction from './Compaction'
 import Slice from './Slice'
 import VersionSet from './VersionSet'
 import VersionEdit from './VersionEdit'
@@ -201,16 +202,24 @@ export default class Database {
     }
   }
 
-  async backgroundCompaction() {
+  async backgroundCompaction(): Promise<void> {
     try {
       this._backgroundCompactionScheduled = true
+      let c: Compaction | void
       if (this._immtable !== null) {
         await this.compactMemTable()
         await this.backgroundCompaction()
         return
       }
       if (!this._versionSet.needsCompaction()) {
+        return
       }
+      c = this._versionSet.pickCompaction()
+      if (!c) {
+        return
+      }
+
+      // todo
     } catch (e) {
     } finally {
       this._backgroundCompactionScheduled = false

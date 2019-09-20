@@ -14,6 +14,7 @@ import {
   CompactPointer,
   InternalKeyComparator,
   getMaxBytesForLevel,
+  InternalKey,
 } from './VersionFormat'
 import { FileMetaData } from './VersionFormat'
 import VersionBuilder from './VersionBuilder'
@@ -274,7 +275,8 @@ export default class VersionSet {
   }
 
   pickCompaction(): Compaction | void {
-    const seekCompaction = !!this._current.fileToCompact
+    // We prefer compactions triggered by too much data in a level over
+    // the compactions triggered by seeks.
     const shouldSizeCompaction = this._current.compactionScore > 1
     const shouldSeekCompaction = !!this._current.fileToCompact
     let c: Compaction
@@ -313,8 +315,25 @@ export default class VersionSet {
 
     if (level === 0) {
       // todo
+      let smallest = new InternalKey()
+      let largest = new InternalKey()
+      this.getRange(c.inputs[0], smallest, largest)
+      // Note that the next call will discard the file we placed in
+      // c->inputs_[0] earlier and replace it with an overlapping set
+      // which will include the picked file.
+      this._current.getOverlappingInputs(0, smallest, largest, c.inputs[0])
+      // this.getOverlappingInputs(0, )
+      assert(c.inputs[0].length > 0)
     }
+    this.setupOtherInputs(c)
+    return c
   }
 
-  getRange(inputs: FileMetaData[]) {}
+  getRange(
+    inputs: FileMetaData[],
+    smallest: InternalKey,
+    largest: InternalKey
+  ) {}
+
+  setupOtherInputs(c: Compaction): void {}
 }

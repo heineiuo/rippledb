@@ -13,6 +13,7 @@ import SequenceNumber from './SequenceNumber'
 
 export class InternalKey extends Slice {
   extractUserKey(): Slice {
+    assert(this.size > 8)
     return new Slice(this.buffer.slice(0, this.size - 8))
   }
 }
@@ -58,6 +59,10 @@ export class InternalKeyComparator {
   static extractUserKey(slice: Slice) {
     assert(slice.size > 8)
     return new Slice(slice.buffer.slice(0, slice.size - 8))
+  }
+
+  getUserComparator() {
+    return this.userComparator
   }
 
   userComparator: Comparator
@@ -174,6 +179,10 @@ export class FileSet {
       bytes += fileMetaData.fileSize
     }
     return bytes
+  }
+
+  get data() {
+    return this._set
   }
 
   *iterator() {
