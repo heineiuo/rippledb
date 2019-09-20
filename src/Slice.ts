@@ -29,6 +29,10 @@ export default class Slice {
     return this._buffer
   }
 
+  set buffer(buf: Buffer) {
+    this._buffer = buf
+  }
+
   get length(): number {
     return this._buffer.length
   }
@@ -53,6 +57,11 @@ export default class Slice {
 
   toString(encoding?: Encodings): string {
     return this._buffer.toString(encoding)
+  }
+
+  clear() {
+    // this._inputType = 'buffer'
+    this._buffer = Buffer.alloc(0)
   }
 
   compare(slice: Slice): number {
