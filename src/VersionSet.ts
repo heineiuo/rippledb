@@ -9,11 +9,13 @@ import assert from 'assert'
 import fs from 'fs'
 import Version from './Version'
 import { getCurrentFilename, getManifestFilename } from './Filename'
+import Slice from './Slice'
 import {
   CompactPointer,
   InternalKeyComparator,
   getMaxBytesForLevel,
 } from './VersionFormat'
+import { FileMetaData } from './VersionFormat'
 import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
@@ -21,9 +23,12 @@ import MemTable from './MemTable'
 import VersionEdit from './VersionEdit'
 import { Config } from './Format'
 import LogWriter from './LogWriter'
+import Compaction from './Compaction'
 
 export default class VersionSet {
-  compactPointers: CompactPointer[]
+  // Per-level key at which the next compaction at that level should start.
+  // Either an empty string, or a valid InternalKey.
+  compactPointers: string[]
   _manifestFileNumber?: number
   _current!: Version
   _dummyVersions: Version
@@ -61,7 +66,7 @@ export default class VersionSet {
     this.compactPointers = []
   }
 
-  get current(): Version | undefined {
+  get current(): Version {
     return this._current
   }
 
@@ -267,4 +272,49 @@ export default class VersionSet {
     const record = VersionEditRecord.add(edit)
     writter.addRecord(record)
   }
+
+  pickCompaction(): Compaction | void {
+    const seekCompaction = !!this._current.fileToCompact
+    const shouldSizeCompaction = this._current.compactionScore > 1
+    const shouldSeekCompaction = !!this._current.fileToCompact
+    let c: Compaction
+    let level: number
+    if (shouldSizeCompaction) {
+      level = this._current.compactionLevel
+      assert(level >= 0)
+      assert(level + 1 < Config.kNumLevels)
+      c = new Compaction({}, level)
+
+      for (let f of this._current.files[level].iterator()) {
+        if (
+          !this.compactPointers[level].length ||
+          this.internalKeyComparator.compare(
+            f.largest,
+            new Slice(this.compactPointers[level])
+          ) > 0
+        ) {
+          c.inputs[0].push(f)
+          break
+        }
+      }
+      if (c.inputs[0].length === 0) {
+        c.inputs[0].push(this._current.files[level].begin())
+      }
+    } else if (shouldSeekCompaction) {
+      level = this._current.fileToCompactLevel
+      c = new Compaction({}, level)
+      c.inputs[0].push(this._current.fileToCompact)
+    } else {
+      return
+    }
+
+    c.inputVersion = this.current
+    c.inputVersion.ref()
+
+    if (level === 0) {
+      // todo
+    }
+  }
+
+  getRange(inputs: FileMetaData[]) {}
 }

@@ -42,8 +42,9 @@ export default class VersionBuilder {
     // compactPointers: type = <int, InternalKey>
     for (let i = 0; i < edit.compactPointers.length; i++) {
       const level = edit.compactPointers[i].level
-      this._versionSet.compactPointers[level].internalKey =
-        edit.compactPointers[i].internalKey
+      this._versionSet.compactPointers[level] = edit.compactPointers[
+        i
+      ].internalKey.toString()
     }
     // traverse deleted_files_ 记录可删除文件到各level对应的deleted_files
     for (let i = 0; i < edit.deletedFiles.length; i++) {

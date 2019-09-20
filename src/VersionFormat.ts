@@ -152,8 +152,8 @@ export class FileSet {
     this._set.push(file)
   }
 
-  begin(): FileMetaData | null {
-    return this._set[0] || null
+  begin(): FileMetaData {
+    return this._set[0]
   }
 
   end(): FileMetaData | null {

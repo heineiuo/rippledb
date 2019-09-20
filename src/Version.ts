@@ -16,7 +16,7 @@ export default class Version {
   refs: number
 
   // Next file to compact based on seek stats.
-  fileToCompact: FileMetaData | null
+  fileToCompact!: FileMetaData
   fileToCompactLevel: number
 
   compactionScore: number
@@ -27,7 +27,7 @@ export default class Version {
     this.next = this
     this.prev = this
     this.refs = 0
-    this.fileToCompact = null
+    // this.fileToCompact = null
     this.fileToCompactLevel = -1
     this.compactionScore = -1
     this.compactionLevel = -1
