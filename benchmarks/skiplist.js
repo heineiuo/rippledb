@@ -1,7 +1,6 @@
-const Skiplist = require('../../dist/Skiplist').default
-const Skiplist2 = require('../../dist/Skiplist2').default
+const Skiplist = require('../build/Skiplist').default
 
-function makeAnimalList (Skiplist, method) {
+function makeAnimalList(Skiplist, method) {
   var list = new Skiplist()
   list[method]('cat', 'Cats are cute.')
   list[method]('wallaby', 'Wallabies bounce.')
@@ -26,14 +25,13 @@ function makeAnimalList (Skiplist, method) {
   return list
 }
 
-; (() => {
+;(() => {
   let i = 0
 
   i = 0
   while (i < 20000) {
     i++
     makeAnimalList(Skiplist, 'insert')
-    makeAnimalList(Skiplist2, 'put')
   }
 
   i = 0
@@ -45,10 +43,4 @@ function makeAnimalList (Skiplist, method) {
   console.timeEnd('skiplist')
 
   i = 0
-  console.time('skiplist2')
-  while (i < 1000) {
-    i++
-    makeAnimalList(Skiplist2, 'put')
-  }
-  console.timeEnd('skiplist2')
 })()

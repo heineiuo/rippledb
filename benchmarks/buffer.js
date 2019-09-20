@@ -1,4 +1,4 @@
-function bufferFromArrayBuffer (number, times) {
+function bufferFromArrayBuffer(number, times) {
   let i = 0
   let buf
   while (i < times) {
@@ -8,7 +8,7 @@ function bufferFromArrayBuffer (number, times) {
   return buf
 }
 
-function bufferAlloc (number, times) {
+function bufferAlloc(number, times) {
   let i = 0
   let buf
   while (i < times) {
@@ -18,7 +18,7 @@ function bufferAlloc (number, times) {
   return buf
 }
 
-function bench (number, times) {
+function bench(number, times) {
   console.time(`bufferFromArrayBuffer number=${number} times=${times}`)
   bufferFromArrayBuffer(number, times)
   console.timeEnd(`bufferFromArrayBuffer number=${number} times=${times}`)
@@ -28,7 +28,7 @@ function bench (number, times) {
   console.log('')
 }
 
-function main () {
+function main() {
   bufferFromArrayBuffer(100, 100)
   bufferAlloc(100, 100)
 
