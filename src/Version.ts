@@ -24,7 +24,7 @@ export default class Version {
 
   compactionScore: number
   compactionLevel: number
-  files: FileSet[]
+  files: FileMetaData[][]
 
   constructor(versionSet: VersionSet) {
     this.versionSet = versionSet
@@ -36,10 +36,7 @@ export default class Version {
     this.compactionScore = -1
     this.compactionLevel = -1
     const cmp = new BySmallestKey(versionSet.internalKeyComparator)
-    this.files = Array.from(
-      { length: Config.kNumLevels },
-      () => new FileSet(cmp)
-    )
+    this.files = Array.from({ length: Config.kNumLevels }, () => [])
   }
 
   ref() {
@@ -69,8 +66,8 @@ export default class Version {
     let userEnd = end ? end : new Slice()
 
     const userComparator = this.versionSet.internalKeyComparator.getUserComparator()
-    for (let i = 0; i < this.files[level].size(); ) {
-      const fileMetaData = this.files[level].data[i++]
+    for (let i = 0; i < this.files[level].length; ) {
+      const fileMetaData = this.files[level][i++]
       const fileStart = fileMetaData.smallest.extractUserKey()
       const fileLimit = fileMetaData.largest.extractUserKey()
       if (!!begin && userComparator.compare(fileLimit, userBegin) < 0) {
