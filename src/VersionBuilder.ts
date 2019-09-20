@@ -10,6 +10,7 @@ import Version from './Version'
 import VersionEdit from './VersionEdit'
 import { Config } from './Format'
 import { FileMetaData, BySmallestKey, FileSet } from './VersionFormat'
+import assert from 'assert'
 
 export default class VersionBuilder {
   _versionSet: VersionSet
@@ -37,6 +38,7 @@ export default class VersionBuilder {
     }
   }
 
+  // Apply all of the edits in *edit to the current state.
   apply(edit: VersionEdit) {
     // Update compaction pointers
     // compactPointers: type = <int, InternalKey>
@@ -65,28 +67,25 @@ export default class VersionBuilder {
 
   saveTo(ver: Version) {
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
-    // traverse every level and put added files in right position
+    // traverse every level and put added files in right position [ baseFiles_A, addedFiles, baseFiels_B ) ]
     for (let level = 0; level < Config.kNumLevels; level++) {
       if (!this._base.files[level]) continue
-      const baseFileIterator = this._base.files[level].iterator()
+      // addedFiles is sorted
       const addedFileIterator = this._levels[level].addedFiles.iterator()
-      let baseFile = baseFileIterator.next()
       let addedFile = addedFileIterator.next()
-      if (
-        (!baseFile.done &&
-          !addedFile.done &&
-          cmp.operator(baseFile.value, addedFile.value)) ||
-        (!baseFile.done && addedFile.done)
-      ) {
-        this.maybeAddFile(ver, level, baseFile.value)
-        baseFile = baseFileIterator.next()
-      } else if (!addedFile.done) {
-        this.maybeAddFile(ver, level, addedFile.value)
-        addedFile = addedFileIterator.next()
-      }
-
-      // Make sure there is no overlap in levels > 0
-      if (level > 0) {
+      for (let i = 0; i < this._base.files[level].length; ) {
+        let baseFile = this._base.files[level][i++]
+        if (!addedFile.done) {
+          if (cmp.operator(baseFile, addedFile.value)) {
+            this.maybeAddFile(ver, level, baseFile)
+            i--
+          } else {
+            this.maybeAddFile(ver, level, addedFile.value)
+            addedFile = addedFileIterator.next()
+          }
+        } else {
+          this.maybeAddFile(ver, level, baseFile)
+        }
       }
     }
   }
@@ -95,11 +94,17 @@ export default class VersionBuilder {
     if (this._levels[level].deletedFiles.has(file.number)) {
       // File is deleted: do nothing
     } else {
-      if (!ver.files[level]) {
-        ver.files[level] = new FileSet(this.cmp)
+      const files = ver.files[level]
+      if (level > 0 && files.length > 0) {
+        assert(
+          this._versionSet.internalKeyComparator.compare(
+            files[files.length - 1].largest,
+            file.smallest
+          ) < 0
+        )
       }
       file.refs++
-      ver.files[level].add(file)
+      ver.files[level].push(file)
     }
   }
 }

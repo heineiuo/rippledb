@@ -171,10 +171,6 @@ export default class VersionSet {
     }
   }
 
-  del(version: Version) {}
-
-  add(version: Version) {}
-
   // Precomputed best level for next compaction
   finalize(ver: Version) {
     // traverse levels(0-6),
@@ -186,9 +182,9 @@ export default class VersionSet {
     for (let level = 0; level < Config.kNumLevels; level++) {
       let score = 0
       if (level === 0) {
-        score = ver.files[level].size() / Config.kL0CompactionTrigger
+        score = ver.files[level].length / Config.kL0CompactionTrigger
       } else {
-        const levelBytes = ver.files[level].totalBytes()
+        const levelBytes = this.getTotalBytes(ver.files[level])
         score = levelBytes / getMaxBytesForLevel(level)
       }
 
@@ -200,6 +196,14 @@ export default class VersionSet {
 
     ver.compactionLevel = bestLevel
     ver.compactionScore = bestScore
+  }
+
+  getTotalBytes(files: FileMetaData[]) {
+    let sum = 0
+    for (let f of files) {
+      sum += f.fileSize
+    }
+    return sum
   }
 
   // 需要写入manifest
@@ -287,7 +291,7 @@ export default class VersionSet {
       assert(level + 1 < Config.kNumLevels)
       c = new Compaction({}, level)
 
-      for (let f of this._current.files[level].iterator()) {
+      for (let f of this._current.files[level]) {
         if (
           !this.compactPointers[level].length ||
           this.internalKeyComparator.compare(
@@ -300,7 +304,7 @@ export default class VersionSet {
         }
       }
       if (c.inputs[0].length === 0) {
-        c.inputs[0].push(this._current.files[level].begin())
+        c.inputs[0].push(this._current.files[level][0])
       }
     } else if (shouldSeekCompaction) {
       level = this._current.fileToCompactLevel
@@ -333,7 +337,122 @@ export default class VersionSet {
     inputs: FileMetaData[],
     smallest: InternalKey,
     largest: InternalKey
-  ) {}
+  ) {
+    assert(inputs.length > 0)
+    smallest.clear()
+    largest.clear()
+    for (let i = 0; i < inputs.length; i++) {
+      let fileMetaData = inputs[i]
+      if (i === 0) {
+        smallest.buffer = fileMetaData.smallest.buffer
+        largest.buffer = fileMetaData.largest.buffer
+      } else {
+        if (
+          this.internalKeyComparator.compare(fileMetaData.smallest, smallest) <
+          0
+        ) {
+          smallest.buffer = fileMetaData.smallest.buffer
+        }
+        if (
+          this.internalKeyComparator.compare(fileMetaData.largest, largest) > 0
+        ) {
+          largest.buffer = fileMetaData.largest.buffer
+        }
+      }
+    }
+  }
 
-  setupOtherInputs(c: Compaction): void {}
+  // Finds the largest key in a vector of files. Returns true if files it not
+  // empty.
+  findLargestKey(
+    icmp: InternalKeyComparator,
+    files: FileMetaData[],
+    largestKey: InternalKey
+  ): boolean {
+    if (files.length === 0) return false
+    largestKey = files[0].largest
+    for (let i = 0; i < files.length; i++) {
+      const f: FileMetaData = files[i]
+      if (icmp.compare(f.largest, largestKey) > 0) {
+        largestKey = f.largest
+      }
+    }
+    return true
+  }
+
+  // Extracts the largest file b1 from |compaction_files| and then searches for a
+  // b2 in |level_files| for which user_key(u1) = user_key(l2). If it finds such a
+  // file b2 (known as a boundary file) it adds it to |compaction_files| and then
+  // searches again using this new upper bound.
+  //
+  // If there are two blocks, b1=(l1, u1) and b2=(l2, u2) and
+  // user_key(u1) = user_key(l2), and if we compact b1 but not b2 then a
+  // subsequent get operation will yield an incorrect result because it will
+  // return the record from b2 in level i rather than from b1 because it searches
+  // level by level for records matching the supplied user key.
+  //
+  // parameters:
+  //   in     level_files:      List of files to search for boundary files.
+  //   in/out compaction_files: List of files to extend by adding boundary files.
+  addBoundryInputs(
+    icmp: InternalKeyComparator,
+    levelFiles: FileMetaData[],
+    compactionFiles: FileMetaData[]
+  ) {
+    let largestKey = new InternalKey()
+    if (!this.findLargestKey(icmp, compactionFiles, largestKey)) {
+      return
+    }
+    while (true) {
+      const smallestBoundaryFile = this.findSmallestBoundaryFile(
+        icmp,
+        levelFiles,
+        largestKey
+      )
+      if (!smallestBoundaryFile) break
+      largestKey = smallestBoundaryFile.largest
+      compactionFiles.push(smallestBoundaryFile)
+    }
+  }
+
+  // Finds minimum file b2=(l2, u2) in level file for which l2 > u1 and
+  // user_key(l2) = user_key(u1)
+  findSmallestBoundaryFile(
+    icmp: InternalKeyComparator,
+    levelFiles: FileMetaData[],
+    largestKey: InternalKey
+  ): FileMetaData {
+    const userComparator = icmp.getUserComparator()
+    let smallestBoundryFile!: FileMetaData
+    for (let i = 0; i < levelFiles.length; i++) {
+      const f = levelFiles[i]
+      if (
+        icmp.compare(f.smallest, largestKey) > 0 &&
+        userComparator.compare(
+          f.smallest.extractUserKey(),
+          largestKey.extractUserKey()
+        ) === 0
+      ) {
+        if (
+          !smallestBoundryFile ||
+          icmp.compare(f.smallest, smallestBoundryFile.smallest) < 0
+        ) {
+          smallestBoundryFile = f
+        }
+      }
+    }
+
+    return smallestBoundryFile
+  }
+
+  setupOtherInputs(c: Compaction): void {
+    const level = c.level
+    let smallest: InternalKey
+    let largest: InternalKey
+    this.addBoundryInputs(
+      this.internalKeyComparator,
+      this._current.files[level],
+      c.inputs[0]
+    )
+  }
 }
