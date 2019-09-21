@@ -123,11 +123,11 @@ export default class VersionEditRecord {
         index += varint.decode.bytes
         const internalKeyLength = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
+        assert(op.buffer.length >= index + internalKeyLength)
         const internalKey = new Slice(
           op.buffer.slice(index, index + internalKeyLength)
         )
         index += internalKeyLength
-        assert(internalKey.length > internalKeyLength)
         edit.compactPointers.push({
           level,
           internalKey: new InternalKey(internalKey),
