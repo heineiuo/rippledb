@@ -226,3 +226,7 @@ export function getMaxBytesForLevel(level: number) {
   }
   return result
 }
+
+export function getExpandedCompactionByteSizeLimit(options: any) {
+  return 25 * options.maxFileSize
+}
