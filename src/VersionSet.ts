@@ -13,6 +13,7 @@ import Slice from './Slice'
 import {
   CompactPointer,
   InternalKeyComparator,
+  getExpandedCompactionByteSizeLimit,
   getMaxBytesForLevel,
   InternalKey,
 } from './VersionFormat'
@@ -333,6 +334,11 @@ export default class VersionSet {
     return c
   }
 
+  /**
+   * Stores the minimal range that covers all entries in inputs in
+   * smallest, *largest.
+   * REQUIRES: inputs is not empty
+   */
   getRange(
     inputs: FileMetaData[],
     smallest: InternalKey,
@@ -360,6 +366,21 @@ export default class VersionSet {
         }
       }
     }
+  }
+
+  /**
+   * Stores the minimal range that covers all entries in inputs1 and inputs2
+   * in *smallest, *largest.
+   * REQUIRES: inputs is not empty
+   */
+  getRange2(
+    inputs1: FileMetaData[],
+    inputs2: FileMetaData[],
+    smallest: InternalKey,
+    largest: InternalKey
+  ) {
+    const all = inputs1.concat(inputs2)
+    this.getRange(all, smallest, largest)
   }
 
   // Finds the largest key in a vector of files. Returns true if files it not
@@ -447,12 +468,71 @@ export default class VersionSet {
 
   setupOtherInputs(c: Compaction): void {
     const level = c.level
-    let smallest: InternalKey
-    let largest: InternalKey
+    let smallest = new InternalKey()
+    let largest = new InternalKey()
     this.addBoundryInputs(
       this.internalKeyComparator,
       this._current.files[level],
       c.inputs[0]
     )
+    this.getRange(c.inputs[0], smallest, largest)
+    this.current.getOverlappingInputs(level + 1, smallest, largest, c.inputs[1])
+    let allStart = new InternalKey()
+    let allLimit = new InternalKey()
+    this.getRange2(c.inputs[0], c.inputs[1], allStart, allLimit)
+    if (c.inputs.length > 0) {
+      let expand0: FileMetaData[] = []
+      this.current.getOverlappingInputs(level, allStart, allLimit, expand0)
+      this.addBoundryInputs(
+        this.internalKeyComparator,
+        this._current.files[level],
+        expand0
+      )
+      const input0Size = this.getTotalBytes(c.inputs[0])
+      const input1Size = this.getTotalBytes(c.inputs[1])
+      const expand0Size = this.getTotalBytes(expand0)
+      if (
+        expand0.length > c.inputs[0].length &&
+        input1Size + expand0Size <
+          getExpandedCompactionByteSizeLimit(this._options)
+      ) {
+        let newStart = new InternalKey()
+        let newLimit = new InternalKey()
+        this.getRange(expand0, newStart, newLimit)
+        let expand1: FileMetaData[] = []
+        this._current.getOverlappingInputs(
+          level + 1,
+          newStart,
+          newLimit,
+          expand1
+        )
+        if (expand1.length === c.inputs[1].length) {
+          // todo log expanding size
+          smallest = newStart
+          largest = newLimit
+          c.inputs[0] = expand0
+          c.inputs[1] = expand1
+          this.getRange2(c.inputs[0], c.inputs[1], allStart, allLimit)
+        }
+      }
+    }
+
+    // Compute the set of grandparent files that overlap this compaction
+    // (parent == level+1; grandparent == level+2)
+    if (level + 2 < Config.kNumLevels) {
+      this._current.getOverlappingInputs(
+        level + 2,
+        allStart,
+        allLimit,
+        c.grandparents
+      )
+    }
+
+    // Update the place where we will do the next compaction for this level.
+    // We update this immediately instead of waiting for the VersionEdit
+    // to be applied so that if the compaction fails, we will try a different
+    // key range next time.
+    this.compactPointers[level] = largest.toString()
+    c.edit.compactPointers.push({ level, internalKey: largest })
   }
 }
