@@ -33,16 +33,16 @@ import {
 import WriteBatch from './WriteBatch'
 
 export default class Database {
-  _internalKeyComparator: InternalKeyComparator
-  _backgroundCompactionScheduled: boolean
-  _dbpath: string
-  _sn: SequenceNumber
+  private _internalKeyComparator: InternalKeyComparator
+  private _backgroundCompactionScheduled: boolean
+  private _dbpath: string
+  private _sn: SequenceNumber
   // _cache: LRU
-  _log: LogWriter
-  _memtable: MemTable
-  _immtable?: MemTable
-  _versionSet: VersionSet
-  _ok: boolean
+  private _log: LogWriter
+  private _memtable: MemTable
+  private _immtable?: MemTable
+  private _versionSet: VersionSet
+  private _ok: boolean
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
@@ -73,7 +73,7 @@ export default class Database {
     this.recover()
   }
 
-  async existCurrent(): Promise<boolean> {
+  private async existCurrent(): Promise<boolean> {
     try {
       const currentName = getCurrentFilename(this._dbpath)
       try {
@@ -89,7 +89,7 @@ export default class Database {
     }
   }
 
-  async initVersionEdit() {
+  private async initVersionEdit() {
     const edit = new VersionEdit()
     edit.comparator = kInternalKeyComparatorName
     edit.logNumber = 0
@@ -105,7 +105,7 @@ export default class Database {
     )
   }
 
-  async recover() {
+  private async recover() {
     // const logReader = new LogReader()
     if (!(await this.existCurrent())) {
       await this.initVersionEdit()
@@ -115,10 +115,10 @@ export default class Database {
     this._ok = true
   }
 
-  async recoverLogFile() {}
+  private async recoverLogFile() {}
 
   // wait for db.recover
-  async ok() {
+  private async ok() {
     if (this._ok) return true
     let limit = 5
     let i = 0
@@ -190,7 +190,7 @@ export default class Database {
     // console.log('memtable size is: ', this._memtable.size)
   }
 
-  makeRoomForWrite() {
+  private makeRoomForWrite() {
     if (this._memtable.size >= kMemTableDumpSize) {
       assert(this._versionSet.logNumber === 0) // no logfile is compaction
       const newLogNumber = this._versionSet.getNextFileNumber()
@@ -202,7 +202,7 @@ export default class Database {
     }
   }
 
-  async backgroundCompaction(): Promise<void> {
+  private async backgroundCompaction(): Promise<void> {
     try {
       this._backgroundCompactionScheduled = true
       let c: Compaction | void
@@ -219,17 +219,27 @@ export default class Database {
         return
       }
 
-      // todo
+      // TODO
     } catch (e) {
     } finally {
       this._backgroundCompactionScheduled = false
     }
   }
 
-  async compactMemTable() {}
+  private async compactMemTable() {}
 
   /**
    * manually compact
    */
-  compactRange() {}
+  compactRange(begin: Slice, end: Slice) {
+    let maxLevelWithFiles = 1
+  }
+
+  private manualCompactRangeWithLevel(
+    level: number,
+    begin: Slice,
+    end: Slice
+  ) {}
+
+  private manualCompactMemTable() {}
 }
