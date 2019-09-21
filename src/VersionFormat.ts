@@ -33,7 +33,7 @@ export class InternalKey extends Slice {
   static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
 
   constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
-    super()
+    super(userKey)
     if (!!userKey && !!sn && !!valueType) {
       this.appendInternalKey(
         this._buffer,

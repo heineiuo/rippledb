@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import crc32 from 'buffer-crc32'
 import assert from 'assert'
 import varint from 'varint'
@@ -124,11 +123,14 @@ export default class VersionEditRecord {
         index += varint.decode.bytes
         const internalKeyLength = varint.decode(op.buffer.slice(index))
         index += varint.decode.bytes
-        const internalKey = op.buffer.slice(index, index + internalKeyLength)
+        const internalKey = new Slice(
+          op.buffer.slice(index, index + internalKeyLength)
+        )
         index += internalKeyLength
+        assert(internalKey.length > internalKeyLength)
         edit.compactPointers.push({
           level,
-          internalKey: new InternalKey(internalKey.buffer),
+          internalKey: new InternalKey(internalKey),
         })
         continue
       } else if (type === VersionEditTag.kDeletedFile) {
