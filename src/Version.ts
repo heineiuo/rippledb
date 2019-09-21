@@ -7,12 +7,29 @@
 
 import assert from 'assert'
 import Slice from './Slice'
-import { InternalKey } from './VersionFormat'
-import { FileMetaData, FileSet, BySmallestKey } from './VersionFormat'
+import {
+  InternalKey,
+  Comparator,
+  InternalKeyComparator,
+  FileMetaData,
+  kValueTypeForSeek,
+  BySmallestKey,
+} from './VersionFormat'
 import VersionSet from './VersionSet'
 import { Config } from './Format'
 
 export default class Version {
+  static afterFile(ucmp: Comparator, userKey: Slice, f: FileMetaData): boolean {
+    return !!userKey && ucmp.compare(userKey, f.largest.extractUserKey()) > 0
+  }
+  static beforeFile(
+    ucmp: Comparator,
+    userKey: Slice,
+    f: FileMetaData
+  ): boolean {
+    return !!userKey && ucmp.compare(userKey, f.smallest.extractUserKey()) < 0
+  }
+
   versionSet: VersionSet
   next: Version
   prev: Version
@@ -49,6 +66,76 @@ export default class Version {
     if (this.refs === 0) {
       // delete
     }
+  }
+
+  someFileOverlapsRange(
+    icmp: InternalKeyComparator,
+    disjointSortedFile: boolean,
+    files: FileMetaData[],
+    smallestUserKey: Slice,
+    largestUserKey: Slice
+  ): boolean {
+    const ucmp = icmp.getUserComparator()
+    if (!disjointSortedFile) {
+      // Need to check against all files
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        if (
+          Version.afterFile(ucmp, smallestUserKey, f) ||
+          Version.beforeFile(ucmp, largestUserKey, f)
+        ) {
+          // No overlap
+        } else {
+          return true
+        }
+      }
+      return false
+    }
+    // Binary search over file list
+    let index = 0
+    if (!!smallestUserKey) {
+      // Find the earliest possible internal key for smallest_user_key
+      const smallkey = new InternalKey(
+        smallestUserKey,
+        InternalKey.kMaxSequenceNumber,
+        kValueTypeForSeek
+      )
+      index = this.fildFile(icmp, files, smallkey)
+    }
+
+    if (index >= files.length) {
+      return false
+    }
+
+    return !Version.beforeFile(ucmp, largestUserKey, files[index])
+  }
+
+  // binary search
+  fildFile(
+    icmp: InternalKeyComparator,
+    files: FileMetaData[],
+    key: Slice
+  ): number {
+    let left = 0 //  uint32_t
+    let right = files.length // uint32_t
+    while (left < right) {
+      let mid = (left + right) / 2
+      let file = files[mid]
+      if (icmp.compare(file.largest, key) < 0) {
+        left = mid + 1
+      } else {
+        right = mid
+      }
+    }
+    return right
+  }
+
+  overlapInLevel(
+    level: number,
+    smallestUserKey: Slice,
+    largestUserKey: Slice
+  ): boolean {
+    return true
   }
 
   // Store in "*inputs" all files in "level" that overlap [begin,end]

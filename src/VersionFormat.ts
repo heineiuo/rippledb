@@ -11,7 +11,39 @@ import varint from 'varint'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 
+export class ParsedInternalKey {
+  userKey!: Slice
+  sn!: SequenceNumber
+  valueType!: ValueType
+  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
+    if (!!userKey && !!sn && !!valueType) {
+      this.userKey = userKey
+      this.sn = sn
+      this.valueType = valueType
+    }
+  }
+}
+
 export class InternalKey extends Slice {
+  // We leave eight bits empty at the bottom so a type and sequence#
+  // can be packed together into 64-bits.
+  // in c++ , it is (0x1llu << 56) -1, 72057594037927935
+  // in javascript , Math.pow(2, 56) - 1 = 72057594037927940, Math.pow(2, 56) - 5 = 72057594037927930
+  // so , use 72057594037927935 directly
+  static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
+
+  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
+    super()
+    if (!!userKey && !!sn && !!valueType) {
+      this.appendInternalKey(
+        this._buffer,
+        new ParsedInternalKey(userKey, sn, valueType)
+      )
+    }
+  }
+
+  appendInternalKey(buf: Buffer, key: ParsedInternalKey) {}
+
   extractUserKey(): Slice {
     assert(this.size > 8)
     return new Slice(this.buffer.slice(0, this.size - 8))
@@ -41,7 +73,7 @@ export class InternalKeyBuilder {
   }
 }
 
-class Comparator {
+export class Comparator {
   getName(): string {
     return '0'
   }
@@ -230,3 +262,5 @@ export function getMaxBytesForLevel(level: number) {
 export function getExpandedCompactionByteSizeLimit(options: any) {
   return 25 * options.maxFileSize
 }
+
+export const kValueTypeForSeek = ValueType.kTypeValue
