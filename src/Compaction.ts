@@ -7,10 +7,13 @@
 
 import { FileMetaData } from './VersionFormat'
 import Version from './Version'
+import VersionEdit from './VersionEdit'
 
 export default class Compaction {
   level: number
   inputVersion!: Version
+  grandparents!: FileMetaData[]
+  edit!: VersionEdit
 
   // Each compaction reads inputs from "level_" and "level_+1"
   inputs!: [FileMetaData[], FileMetaData[]]
