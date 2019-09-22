@@ -16,6 +16,7 @@ import {
   ValueType,
   kMemTableDumpSize,
   kInternalKeyComparatorName,
+  Config,
 } from './Format'
 import { InternalKeyComparator } from './VersionFormat'
 import SequenceNumber from './SequenceNumber'
@@ -106,7 +107,6 @@ export default class Database {
   }
 
   private async recover() {
-    // const logReader = new LogReader()
     if (!(await this.existCurrent())) {
       await this.initVersionEdit()
     }
@@ -175,22 +175,30 @@ export default class Database {
     await this.write(batch, options)
   }
 
-  async write(batch: WriteBatch, options?: Options) {
+  async write(batch: WriteBatch | null, options?: Options) {
     await this.ok()
-    this.makeRoomForWrite()
-    const lastSequence = this._versionSet.lastSequence
+    this.makeRoomForWrite(!batch)
 
-    // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
-    // await this._log.addRecord(LogRecord.del(sliceKey))
-    WriteBatch.insert(batch, this._memtable)
-    // console.log('insert to memtable success')
-    WriteBatch.setSequence(batch, lastSequence + 1)
+    if (!!batch) {
+      let lastSequence = this._versionSet.lastSequence
 
-    // this._memtable.add(this._sn, ValueType.kTypeValue, sliceKey, sliceValue)
-    // console.log('memtable size is: ', this._memtable.size)
+      // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
+      // await this._log.addRecord(LogRecord.del(sliceKey))
+      WriteBatch.insert(batch, this._memtable)
+      // console.log('insert to memtable success')
+      WriteBatch.setSequence(batch, lastSequence + 1)
+      lastSequence += batch.count
+      // await this._log.addRecord(batch.contents())
+
+      // console.log('memtable size is: ', this._memtable.size)
+    }
   }
 
-  private makeRoomForWrite() {
+  /**
+   * force: force compact
+   */
+  private makeRoomForWrite(force: boolean) {
+    let allowDelay = !force
     if (this._memtable.size >= kMemTableDumpSize) {
       assert(this._versionSet.logNumber === 0) // no logfile is compaction
       const newLogNumber = this._versionSet.getNextFileNumber()
@@ -199,6 +207,8 @@ export default class Database {
       this._memtable = new MemTable(this._internalKeyComparator)
       this._memtable.ref()
       this.backgroundCompaction()
+    } else {
+      force = false
     }
   }
 
@@ -233,6 +243,16 @@ export default class Database {
    */
   compactRange(begin: Slice, end: Slice) {
     let maxLevelWithFiles = 1
+    let base = this._versionSet._current
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      if (base.overlapInLevel(level, begin, end)) {
+        maxLevelWithFiles = level
+      }
+    }
+    this.manualCompactMemTable()
+    for (let level = 0; level < maxLevelWithFiles; level++) {
+      this.manualCompactRangeWithLevel(level, begin, end)
+    }
   }
 
   private manualCompactRangeWithLevel(

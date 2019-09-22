@@ -11,28 +11,30 @@ import { Buffer } from 'buffer'
 import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
 
+interface Record {
+  type: number
+  data: Slice
+}
+
 export default class LogReader {
-  constructor(filename: string, LogRecord: any) {
+  constructor(filename: string) {
     this._filename = filename
-    this._LogRecord = LogRecord
   }
 
-  _file!: {
-    [x: string]: any
-  }
+  _file!: fs.promises.FileHandle | null
   _filename: string
-  _LogRecord: {
-    parseOp: (op: Slice) => any
-    from: (param: Buffer) => any
-  }
 
   async close() {
-    await this._file.close()
+    if (!!this._file) {
+      await this._file.close()
+      this._file = null
+    }
   }
 
   async *iterator() {
-    const LogRecord = this._LogRecord
-    const fd = await fs.promises.open(this._filename, 'r')
+    if (!this._file) {
+      this._file = await fs.promises.open(this._filename, 'r')
+    }
     let buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))
     let blockIndex = -1
     let latestOpBuf = Buffer.alloc(0)
@@ -41,9 +43,14 @@ export default class LogReader {
     while (true) {
       if (blockIndex === -1 || bufHandledPosition >= kBlockSize - 7) {
         const position = ++blockIndex * kBlockSize
-        const { bytesRead } = await fd.read(buf, 0, kBlockSize, position)
+        const { bytesRead } = await this._file.read(
+          buf,
+          0,
+          kBlockSize,
+          position
+        )
         if (bytesRead === 0) {
-          await fd.close()
+          await this._file.close()
           return
         }
         bufHandledPosition = 0
@@ -51,17 +58,17 @@ export default class LogReader {
       }
 
       // buf会被覆盖，所以需要拷贝
-      const record = LogRecord.from(Buffer.from(buf.slice(bufHandledPosition)))
-      bufHandledPosition += record.length
+      const record = this.decode(Buffer.from(buf.slice(bufHandledPosition)))
+      bufHandledPosition += record.data.length
       if (record.type === RecordType.kFullType) {
         const op = new Slice(record.data.buffer)
-        yield LogRecord.parseOp(op)
+        yield op
       } else if (record.type === RecordType.kLastType) {
         assert(latestType !== RecordType.kLastType)
         latestOpBuf = Buffer.concat([latestOpBuf, record.data.buffer])
         const op = new Slice(latestOpBuf)
         latestOpBuf = Buffer.alloc(0)
-        yield LogRecord.parseOp(op)
+        yield op
       } else if (record.type === RecordType.kFirstType) {
         assert(latestType !== RecordType.kFirstType)
         latestOpBuf = record.data.buffer
@@ -72,6 +79,17 @@ export default class LogReader {
         bufHandledPosition = kBlockSize
       }
       latestType = record.type
+    }
+  }
+
+  decode(buf: Buffer): Record {
+    const length = buf.readUInt16BE(4)
+    const type = buf.readUInt8(6)
+    const data = new Slice(buf.slice(7, 7 + length))
+    assert(length === data.length)
+    return {
+      data,
+      type,
     }
   }
 }
