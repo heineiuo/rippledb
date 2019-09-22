@@ -101,15 +101,16 @@ export default class VersionSet {
 
     // 根据current读取dscfile(description file), 即manifest文件
     const reader = new LogReader(
-      getManifestFilename(this._dbpath, manifestNumber),
-      VersionEditRecord
+      getManifestFilename(this._dbpath, manifestNumber)
+      // VersionEditRecord
     )
     // 读取record，apply到versionSet(apply方法)
     // 更新log number和prev log number（可省略，因为prevlognumber其实被废弃了）
     // 更新next file
     // 更新last sequence
     // 通过version builder 创建一个新的version
-    for await (let edit of reader.iterator()) {
+    for await (let slice of reader.iterator()) {
+      const edit = VersionEditRecord.decode(slice)
       // console.log(edit)
       builder.apply(edit)
 

@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import crc32 from 'buffer-crc32'
 import assert from 'assert'
 import varint from 'varint'
@@ -15,15 +14,6 @@ import { RecordType, ValueType } from './Format'
 import { createHexStringFromDecimal } from './LogFormat'
 
 export default class LogRecord {
-  static from(buf: Buffer): LogRecord {
-    const length = buf.readUInt16BE(4)
-    const recordType: RecordType = buf.readUInt8(6)
-    const data = new Slice(buf.slice(7, 7 + length))
-    assert(length === data.length)
-    const record = new LogRecord(recordType, data)
-    return record
-  }
-
   static add(key: Slice, value: Slice): Slice {
     return new Slice(
       Buffer.concat([
@@ -46,7 +36,7 @@ export default class LogRecord {
     )
   }
 
-  static parseOp(op: Slice): { type: ValueType; key: Slice; value?: Slice } {
+  static decode(op: Slice): { type: ValueType; key: Slice; value?: Slice } {
     const valueType = op.buffer.readUInt8(0)
     let index = 1
     const keyLength = varint.decode(op.buffer.slice(1))

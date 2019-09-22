@@ -81,7 +81,7 @@ export default class VersionEditRecord {
     return new Slice(Buffer.concat(bufList))
   }
 
-  static parseOp(op: Slice): VersionEdit {
+  static decode(op: Slice): VersionEdit {
     let index = 0
     const edit = new VersionEdit()
     while (index < op.length) {
