@@ -26,8 +26,6 @@ export default class VersionEditRecord {
   }
 
   static add(edit: VersionEdit): Slice {
-    console.log('add edit', edit.hasNextFileNumber)
-
     let bufList: Buffer[] = []
     if (edit.hasComparator) {
       bufList.push(Buffer.from([VersionEditTag.kComparator]))
