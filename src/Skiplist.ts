@@ -8,7 +8,6 @@
 import assert from 'assert'
 import Slice from './Slice'
 import SkiplistNode from './SkiplistNode'
-import { Options } from './Options'
 
 const PROBABILITY = 1 / Math.E
 
@@ -91,7 +90,7 @@ export default class Skiplist {
     }
   }
 
-  get(key: Slice, options: Options): Slice | null {
+  get(key: Slice): Slice | null {
     let prevNode = this.findPrevNode(key)
     if (!prevNode) return null
     let current = prevNode.next()

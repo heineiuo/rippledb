@@ -6,7 +6,7 @@
  */
 
 import { Buffer } from 'buffer'
-import { Options } from './Options'
+import { EncodingOptions } from './Options'
 import Slice from './Slice'
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
@@ -45,7 +45,7 @@ export default class SSTable {
     this._cacheData = Buffer.from([])
   }
 
-  get(key: Slice, options?: Options): Buffer | null | string {
+  get(key: Slice, options?: EncodingOptions): Buffer | null | string {
     let target
     for (let value of this.dataBlockIterator()) {
       if (key.compare(new Slice(value.key)) === 0) {

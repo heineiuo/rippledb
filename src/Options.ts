@@ -1,8 +1,11 @@
-
 export type Encodings = 'string' | 'buffer' | 'json'
 
-export type Options = {
+export interface EncodingOptions {
   keyEncoding?: Encodings
   valueEncoding?: Encodings
   prefix?: string
+}
+
+export interface Options {
+  maxFileSize: number
 }

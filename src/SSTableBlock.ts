@@ -10,7 +10,6 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
 import SSTableRecord from './SSTableRecord'
-import { Options } from './Options'
 import { CompressionTypes } from './Format'
 
 export default class SSTableBlock {

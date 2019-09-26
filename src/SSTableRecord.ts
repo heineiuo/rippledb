@@ -7,7 +7,6 @@
 
 import varint from 'varint'
 import { Buffer } from 'buffer'
-import { Options } from './Options'
 import Slice from './Slice'
 
 function getSize(buffer: Buffer, offset: number = 0): number {

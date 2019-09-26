@@ -6,14 +6,13 @@
  */
 
 import Slice from './Slice'
-import { Options } from './Options'
 import varint from 'varint'
 import SSTableBlock from './SSTableBlock'
 import SSTableDataBlock from './SSTableDataBlock'
 import { Buffer } from 'buffer'
 
 export default class TableIndexBlock extends SSTableBlock {
-  *dataBlockIterator(options?: Options) {
+  *dataBlockIterator() {
     // const iterator =
     for (let dataBlockIndexRecordValue of this.iterator()) {
       /**
@@ -31,7 +30,7 @@ export default class TableIndexBlock extends SSTableBlock {
     }
   }
 
-  *indexIterator(options?: Options) {
+  *indexIterator() {
     const iterator = this.iterator()
     let dataBlockIndexRecord = iterator.next()
     while (!dataBlockIndexRecord.done) {
