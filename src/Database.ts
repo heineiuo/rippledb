@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// import { Buffer } from 'buffer'
+import { Buffer } from 'buffer'
 import assert from 'assert'
 import fs from 'fs'
 import MemTable from './MemTable'
-// import LogRecord from './LogRecord'
+import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
 import { Options } from './Options'
 import {
@@ -20,7 +20,7 @@ import {
 } from './Format'
 import { InternalKeyComparator } from './VersionFormat'
 import SequenceNumber from './SequenceNumber'
-// import LRU from 'lru-cache'
+import LRU from 'lru-cache'
 import Compaction from './Compaction'
 import Slice from './Slice'
 import VersionSet from './VersionSet'
@@ -32,6 +32,11 @@ import {
   getManifestFilename,
 } from './Filename'
 import WriteBatch from './WriteBatch'
+import Status from './Status'
+
+interface ManualCompaction {
+  done: boolean
+}
 
 export default class Database {
   private _internalKeyComparator: InternalKeyComparator
@@ -40,10 +45,13 @@ export default class Database {
   private _sn: SequenceNumber
   // _cache: LRU
   private _log: LogWriter
+  private _logFileNumber!: number
   private _memtable: MemTable
   private _immtable?: MemTable
   private _versionSet: VersionSet
   private _ok: boolean
+  private _manualCompaction!: ManualCompaction
+  private _bgError!: Status
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
@@ -53,6 +61,7 @@ export default class Database {
     this._log = new LogWriter(getLogFilename(dbpath, 1))
     this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
+
     this._versionSet = new VersionSet(
       this._dbpath,
       {},
@@ -90,7 +99,7 @@ export default class Database {
     }
   }
 
-  private async initVersionEdit() {
+  private async initVersionEdit(): Promise<void> {
     const edit = new VersionEdit()
     edit.comparator = kInternalKeyComparatorName
     edit.logNumber = 0
@@ -106,7 +115,7 @@ export default class Database {
     )
   }
 
-  private async recover() {
+  private async recover(): Promise<void> {
     if (!(await this.existCurrent())) {
       await this.initVersionEdit()
     }
@@ -148,13 +157,23 @@ export default class Database {
    */
   async get(key: any, options?: Options): Promise<any> {
     await this.ok()
+    // console.log('get ok')
     const sliceKey = new Slice(key)
+    // console.log('sliceKey', sliceKey)
     const lookupKey = MemTable.createLookupKey(
       this._sn,
       sliceKey,
       ValueType.kTypeValue
     )
-    const result = this._memtable.get(lookupKey, options)
+
+    this._memtable.ref()
+    if (!!this._immtable) this._immtable.ref()
+    this._versionSet.current.ref()
+
+    let result = this._memtable.get(lookupKey, options)
+    if (!result && !!this._immtable) {
+      result = this._immtable.get(lookupKey, options)
+    }
     return result
   }
 
@@ -177,7 +196,8 @@ export default class Database {
 
   async write(batch: WriteBatch | null, options?: Options) {
     await this.ok()
-    this.makeRoomForWrite(!batch)
+    await this.makeRoomForWrite(!batch)
+    // console.log('makeRoomForWrite end...')
 
     if (!!batch) {
       let lastSequence = this._versionSet.lastSequence
@@ -197,23 +217,79 @@ export default class Database {
   /**
    * force: force compact
    */
-  private makeRoomForWrite(force: boolean) {
+  private async makeRoomForWrite(force: boolean) {
     let allowDelay = !force
-    if (this._memtable.size >= kMemTableDumpSize) {
-      assert(this._versionSet.logNumber === 0) // no logfile is compaction
-      const newLogNumber = this._versionSet.getNextFileNumber()
-      this._log = new LogWriter(getLogFilename(this._dbpath, newLogNumber))
-      this._immtable = this._memtable
-      this._memtable = new MemTable(this._internalKeyComparator)
-      this._memtable.ref()
-      this.backgroundCompaction()
+    let status = new Status()
+    while (true) {
+      if (this._bgError) {
+        status = this._bgError
+        break
+      } else if (
+        allowDelay &&
+        this._versionSet.getNumLevelFiles(0) >= Config.kL0SlowdownWritesTrigger
+      ) {
+        // We are getting close to hitting a hard limit on the number of
+        // L0 files.  Rather than delaying a single write by several
+        // seconds when we hit the hard limit, start delaying each
+        // individual write by 1ms to reduce latency variance.  Also,
+        // this delay hands over some CPU to the compaction thread in
+        // case it is sharing the same core as the writer.
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        allowDelay = false
+      } else if (!force && this._memtable.size <= kMemTableDumpSize) {
+        // ✌ There is room in current memtable
+        break
+      } else if (!!this._immtable) {
+        // We have filled up the current memtable, but the previous
+        // one is still being compacted, so we wait.
+        // TODO wait
+        console.log('Current memtable full; waiting...\n')
+        // await this._backgroundWorkingPromise
+      } else if (
+        this._versionSet.getNumLevelFiles(0) >= Config.kL0StopWritesTrigger
+      ) {
+        // There are too many level-0 files.
+        // TODO wait
+        console.log('Too many L0 files; waiting...\n')
+        // await this._backgroundWorkingPromise
+      } else {
+        // TODO break loop
+        // console.log('force')
+        assert(this._versionSet.logNumber === 0) // no logfile is compaction
+        const newLogNumber = this._versionSet.getNextFileNumber()
+        this._log = new LogWriter(getLogFilename(this._dbpath, newLogNumber))
+        this._immtable = this._memtable
+        this._memtable = new MemTable(this._internalKeyComparator)
+        this._memtable.ref()
+        this._logFileNumber = newLogNumber
+        force = false
+        this.maybeScheduleCompaction()
+      }
+    }
+    return status
+  }
+
+  private async maybeScheduleCompaction() {
+    if (this._backgroundCompactionScheduled) {
+      // Already scheduled
+    } else if (this._bgError && !(await this._bgError.ok())) {
+      // Already got an error; no more changes
+    } else if (
+      !this._immtable &&
+      !this._manualCompaction &&
+      !this._versionSet.needsCompaction()
+    ) {
+      // No work to be done
     } else {
-      force = false
+      this._backgroundCompactionScheduled = true
+      this.backgroundCompaction()
     }
   }
 
+  // ignore: Schedule, BGWork and BackgroundCall
   private async backgroundCompaction(): Promise<void> {
     try {
+      if (this._backgroundCompactionScheduled) return
       this._backgroundCompactionScheduled = true
       let c: Compaction | void
       if (this._immtable !== null) {
@@ -241,7 +317,7 @@ export default class Database {
   /**
    * manually compact
    */
-  compactRange(begin: Slice, end: Slice) {
+  async compactRange(begin: Slice, end: Slice): Promise<void> {
     let maxLevelWithFiles = 1
     let base = this._versionSet._current
     for (let level = 0; level < Config.kNumLevels; level++) {
@@ -249,10 +325,12 @@ export default class Database {
         maxLevelWithFiles = level
       }
     }
-    this.manualCompactMemTable()
+    await this.manualCompactMemTable()
+    // console.log('manualCompactMemTable end')
     for (let level = 0; level < maxLevelWithFiles; level++) {
       this.manualCompactRangeWithLevel(level, begin, end)
     }
+    // console.log('compactRange end')
   }
 
   private manualCompactRangeWithLevel(
@@ -261,5 +339,7 @@ export default class Database {
     end: Slice
   ) {}
 
-  private manualCompactMemTable() {}
+  private async manualCompactMemTable() {
+    await this.write(null, {})
+  }
 }

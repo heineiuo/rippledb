@@ -6,8 +6,7 @@ import Slice from '../Slice'
 test('db manual compaction', async () => {
   const db = new Database(dbpath)
   await db.put('key', 'world')
-  db.compactRange(new Slice('k'), new Slice('kc'))
-  await new Promise(resolve => setTimeout(resolve, 2000))
+  await db.compactRange(new Slice('k'), new Slice('kc'))
   const result = await db.get('key')
   expect(result).toBe('world')
 })

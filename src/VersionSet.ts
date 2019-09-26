@@ -76,6 +76,12 @@ export default class VersionSet {
     return this.nextFileNumber++
   }
 
+  getNumLevelFiles(level: number): number {
+    assert(level >= 0)
+    assert(level <= Config.kNumLevels)
+    return this._current.files[level].length
+  }
+
   async recover() {
     // 读取current， 校验是否是\n结尾
     const current = await fs.promises.readFile(
