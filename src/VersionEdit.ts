@@ -4,7 +4,13 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import { CompactPointer, DeletedFile, NewFile } from './VersionFormat'
+import {
+  CompactPointer,
+  DeletedFile,
+  NewFile,
+  FileMetaData,
+  InternalKey,
+} from './VersionFormat'
 
 export default class VersionEdit {
   // major compaction时选择文件
@@ -115,5 +121,38 @@ export default class VersionEdit {
 
   get hasLastSequence(): boolean {
     return this._hasLastSequence || false
+  }
+
+  // Delete the specified "file" from the specified "level".
+  deletedFile(level: number, fileNum: number) {
+    this.deletedFiles.push({
+      level,
+      fileNum,
+    })
+  }
+
+  // Add the specified file at the specified number.
+  // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
+  // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
+  addFile(
+    level: number,
+    fileNum: number,
+    fileSize: number,
+    smallest: InternalKey,
+    largest: InternalKey
+  ) {
+    const f = new FileMetaData()
+    f.number = fileNum
+    f.fileSize = fileSize
+    f.smallest = smallest
+    f.largest = largest
+    this.newFiles.push({ level, fileMetaData: f })
+  }
+
+  setCompactPointer(level: number, internalKey: InternalKey) {
+    this.compactPointers.push({
+      level,
+      internalKey,
+    })
   }
 }

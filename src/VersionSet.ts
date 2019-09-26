@@ -17,6 +17,7 @@ import {
   getMaxBytesForLevel,
   InternalKey,
 } from './VersionFormat'
+import Status from './Status'
 import { FileMetaData } from './VersionFormat'
 import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
@@ -26,11 +27,12 @@ import VersionEdit from './VersionEdit'
 import { Config } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
+import { Options } from './Options'
 
 export default class VersionSet {
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
-  compactPointers: string[]
+  compactPointers: Slice[]
   _manifestFileNumber?: number
   _current!: Version
   _dummyVersions: Version
@@ -47,7 +49,7 @@ export default class VersionSet {
   nextFileNumber!: number
 
   _dbpath: string
-  _options: any
+  _options: Options
   _memtable: MemTable
   internalKeyComparator: InternalKeyComparator
 
@@ -55,7 +57,7 @@ export default class VersionSet {
 
   constructor(
     dbpath: string,
-    options: any,
+    options: Options,
     memtable: MemTable,
     internalKeyComparator: InternalKeyComparator
   ) {
@@ -70,6 +72,43 @@ export default class VersionSet {
 
   get current(): Version {
     return this._current
+  }
+
+  compactRange(
+    level: number,
+    begin: InternalKey,
+    end: InternalKey
+  ): Compaction | void {
+    let inputs: FileMetaData[] = []
+    this._current.getOverlappingInputs(level, begin, end, inputs)
+    if (inputs.length === 0) return
+
+    // Avoid compacting too much in one shot in case the range is large.
+    // But we cannot do this for level-0 since level-0 files can overlap
+    // and we must not pick one file and drop another older file if the
+    // two files overlap.
+    if (level > 0) {
+      let limit = this.maxFileSizeForLevel(this._options, level)
+      let total = 0
+      for (let i = 0; i < inputs.length; i++) {
+        total += inputs[i].fileSize
+        if (total >= limit) {
+          inputs.push(new FileMetaData())
+          break
+        }
+      }
+    }
+
+    const c = new Compaction(this._options, level)
+    c.inputVersion = this._current
+    c.inputVersion.ref()
+    c.inputs[0] = inputs
+    this.setupOtherInputs(c)
+    return c
+  }
+
+  maxFileSizeForLevel(options: any, level: number): number {
+    return options.maxFileSize
   }
 
   getNextFileNumber(): number {
@@ -215,7 +254,7 @@ export default class VersionSet {
   }
 
   // 需要写入manifest
-  logAndApply(edit: VersionEdit) {
+  async logAndApply(edit: VersionEdit): Promise<Status> {
     if (edit.hasLogNumber) {
       assert(edit.logNumber >= this.logNumber)
       assert(edit.logNumber < this.nextFileNumber)
@@ -236,16 +275,36 @@ export default class VersionSet {
     builder.saveTo(v)
     this.finalize(v)
 
-    let manifestFilename: string
-    if (this.manifestWritter) {
-      const nextManifestFilename = getManifestFilename(
+    // Initialize new descriptor log file if necessary by creating
+    // a temporary file that contains a snapshot of the current version.
+    let manifestFilename = ''
+    let status = new Status()
+    if (!this.manifestWritter) {
+      // No reason to unlock *mu here since we only hit this path in the
+      // first call to LogAndApply (when opening the database).
+      manifestFilename = getManifestFilename(
         this._dbpath,
         this.manifestFileNumber
       )
       edit.nextFileNumber = this.nextFileNumber
-      const writter = new LogWriter(nextManifestFilename)
-      this.writeSnapshot(writter)
+      this.manifestWritter = new LogWriter(manifestFilename)
+      status = this.writeSnapshot(this.manifestWritter)
     }
+
+    if (await status.ok()) {
+      const record = VersionEditRecord.add(edit)
+      status = new Status(this.manifestWritter.addRecord(record))
+    }
+
+    // If we just created a new descriptor file, install it by writing a
+    // new CURRENT file that points to it.
+    if ((await status.ok()) && manifestFilename.length > 0) {
+      status = new Status(
+        this.writeCurrentFile(this._dbpath, this.manifestFileNumber)
+      )
+    }
+
+    return status
   }
 
   needsCompaction(): boolean {
@@ -265,6 +324,8 @@ export default class VersionSet {
     }
     this._current = ver
     ver.ref()
+
+    // Append to linked list
     ver.prev = this._dummyVersions.prev
     ver.next = this._dummyVersions
     ver.prev.next = ver
@@ -278,12 +339,43 @@ export default class VersionSet {
   /**
    * 将current写入manifest
    */
-  writeSnapshot(writter: LogWriter) {
+  writeSnapshot(writter: LogWriter): Status {
     const edit = new VersionEdit()
+
+    // Save metadata
     edit.comparator = this.internalKeyComparator.userComparator.getName()
 
+    // Save compaction pointers
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      if (this.compactPointers[level].length !== 0) {
+        let key = new InternalKey()
+        key.decodeFrom(this.compactPointers[level])
+        edit.setCompactPointer(level, key)
+      }
+    }
+
+    // Save files
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      const files: FileMetaData[] = this._current.files[level]
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        edit.addFile(level, f.number, f.fileSize, f.smallest, f.largest)
+      }
+    }
+
     const record = VersionEditRecord.add(edit)
-    writter.addRecord(record)
+    return new Status(writter.addRecord(record))
+  }
+
+  async writeCurrentFile(
+    dbpath: string,
+    manifestFileNumber: number
+  ): Promise<void> {
+    const currentFilename = getCurrentFilename(dbpath)
+    let manifestFilename = getManifestFilename(dbpath, manifestFileNumber)
+    assert(manifestFilename.startsWith(dbpath + '/'))
+    manifestFilename = manifestFilename.substr(dbpath.length + 1)
+    await fs.promises.writeFile(currentFilename, manifestFilename + '\n')
   }
 
   pickCompaction(): Compaction | void {
@@ -539,7 +631,7 @@ export default class VersionSet {
     // We update this immediately instead of waiting for the VersionEdit
     // to be applied so that if the compaction fails, we will try a different
     // key range next time.
-    this.compactPointers[level] = largest.toString()
+    this.compactPointers[level] = largest
     c.edit.compactPointers.push({ level, internalKey: largest })
   }
 }
