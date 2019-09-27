@@ -4,7 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-//@flow
 
 import fs from 'fs'
 import { Buffer } from 'buffer'
@@ -17,8 +16,6 @@ import SSTableIndexBlock from './SSTableIndexBlock'
 import SSTableMetaIndexBlock from './SSTableMetaIndexBlock'
 import SSTableMetaBlock from './SSTableMetaBlock'
 import SSTableDataBlock from './SSTableDataBlock'
-
-// interface FileHandle extends fs.FileHandle { }
 
 export default class SSTableBuilder {
   constructor(
@@ -37,19 +34,19 @@ export default class SSTableBuilder {
     this._options = options
   }
 
-  _options: { size: number }
-  _file: fs.promises.FileHandle
-  _fileSize: number
-  _flushTimes: number
-  _name!: string
-  _lastKey!: Slice
-  _totalDataBlockSize: number
-  _dataBlock: SSTableDataBlock
-  _metaBlock: SSTableMetaBlock
-  _metaIndexBlock: SSTableMetaIndexBlock
-  _indexBlock: SSTableIndexBlock
-  _footer: SSTableFooter
-  _numEntries!: number
+  private _options: { size: number }
+  private _file: fs.promises.FileHandle
+  private _fileSize: number
+  private _flushTimes: number
+  private _name!: string
+  private _lastKey!: Slice
+  private _totalDataBlockSize: number
+  private _dataBlock: SSTableDataBlock
+  private _metaBlock: SSTableMetaBlock
+  private _metaIndexBlock: SSTableMetaIndexBlock
+  private _indexBlock: SSTableIndexBlock
+  private _footer: SSTableFooter
+  private _numEntries!: number
 
   async add(key: Slice, value: Slice) {
     if (this._lastKey) {
@@ -83,13 +80,6 @@ export default class SSTableBuilder {
     for (let result of this._dataBlock.iterator()) {
       keys.push(result.key.toString())
     }
-
-    // const blockKeyIterator = this._dataBlock.iterator()
-    // let result = blockKeyIterator.next()
-    // while (!result.done) {
-    //   keys.push(result.value.key)
-    //   result = blockKeyIterator.next()
-    // }
 
     const filter = new BloomFilter()
     filter.putKeys(keys, keys.length)

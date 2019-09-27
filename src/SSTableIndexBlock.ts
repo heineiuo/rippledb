@@ -6,15 +6,13 @@
  */
 
 import Slice from './Slice'
-import { Options } from './Options'
 import varint from 'varint'
 import SSTableBlock from './SSTableBlock'
 import SSTableDataBlock from './SSTableDataBlock'
 import { Buffer } from 'buffer'
 
 export default class TableIndexBlock extends SSTableBlock {
-  *dataBlockIterator(options?: Options) {
-    // const iterator =
+  *dataBlockIterator() {
     for (let dataBlockIndexRecordValue of this.iterator()) {
       /**
        * key=max key of data block
@@ -31,11 +29,9 @@ export default class TableIndexBlock extends SSTableBlock {
     }
   }
 
-  *indexIterator(options?: Options) {
-    const iterator = this.iterator()
-    let dataBlockIndexRecord = iterator.next()
-    while (!dataBlockIndexRecord.done) {
-      const { key, value } = dataBlockIndexRecord.value
+  *indexIterator() {
+    for (let dataBlockIndexRecord of this.iterator()) {
+      const { key, value } = dataBlockIndexRecord
       const offset = varint.decode(value.buffer)
       const size = varint.decode(value.buffer, varint.decode.bytes)
       yield {
@@ -43,7 +39,6 @@ export default class TableIndexBlock extends SSTableBlock {
         offset,
         size,
       }
-      dataBlockIndexRecord = iterator.next()
     }
   }
 }

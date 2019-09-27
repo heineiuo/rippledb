@@ -4,27 +4,35 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import { CompactPointer, DeletedFile, NewFile } from './VersionFormat'
+
+import {
+  CompactPointer,
+  DeletedFile,
+  NewFile,
+  FileMetaData,
+  InternalKey,
+} from './VersionFormat'
 
 export default class VersionEdit {
   // major compaction时选择文件
-  // compact_pointer_是 string 类型，记录了该层上次 compact 时文件的 largest key，初始值为空，也就是选择该层第一个文件。
+  // compact_pointer_是 string 类型，记录了该层上次 compact 时文件的 largest key，初始值为空，
+  // 也就是选择该层第一个文件。
   // 如果seek_compaction = true，则直接使用满足条件的文件。
 
   compactPointers: CompactPointer[]
   deletedFiles: DeletedFile[]
   newFiles: NewFile[]
-  _comparator: string
-  _logNumber?: number
-  _prevLogNumber?: number
-  _lastLogNumber?: number
-  _lastSequence?: number
-  _nextFileNumber?: number
-  _hasComparator?: boolean
-  _hasLogNumber?: boolean
-  _hasPrevLogNumber?: boolean
-  _hasNextFileNumber?: boolean
-  _hasLastSequence?: boolean
+  private _comparator: string
+  private _logNumber?: number
+  private _prevLogNumber?: number
+  private _lastLogNumber?: number
+  private _lastSequence?: number
+  private _nextFileNumber?: number
+  private _hasComparator?: boolean
+  private _hasLogNumber?: boolean
+  private _hasPrevLogNumber?: boolean
+  private _hasNextFileNumber?: boolean
+  private _hasLastSequence?: boolean
 
   constructor() {
     this._comparator = ''
@@ -115,5 +123,38 @@ export default class VersionEdit {
 
   get hasLastSequence(): boolean {
     return this._hasLastSequence || false
+  }
+
+  // Delete the specified "file" from the specified "level".
+  deletedFile(level: number, fileNum: number) {
+    this.deletedFiles.push({
+      level,
+      fileNum,
+    })
+  }
+
+  // Add the specified file at the specified number.
+  // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
+  // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
+  addFile(
+    level: number,
+    fileNum: number,
+    fileSize: number,
+    smallest: InternalKey,
+    largest: InternalKey
+  ) {
+    const f = new FileMetaData()
+    f.number = fileNum
+    f.fileSize = fileSize
+    f.smallest = smallest
+    f.largest = largest
+    this.newFiles.push({ level, fileMetaData: f })
+  }
+
+  setCompactPointer(level: number, internalKey: InternalKey) {
+    this.compactPointers.push({
+      level,
+      internalKey,
+    })
   }
 }

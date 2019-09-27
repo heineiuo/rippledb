@@ -156,14 +156,15 @@ export default class VersionEditRecord {
         index += varint.decode.bytes
         const largestKey = op.buffer.slice(index, index + largestKeyLength)
         index += largestKeyLength
+        let fileMetaData = new FileMetaData()
+        fileMetaData.number = fileNum
+        fileMetaData.fileSize = fileSize
+        fileMetaData.smallest = new InternalKey(new Slice(smallestKey))
+        fileMetaData.largest = new InternalKey(new Slice(largestKey))
+
         edit.newFiles.push({
           level,
-          fileMetaData: new FileMetaData({
-            fileNum,
-            fileSize,
-            smallestKey: new Slice(smallestKey),
-            largestKey: new Slice(largestKey),
-          }),
+          fileMetaData,
         })
         continue
       }

@@ -10,6 +10,7 @@ import { ValueType } from './Format'
 import varint from 'varint'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
+import { Options } from './Options'
 
 export class ParsedInternalKey {
   userKey!: Slice
@@ -36,10 +37,15 @@ export class InternalKey extends Slice {
     super()
     if (!!userKey && !!sn && !!valueType) {
       this.appendInternalKey(
-        this._buffer,
+        this.buffer,
         new ParsedInternalKey(userKey, sn, valueType)
       )
     }
+  }
+
+  decodeFrom(slice: Slice) {
+    this.buffer = slice.buffer
+    return this.size > 0
   }
 
   appendInternalKey(buf: Buffer, key: ParsedInternalKey) {}
@@ -122,18 +128,15 @@ export class FileMetaData {
   refs: number
   // if seeks > allowedSeeks, trigger compaction
   allowedSeeks: number
-  number: number
   fileSize: number
-  smallest: InternalKey
-  largest: InternalKey
+  number!: number
+  smallest!: InternalKey
+  largest!: InternalKey
 
-  constructor(args: any) {
-    this.refs = args.refs
-    this.allowedSeeks = args.allowedSeeks
-    this.number = args.number
-    this.fileSize = args.fileSize
-    this.smallest = new InternalKey(args.smallest)
-    this.largest = new InternalKey(args.largest)
+  constructor() {
+    this.refs = 0
+    this.allowedSeeks = 1 << 30
+    this.fileSize = 0
   }
 }
 
@@ -259,8 +262,13 @@ export function getMaxBytesForLevel(level: number) {
   return result
 }
 
-export function getExpandedCompactionByteSizeLimit(options: any) {
+export function getExpandedCompactionByteSizeLimit(options: Options) {
   return 25 * options.maxFileSize
 }
 
 export const kValueTypeForSeek = ValueType.kTypeValue
+
+export interface Entry {
+  key: Slice
+  value: Slice
+}

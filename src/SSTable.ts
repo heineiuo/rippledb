@@ -6,24 +6,20 @@
  */
 
 import { Buffer } from 'buffer'
-import { Options } from './Options'
+import { EncodingOptions } from './Options'
 import Slice from './Slice'
 import Footer from './SSTableFooter'
 import IndexBlock from './SSTableIndexBlock'
 import DataBlock from './SSTableDataBlock'
 import MetaIndexBlock from './SSTableMetaIndexBlock'
 
-/**
- * Create a sstable class
- * @constructor
- */
 export default class SSTable {
-  _footer: Footer
-  _immutable: boolean
-  _cacheData: Buffer
-  _indexBlock: IndexBlock
-  _dataBlock!: DataBlock
-  _metaIndexBlock: MetaIndexBlock
+  private _footer: Footer
+  private _immutable: boolean
+  private _cacheData: Buffer
+  private _indexBlock: IndexBlock
+  private _dataBlock!: DataBlock
+  private _metaIndexBlock: MetaIndexBlock
 
   constructor(
     buf: Buffer,
@@ -45,7 +41,7 @@ export default class SSTable {
     this._cacheData = Buffer.from([])
   }
 
-  get(key: Slice, options?: Options): Buffer | null | string {
+  get(key: Slice, options?: EncodingOptions): Buffer | null | string {
     let target
     for (let value of this.dataBlockIterator()) {
       if (key.compare(new Slice(value.key)) === 0) {
@@ -57,10 +53,6 @@ export default class SSTable {
     if (options.valueEncoding === 'string') return target.toString()
     return target.buffer
   }
-
-  // *iterator() {
-  //   return
-  // }
 
   *dataBlockIterator() {
     yield* this._indexBlock.dataBlockIterator()

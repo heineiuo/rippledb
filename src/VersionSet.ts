@@ -8,15 +8,21 @@
 import assert from 'assert'
 import fs from 'fs'
 import Version from './Version'
-import { getCurrentFilename, getManifestFilename } from './Filename'
+import {
+  getCurrentFilename,
+  getManifestFilename,
+  getTableFilename,
+} from './Filename'
 import Slice from './Slice'
 import {
+  Entry,
   CompactPointer,
   InternalKeyComparator,
   getExpandedCompactionByteSizeLimit,
   getMaxBytesForLevel,
   InternalKey,
 } from './VersionFormat'
+import Status from './Status'
 import { FileMetaData } from './VersionFormat'
 import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
@@ -26,11 +32,14 @@ import VersionEdit from './VersionEdit'
 import { Config } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
+import { Options } from './Options'
+import SequenceNumber from './SequenceNumber'
+import SSTable from './SSTable'
 
 export default class VersionSet {
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
-  compactPointers: string[]
+  compactPointers: Slice[]
   _manifestFileNumber?: number
   _current!: Version
   _dummyVersions: Version
@@ -46,8 +55,8 @@ export default class VersionSet {
   manifestFileNumber!: number
   nextFileNumber!: number
 
-  _dbpath: string
-  _options: any
+  private _dbpath: string
+  _options: Options
   _memtable: MemTable
   internalKeyComparator: InternalKeyComparator
 
@@ -55,7 +64,7 @@ export default class VersionSet {
 
   constructor(
     dbpath: string,
-    options: any,
+    options: Options,
     memtable: MemTable,
     internalKeyComparator: InternalKeyComparator
   ) {
@@ -72,17 +81,54 @@ export default class VersionSet {
     return this._current
   }
 
-  getNextFileNumber(): number {
+  public compactRange(
+    level: number,
+    begin: InternalKey,
+    end: InternalKey
+  ): Compaction | void {
+    let inputs: FileMetaData[] = []
+    this._current.getOverlappingInputs(level, begin, end, inputs)
+    if (inputs.length === 0) return
+
+    // Avoid compacting too much in one shot in case the range is large.
+    // But we cannot do this for level-0 since level-0 files can overlap
+    // and we must not pick one file and drop another older file if the
+    // two files overlap.
+    if (level > 0) {
+      let limit = this.maxFileSizeForLevel(this._options, level)
+      let total = 0
+      for (let i = 0; i < inputs.length; i++) {
+        total += inputs[i].fileSize
+        if (total >= limit) {
+          inputs.push(new FileMetaData())
+          break
+        }
+      }
+    }
+
+    const c = new Compaction(this._options, level)
+    c.inputVersion = this._current
+    c.inputVersion.ref()
+    c.inputs[0] = inputs
+    this.setupOtherInputs(c)
+    return c
+  }
+
+  private maxFileSizeForLevel(options: any, level: number): number {
+    return options.maxFileSize
+  }
+
+  public getNextFileNumber(): number {
     return this.nextFileNumber++
   }
 
-  getNumLevelFiles(level: number): number {
+  public getNumLevelFiles(level: number): number {
     assert(level >= 0)
     assert(level <= Config.kNumLevels)
     return this._current.files[level].length
   }
 
-  async recover() {
+  public async recover() {
     // 读取current， 校验是否是\n结尾
     const current = await fs.promises.readFile(
       getCurrentFilename(this._dbpath),
@@ -173,14 +219,14 @@ export default class VersionSet {
     // 检查是否需要创建新的manifest（ reuseManifest ）
   }
 
-  markFileNumberUsed(num: number) {
+  private markFileNumberUsed(num: number) {
     if (this.nextFileNumber <= num) {
       this.nextFileNumber = num + 1
     }
   }
 
   // Precomputed best level for next compaction
-  finalize(ver: Version) {
+  private finalize(ver: Version) {
     // traverse levels(0-6),
     // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
     // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
@@ -206,7 +252,7 @@ export default class VersionSet {
     ver.compactionScore = bestScore
   }
 
-  getTotalBytes(files: FileMetaData[]) {
+  private getTotalBytes(files: FileMetaData[]) {
     let sum = 0
     for (let f of files) {
       sum += f.fileSize
@@ -215,7 +261,7 @@ export default class VersionSet {
   }
 
   // 需要写入manifest
-  logAndApply(edit: VersionEdit) {
+  public async logAndApply(edit: VersionEdit): Promise<Status> {
     if (edit.hasLogNumber) {
       assert(edit.logNumber >= this.logNumber)
       assert(edit.logNumber < this.nextFileNumber)
@@ -236,19 +282,39 @@ export default class VersionSet {
     builder.saveTo(v)
     this.finalize(v)
 
-    let manifestFilename: string
-    if (this.manifestWritter) {
-      const nextManifestFilename = getManifestFilename(
+    // Initialize new descriptor log file if necessary by creating
+    // a temporary file that contains a snapshot of the current version.
+    let manifestFilename = ''
+    let status = new Status()
+    if (!this.manifestWritter) {
+      // No reason to unlock *mu here since we only hit this path in the
+      // first call to LogAndApply (when opening the database).
+      manifestFilename = getManifestFilename(
         this._dbpath,
         this.manifestFileNumber
       )
       edit.nextFileNumber = this.nextFileNumber
-      const writter = new LogWriter(nextManifestFilename)
-      this.writeSnapshot(writter)
+      this.manifestWritter = new LogWriter(manifestFilename)
+      status = this.writeSnapshot(this.manifestWritter)
     }
+
+    if (await status.ok()) {
+      const record = VersionEditRecord.add(edit)
+      status = new Status(this.manifestWritter.addRecord(record))
+    }
+
+    // If we just created a new descriptor file, install it by writing a
+    // new CURRENT file that points to it.
+    if ((await status.ok()) && manifestFilename.length > 0) {
+      status = new Status(
+        this.writeCurrentFile(this._dbpath, this.manifestFileNumber)
+      )
+    }
+
+    return status
   }
 
-  needsCompaction(): boolean {
+  public needsCompaction(): boolean {
     return (
       this._current.compactionScore >= 1 || this._current.fileToCompact !== null
     )
@@ -257,7 +323,7 @@ export default class VersionSet {
   /**
    * 主要目的是更新this._current
    */
-  appendVersion(ver: Version): void {
+  private appendVersion(ver: Version): void {
     assert(ver.refs === 0)
     assert(ver !== this._current)
     if (this._current) {
@@ -265,28 +331,61 @@ export default class VersionSet {
     }
     this._current = ver
     ver.ref()
+
+    // Append to linked list
     ver.prev = this._dummyVersions.prev
     ver.next = this._dummyVersions
     ver.prev.next = ver
     ver.next.prev = ver
   }
 
-  reuseManifest() {
+  private reuseManifest() {
     return false
   }
 
   /**
    * 将current写入manifest
    */
-  writeSnapshot(writter: LogWriter) {
+  private writeSnapshot(writter: LogWriter): Status {
     const edit = new VersionEdit()
+
+    // Save metadata
     edit.comparator = this.internalKeyComparator.userComparator.getName()
 
+    // Save compaction pointers
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      if (this.compactPointers[level].length !== 0) {
+        let key = new InternalKey()
+        key.decodeFrom(this.compactPointers[level])
+        edit.setCompactPointer(level, key)
+      }
+    }
+
+    // Save files
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      const files: FileMetaData[] = this._current.files[level]
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        edit.addFile(level, f.number, f.fileSize, f.smallest, f.largest)
+      }
+    }
+
     const record = VersionEditRecord.add(edit)
-    writter.addRecord(record)
+    return new Status(writter.addRecord(record))
   }
 
-  pickCompaction(): Compaction | void {
+  private async writeCurrentFile(
+    dbpath: string,
+    manifestFileNumber: number
+  ): Promise<void> {
+    const currentFilename = getCurrentFilename(dbpath)
+    let manifestFilename = getManifestFilename(dbpath, manifestFileNumber)
+    assert(manifestFilename.startsWith(dbpath + '/'))
+    manifestFilename = manifestFilename.substr(dbpath.length + 1)
+    await fs.promises.writeFile(currentFilename, manifestFilename + '\n')
+  }
+
+  public pickCompaction(): Compaction | void {
     // We prefer compactions triggered by too much data in a level over
     // the compactions triggered by seeks.
     const shouldSizeCompaction = this._current.compactionScore > 1
@@ -346,7 +445,7 @@ export default class VersionSet {
    * smallest, *largest.
    * REQUIRES: inputs is not empty
    */
-  getRange(
+  private getRange(
     inputs: FileMetaData[],
     smallest: InternalKey,
     largest: InternalKey
@@ -380,7 +479,7 @@ export default class VersionSet {
    * in *smallest, *largest.
    * REQUIRES: inputs is not empty
    */
-  getRange2(
+  private getRange2(
     inputs1: FileMetaData[],
     inputs2: FileMetaData[],
     smallest: InternalKey,
@@ -445,7 +544,7 @@ export default class VersionSet {
 
   // Finds minimum file b2=(l2, u2) in level file for which l2 > u1 and
   // user_key(l2) = user_key(u1)
-  findSmallestBoundaryFile(
+  public findSmallestBoundaryFile(
     icmp: InternalKeyComparator,
     levelFiles: FileMetaData[],
     largestKey: InternalKey
@@ -473,7 +572,7 @@ export default class VersionSet {
     return smallestBoundryFile
   }
 
-  setupOtherInputs(c: Compaction): void {
+  public setupOtherInputs(c: Compaction): void {
     const level = c.level
     let smallest = new InternalKey()
     let largest = new InternalKey()
@@ -539,7 +638,48 @@ export default class VersionSet {
     // We update this immediately instead of waiting for the VersionEdit
     // to be applied so that if the compaction fails, we will try a different
     // key range next time.
-    this.compactPointers[level] = largest.toString()
+    this.compactPointers[level] = largest
     c.edit.compactPointers.push({ level, internalKey: largest })
+  }
+
+  public addLiveFiles(live: number[]) {
+    for (
+      let v = this._dummyVersions.next;
+      v != this._dummyVersions;
+      v = v.next
+    ) {
+      for (let level = 0; level < Config.kNumLevels; level++) {
+        const files = v.files[level]
+        for (let i = 0; i < files.length; i++) {
+          live.push(files[i].number)
+        }
+      }
+    }
+  }
+
+  // Create an iterator that reads over the compaction inputs for "*c".
+  // The caller should delete the iterator when no longer needed.
+  public async *makeInputIterator(c: Compaction) {
+    let num = 0
+    for (let which = 0; which < 2; which++) {
+      if (c.inputs[which].length > 0) {
+        if (c.level + which === 0) {
+          const files = c.inputs[which]
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i]
+            const sstable = new SSTable(
+              await fs.promises.readFile(
+                getTableFilename(this._dbpath, file.number)
+              )
+            )
+            num++
+            yield sstable.indexBlockIterator()
+          }
+        } else {
+          num++
+          // Create concatenating iterator for the files from this level
+        }
+      }
+    }
   }
 }

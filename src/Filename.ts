@@ -6,6 +6,7 @@
  */
 
 import path from 'path'
+import { FileType } from './Format'
 
 function numberToString(num: number) {
   let str = String(num)
@@ -47,4 +48,44 @@ export function getInfoLogFilename(dbpath: string): string {
 
 export function getOldInfoLogFilename(dbpath: string): string {
   return path.resolve(dbpath, `LOG.old`)
+}
+
+export function parseFilename(
+  filename: string,
+  number: number,
+  type: FileType
+): boolean {
+  if (filename === 'CURRENT') {
+    number = 0
+    type = FileType.kCurrentFile
+  } else if (filename === 'LOCK') {
+    number = 0
+    type = FileType.kLogFile
+  } else if (filename === 'LOG' || filename === 'LOG.old') {
+    number = 0
+    type = FileType.kInfoLogFile
+  } else if (filename.startsWith('MANIFEST-')) {
+    let num = Number(filename.substr('MANIFEST-'.length))
+    if (isNaN(num)) {
+      return false
+    }
+    number = num
+    type = FileType.kDescriptorFile
+  } else {
+    let num = Number(filename.split('.')[0])
+    if (isNaN(num)) return false
+    let suffix = filename.substr(filename.split('.')[0].length)
+    if (suffix === '.log') {
+      type = FileType.kLogFile
+    } else if (suffix === '.ldb') {
+      type = FileType.kTableFile
+    } else if (suffix === '.dbtmp') {
+      type = FileType.kTempFile
+    } else {
+      return false
+    }
+    number = num
+  }
+
+  return true
 }

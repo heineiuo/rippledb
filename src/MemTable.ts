@@ -12,8 +12,8 @@ import { ValueType } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
-import { Options } from './Options'
 import { InternalKeyComparator } from './VersionFormat'
+import { EncodingOptions } from './Options'
 
 type UserValue = Buffer | null | string
 
@@ -39,7 +39,10 @@ export default class MemTable {
     return new Slice(value)
   }
 
-  static getValueWithEncoding(s: Slice, options: Options = {}): UserValue {
+  static getValueWithEncoding(
+    s: Slice,
+    options: EncodingOptions = {}
+  ): UserValue {
     const valueSlice = MemTable.getValueSlice(s)
     if (!valueSlice) return valueSlice
     const valueEncoding = options.valueEncoding || 'string'
@@ -147,18 +150,15 @@ export default class MemTable {
   // sequence number since the Seek() call above should have skipped
   // all entries with overly large sequence numbers.
   // 这里的key是lookup key
-  get(key: Slice, options: Options = {}): any {
-    const result = this._list.get(key, options)
+  get(key: Slice, options?: EncodingOptions): any {
+    const result = this._list.get(key)
     if (!result) return result
-    return MemTable.getValueWithEncoding(result)
+    return MemTable.getValueWithEncoding(result, options)
   }
 
-  *iterator(options: Options = {}) {
-    let iterator = this._list.iterator()
-    let result = iterator.next()
-    while (!result.done) {
-      yield MemTable.getValueWithEncoding(result.value)
-      result = iterator.next()
+  *iterator(options: EncodingOptions = {}) {
+    for (let value of this._list.iterator()) {
+      yield MemTable.getValueWithEncoding(value, options)
     }
   }
 }

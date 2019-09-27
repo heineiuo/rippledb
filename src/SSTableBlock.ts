@@ -10,8 +10,8 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
 import SSTableRecord from './SSTableRecord'
-import { Options } from './Options'
 import { CompressionTypes } from './Format'
+import { Entry } from './VersionFormat'
 
 export default class SSTableBlock {
   constructor(
@@ -72,7 +72,7 @@ export default class SSTableBlock {
     }
   }
 
-  append(data: { key: Slice; value: Slice }): void {
+  append(data: Entry): void {
     const record = new SSTableRecord(Buffer.alloc(0))
     record.put(data.key, data.value)
     let body
