@@ -4,6 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+
 import {
   CompactPointer,
   DeletedFile,
@@ -14,7 +15,8 @@ import {
 
 export default class VersionEdit {
   // major compaction时选择文件
-  // compact_pointer_是 string 类型，记录了该层上次 compact 时文件的 largest key，初始值为空，也就是选择该层第一个文件。
+  // compact_pointer_是 string 类型，记录了该层上次 compact 时文件的 largest key，初始值为空，
+  // 也就是选择该层第一个文件。
   // 如果seek_compaction = true，则直接使用满足条件的文件。
 
   compactPointers: CompactPointer[]

@@ -13,7 +13,7 @@ export default class Status {
     this.promise = promise
   }
 
-  async wait(): Promise<void> {
+  private async wait(): Promise<void> {
     try {
       await this.promise
     } catch (e) {
@@ -21,12 +21,12 @@ export default class Status {
     }
   }
 
-  async ok(): Promise<boolean> {
+  public async ok(): Promise<boolean> {
     await this.wait()
     return !this.error
   }
 
-  async message(): Promise<string | null> {
+  public async message(): Promise<string | null> {
     await this.wait()
     if (this.error) {
       return this.error.message
