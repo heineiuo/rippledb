@@ -8,9 +8,14 @@
 import assert from 'assert'
 import fs from 'fs'
 import Version from './Version'
-import { getCurrentFilename, getManifestFilename } from './Filename'
+import {
+  getCurrentFilename,
+  getManifestFilename,
+  getTableFilename,
+} from './Filename'
 import Slice from './Slice'
 import {
+  Entry,
   CompactPointer,
   InternalKeyComparator,
   getExpandedCompactionByteSizeLimit,
@@ -28,6 +33,8 @@ import { Config } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
+import SequenceNumber from './SequenceNumber'
+import SSTable from './SSTable'
 
 export default class VersionSet {
   // Per-level key at which the next compaction at that level should start.
@@ -48,7 +55,7 @@ export default class VersionSet {
   manifestFileNumber!: number
   nextFileNumber!: number
 
-  _dbpath: string
+  private _dbpath: string
   _options: Options
   _memtable: MemTable
   internalKeyComparator: InternalKeyComparator
@@ -74,7 +81,7 @@ export default class VersionSet {
     return this._current
   }
 
-  compactRange(
+  public compactRange(
     level: number,
     begin: InternalKey,
     end: InternalKey
@@ -107,21 +114,21 @@ export default class VersionSet {
     return c
   }
 
-  maxFileSizeForLevel(options: any, level: number): number {
+  private maxFileSizeForLevel(options: any, level: number): number {
     return options.maxFileSize
   }
 
-  getNextFileNumber(): number {
+  public getNextFileNumber(): number {
     return this.nextFileNumber++
   }
 
-  getNumLevelFiles(level: number): number {
+  public getNumLevelFiles(level: number): number {
     assert(level >= 0)
     assert(level <= Config.kNumLevels)
     return this._current.files[level].length
   }
 
-  async recover() {
+  public async recover() {
     // 读取current， 校验是否是\n结尾
     const current = await fs.promises.readFile(
       getCurrentFilename(this._dbpath),
@@ -212,14 +219,14 @@ export default class VersionSet {
     // 检查是否需要创建新的manifest（ reuseManifest ）
   }
 
-  markFileNumberUsed(num: number) {
+  private markFileNumberUsed(num: number) {
     if (this.nextFileNumber <= num) {
       this.nextFileNumber = num + 1
     }
   }
 
   // Precomputed best level for next compaction
-  finalize(ver: Version) {
+  private finalize(ver: Version) {
     // traverse levels(0-6),
     // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
     // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
@@ -245,7 +252,7 @@ export default class VersionSet {
     ver.compactionScore = bestScore
   }
 
-  getTotalBytes(files: FileMetaData[]) {
+  private getTotalBytes(files: FileMetaData[]) {
     let sum = 0
     for (let f of files) {
       sum += f.fileSize
@@ -254,7 +261,7 @@ export default class VersionSet {
   }
 
   // 需要写入manifest
-  async logAndApply(edit: VersionEdit): Promise<Status> {
+  public async logAndApply(edit: VersionEdit): Promise<Status> {
     if (edit.hasLogNumber) {
       assert(edit.logNumber >= this.logNumber)
       assert(edit.logNumber < this.nextFileNumber)
@@ -307,7 +314,7 @@ export default class VersionSet {
     return status
   }
 
-  needsCompaction(): boolean {
+  public needsCompaction(): boolean {
     return (
       this._current.compactionScore >= 1 || this._current.fileToCompact !== null
     )
@@ -316,7 +323,7 @@ export default class VersionSet {
   /**
    * 主要目的是更新this._current
    */
-  appendVersion(ver: Version): void {
+  private appendVersion(ver: Version): void {
     assert(ver.refs === 0)
     assert(ver !== this._current)
     if (this._current) {
@@ -332,14 +339,14 @@ export default class VersionSet {
     ver.next.prev = ver
   }
 
-  reuseManifest() {
+  private reuseManifest() {
     return false
   }
 
   /**
    * 将current写入manifest
    */
-  writeSnapshot(writter: LogWriter): Status {
+  private writeSnapshot(writter: LogWriter): Status {
     const edit = new VersionEdit()
 
     // Save metadata
@@ -367,7 +374,7 @@ export default class VersionSet {
     return new Status(writter.addRecord(record))
   }
 
-  async writeCurrentFile(
+  private async writeCurrentFile(
     dbpath: string,
     manifestFileNumber: number
   ): Promise<void> {
@@ -378,7 +385,7 @@ export default class VersionSet {
     await fs.promises.writeFile(currentFilename, manifestFilename + '\n')
   }
 
-  pickCompaction(): Compaction | void {
+  public pickCompaction(): Compaction | void {
     // We prefer compactions triggered by too much data in a level over
     // the compactions triggered by seeks.
     const shouldSizeCompaction = this._current.compactionScore > 1
@@ -438,7 +445,7 @@ export default class VersionSet {
    * smallest, *largest.
    * REQUIRES: inputs is not empty
    */
-  getRange(
+  private getRange(
     inputs: FileMetaData[],
     smallest: InternalKey,
     largest: InternalKey
@@ -472,7 +479,7 @@ export default class VersionSet {
    * in *smallest, *largest.
    * REQUIRES: inputs is not empty
    */
-  getRange2(
+  private getRange2(
     inputs1: FileMetaData[],
     inputs2: FileMetaData[],
     smallest: InternalKey,
@@ -537,7 +544,7 @@ export default class VersionSet {
 
   // Finds minimum file b2=(l2, u2) in level file for which l2 > u1 and
   // user_key(l2) = user_key(u1)
-  findSmallestBoundaryFile(
+  public findSmallestBoundaryFile(
     icmp: InternalKeyComparator,
     levelFiles: FileMetaData[],
     largestKey: InternalKey
@@ -565,7 +572,7 @@ export default class VersionSet {
     return smallestBoundryFile
   }
 
-  setupOtherInputs(c: Compaction): void {
+  public setupOtherInputs(c: Compaction): void {
     const level = c.level
     let smallest = new InternalKey()
     let largest = new InternalKey()
@@ -635,7 +642,7 @@ export default class VersionSet {
     c.edit.compactPointers.push({ level, internalKey: largest })
   }
 
-  addLiveFiles(live: number[]) {
+  public addLiveFiles(live: number[]) {
     for (
       let v = this._dummyVersions.next;
       v != this._dummyVersions;
@@ -645,6 +652,32 @@ export default class VersionSet {
         const files = v.files[level]
         for (let i = 0; i < files.length; i++) {
           live.push(files[i].number)
+        }
+      }
+    }
+  }
+
+  // Create an iterator that reads over the compaction inputs for "*c".
+  // The caller should delete the iterator when no longer needed.
+  public async *makeInputIterator(c: Compaction) {
+    let num = 0
+    for (let which = 0; which < 2; which++) {
+      if (c.inputs[which].length > 0) {
+        if (c.level + which === 0) {
+          const files = c.inputs[which]
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i]
+            const sstable = new SSTable(
+              await fs.promises.readFile(
+                getTableFilename(this._dbpath, file.number)
+              )
+            )
+            num++
+            yield sstable.indexBlockIterator()
+          }
+        } else {
+          num++
+          // Create concatenating iterator for the files from this level
         }
       }
     }
