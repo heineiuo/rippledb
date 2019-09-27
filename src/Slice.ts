@@ -1,14 +1,18 @@
+/**
+ * Copyright (c) 2018-present, heineiuo.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import { Buffer } from 'buffer'
 import { Encodings } from './Options'
 
-/**
- * 作为参数传递，减少不必要的拷贝
- */
 export default class Slice {
   static defaultValue: Buffer = Buffer.alloc(0)
 
-  _inputType: Encodings
-  _buffer: Buffer
+  private _inputType: Encodings
+  private _buffer: Buffer
 
   constructor(value: any = Slice.defaultValue) {
     if (value instanceof Slice) {

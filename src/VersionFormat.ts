@@ -37,7 +37,7 @@ export class InternalKey extends Slice {
     super()
     if (!!userKey && !!sn && !!valueType) {
       this.appendInternalKey(
-        this._buffer,
+        this.buffer,
         new ParsedInternalKey(userKey, sn, valueType)
       )
     }
@@ -267,3 +267,8 @@ export function getExpandedCompactionByteSizeLimit(options: Options) {
 }
 
 export const kValueTypeForSeek = ValueType.kTypeValue
+
+export interface Entry {
+  key: Slice
+  value: Slice
+}

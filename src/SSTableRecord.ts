@@ -8,6 +8,7 @@
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
+import { Entry } from './VersionFormat'
 
 function getSize(buffer: Buffer, offset: number = 0): number {
   if (buffer.length === 0) return 0
@@ -46,7 +47,7 @@ export default class SSTableRecord {
     return this.size === 0
   }
 
-  get(): { key: Slice; value: Slice } {
+  get(): Entry {
     const keyLength = varint.decode(this.buffer, this.offset)
     const keyStartIndex = varint.decode.bytes
     const key = this.buffer.slice(

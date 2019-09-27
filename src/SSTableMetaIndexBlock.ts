@@ -19,15 +19,12 @@ export default class TableMetaIndexBlock extends TableBlock {
    * 实际上MetaBlock只创建一个
    */
   *metaBlockIterator(options?: EncodingOptions) {
-    const iterator = this.iterator()
-    let record = iterator.next()
-    while (!record.done) {
-      const { value } = record.value
+    for (let record of this.iterator()) {
+      const { value } = record
       const offset = varint.decode(value.buffer)
       const size = varint.decode(value.buffer, varint.decode.bytes)
       const metaBlock = new SStableMetaBlock(this.buffer, offset, size)
       yield metaBlock.iterator()
-      record = iterator.next()
     }
   }
 }

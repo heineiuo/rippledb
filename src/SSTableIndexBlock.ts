@@ -13,7 +13,6 @@ import { Buffer } from 'buffer'
 
 export default class TableIndexBlock extends SSTableBlock {
   *dataBlockIterator() {
-    // const iterator =
     for (let dataBlockIndexRecordValue of this.iterator()) {
       /**
        * key=max key of data block
@@ -31,10 +30,8 @@ export default class TableIndexBlock extends SSTableBlock {
   }
 
   *indexIterator() {
-    const iterator = this.iterator()
-    let dataBlockIndexRecord = iterator.next()
-    while (!dataBlockIndexRecord.done) {
-      const { key, value } = dataBlockIndexRecord.value
+    for (let dataBlockIndexRecord of this.iterator()) {
+      const { key, value } = dataBlockIndexRecord
       const offset = varint.decode(value.buffer)
       const size = varint.decode(value.buffer, varint.decode.bytes)
       yield {
@@ -42,7 +39,6 @@ export default class TableIndexBlock extends SSTableBlock {
         offset,
         size,
       }
-      dataBlockIndexRecord = iterator.next()
     }
   }
 }

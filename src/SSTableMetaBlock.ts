@@ -34,9 +34,9 @@ export default class SSTableMetaBlock {
     this._size = size || 0
   }
 
-  _buffer: Buffer
-  _offset: number
-  _size: number
+  private _buffer: Buffer
+  private _offset: number
+  private _size: number
 
   get size(): number {
     return this._size
@@ -65,7 +65,7 @@ export default class SSTableMetaBlock {
   }
 
   /**
-   * 添加bloom filter
+   * append bloom filter
    */
   appendFilter(buffer: Buffer): void {
     // console.log('appendFilter buffer: ', buffer)
@@ -99,18 +99,13 @@ export default class SSTableMetaBlock {
   }
 
   *iterator() {
-    const offsetIterator = this.offsetIterator()
-    let offsetResult = offsetIterator.next()
     let filterStart = this._offset
     let filterEnd = 0
-    while (!offsetResult.done) {
-      filterEnd = offsetResult.value
-      // console.log('offsetResult.value', offsetResult.value)
-      // console.log(this.buffer.slice(filterStart, filterEnd))
+    for (let offsetResult of this.offsetIterator()) {
+      filterEnd = offsetResult
       const filter = new BloomFilter(this.buffer.slice(filterStart, filterEnd))
+      filterStart += offsetResult
       yield filter
-      filterStart += offsetResult.value
-      offsetResult = offsetIterator.next()
     }
   }
 
@@ -124,8 +119,8 @@ export default class SSTableMetaBlock {
     while (count < offsetTotalCount) {
       const offset = varint.decode(this._buffer.slice(start + count))
       // console.log('offsetIterator yield offset: ', offset)
-      yield offset
       count += 1
+      yield offset
     }
   }
 }
