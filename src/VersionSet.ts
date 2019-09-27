@@ -634,4 +634,19 @@ export default class VersionSet {
     this.compactPointers[level] = largest
     c.edit.compactPointers.push({ level, internalKey: largest })
   }
+
+  addLiveFiles(live: number[]) {
+    for (
+      let v = this._dummyVersions.next;
+      v != this._dummyVersions;
+      v = v.next
+    ) {
+      for (let level = 0; level < Config.kNumLevels; level++) {
+        const files = v.files[level]
+        for (let i = 0; i < files.length; i++) {
+          live.push(files[i].number)
+        }
+      }
+    }
+  }
 }

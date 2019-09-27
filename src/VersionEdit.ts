@@ -20,17 +20,17 @@ export default class VersionEdit {
   compactPointers: CompactPointer[]
   deletedFiles: DeletedFile[]
   newFiles: NewFile[]
-  _comparator: string
-  _logNumber?: number
-  _prevLogNumber?: number
-  _lastLogNumber?: number
-  _lastSequence?: number
-  _nextFileNumber?: number
-  _hasComparator?: boolean
-  _hasLogNumber?: boolean
-  _hasPrevLogNumber?: boolean
-  _hasNextFileNumber?: boolean
-  _hasLastSequence?: boolean
+  private _comparator: string
+  private _logNumber?: number
+  private _prevLogNumber?: number
+  private _lastLogNumber?: number
+  private _lastSequence?: number
+  private _nextFileNumber?: number
+  private _hasComparator?: boolean
+  private _hasLogNumber?: boolean
+  private _hasPrevLogNumber?: boolean
+  private _hasNextFileNumber?: boolean
+  private _hasLastSequence?: boolean
 
   constructor() {
     this._comparator = ''
