@@ -6,27 +6,34 @@
  */
 
 import { Buffer } from 'buffer'
+import path from 'path'
 import assert from 'assert'
 import fs from 'fs'
 import MemTable from './MemTable'
 import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
-import { Options } from './Options'
+import { EncodingOptions } from './Options'
 import {
   ValueType,
   kMemTableDumpSize,
   kInternalKeyComparatorName,
   Config,
+  FileType,
 } from './Format'
-import { InternalKeyComparator } from './VersionFormat'
+import {
+  InternalKeyComparator,
+  InternalKey,
+  FileMetaData,
+} from './VersionFormat'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
-import Compaction from './Compaction'
+import Compaction, { CompactionState } from './Compaction'
 import Slice from './Slice'
 import VersionSet from './VersionSet'
 import VersionEdit from './VersionEdit'
 import VersionEditRecord from './VersionEditRecord'
 import {
+  parseFilename,
   getCurrentFilename,
   getLogFilename,
   getManifestFilename,
@@ -35,7 +42,11 @@ import WriteBatch from './WriteBatch'
 import Status from './Status'
 
 interface ManualCompaction {
+  level: number
   done: boolean
+  begin: InternalKey // null means beginning of key range
+  end: InternalKey // null means end of key range
+  tmpStorage: InternalKey
 }
 
 export default class Database {
@@ -50,8 +61,10 @@ export default class Database {
   private _immtable?: MemTable
   private _versionSet: VersionSet
   private _ok: boolean
-  private _manualCompaction!: ManualCompaction
+  private _manualCompaction!: ManualCompaction | null
   private _bgError!: Status
+  private pendingOutputs!: number[]
+  private snapshots!: number[]
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
@@ -61,10 +74,13 @@ export default class Database {
     this._log = new LogWriter(getLogFilename(dbpath, 1))
     this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
+    this.pendingOutputs = []
 
     this._versionSet = new VersionSet(
       this._dbpath,
-      {},
+      {
+        maxFileSize: 1024 * 1024 * 2,
+      },
       this._memtable,
       this._internalKeyComparator
     )
@@ -139,7 +155,7 @@ export default class Database {
     throw new Error('Database is busy.')
   }
 
-  async *iterator(options: Options) {
+  async *iterator(options?: EncodingOptions) {
     await this.ok()
     for (let key in this._memtable.iterator()) {
       yield key
@@ -155,7 +171,7 @@ export default class Database {
    * 3. level0 sstable 超过8个
    * 4. leveli(i>0)层sstable占用空间超过10^iMB
    */
-  async get(key: any, options?: Options): Promise<any> {
+  async get(key: any, options?: EncodingOptions): Promise<any> {
     await this.ok()
     // console.log('get ok')
     const sliceKey = new Slice(key)
@@ -182,19 +198,19 @@ export default class Database {
    * 1. 检查memtable是否超过4mb
    * 2. 检查this._immtable是否为null（memtable转sstable）
    */
-  async put(key: any, value: any, options?: Options) {
+  async put(key: any, value: any, options?: EncodingOptions) {
     const batch = new WriteBatch()
     batch.put(new Slice(key), new Slice(value))
     await this.write(batch, options)
   }
 
-  async del(key: any, options?: Options) {
+  async del(key: any, options?: EncodingOptions) {
     const batch = new WriteBatch()
     batch.del(new Slice(key))
     await this.write(batch, options)
   }
 
-  async write(batch: WriteBatch | null, options?: Options) {
+  async write(batch: WriteBatch | null, options?: EncodingOptions) {
     await this.ok()
     await this.makeRoomForWrite(!batch)
     // console.log('makeRoomForWrite end...')
@@ -286,30 +302,92 @@ export default class Database {
     }
   }
 
+  private schedule() {}
+
+  private bgwork() {}
+
+  private backgroundCall() {}
+
   // ignore: Schedule, BGWork and BackgroundCall
   private async backgroundCompaction(): Promise<void> {
-    try {
-      if (this._backgroundCompactionScheduled) return
-      this._backgroundCompactionScheduled = true
-      let c: Compaction | void
-      if (this._immtable !== null) {
-        await this.compactMemTable()
-        await this.backgroundCompaction()
-        return
+    if (this._backgroundCompactionScheduled) return
+    this._backgroundCompactionScheduled = true
+    let c: Compaction | void
+    let manualEnd = new InternalKey()
+    if (!!this._manualCompaction) {
+      let m = this._manualCompaction
+      c = this._versionSet.compactRange(m.level, m.begin, m.end)
+      m.done = !c
+      if (!!c) {
+        manualEnd = c.inputs[0][c.numInputFiles(0) - 1].largest
       }
-      if (!this._versionSet.needsCompaction()) {
-        return
-      }
+      console.log(`Manual compaction ...`)
+    } else {
       c = this._versionSet.pickCompaction()
-      if (!c) {
-        return
-      }
-
-      // TODO
-    } catch (e) {
-    } finally {
-      this._backgroundCompactionScheduled = false
     }
+
+    let status = new Status()
+
+    if (!c) {
+    } else if (!this._manualCompaction && c.isTrivialMode()) {
+      assert(c.numInputFiles(0) === 1)
+      const f = c.inputs[0][0]
+      c.edit.deletedFile(c.level, f.number)
+      c.edit.addFile(c.level + 1, f.number, f.fileSize, f.smallest, f.largest)
+      status = await this._versionSet.logAndApply(c.edit)
+    } else {
+      const compact = new CompactionState(c)
+      const status = await this.doCompactionWork(compact)
+      if (!(await status.ok())) {
+        await this.recordBackgroundError(status)
+      }
+      this.cleanupCompaction(compact)
+      c.releaseInputs()
+      this.deleteObsoleteFiles()
+    }
+
+    if (await status.ok()) {
+    } else {
+      console.log(`Compaction error...`)
+    }
+
+    if (!!this._manualCompaction) {
+      let m = this._manualCompaction
+      if (!status.ok()) {
+        m.done = true
+      }
+      if (!m.done) {
+        // We only compacted part of the requested range.  Update *m
+        // to the range that is left to be compacted.
+        m.tmpStorage = manualEnd
+        m.begin = m.tmpStorage
+      }
+      this._manualCompaction = null
+    }
+  }
+
+  // TODO
+  private async doCompactionWork(compact: CompactionState): Promise<Status> {
+    const startTime: number = Number(process.hrtime.bigint()) / Math.pow(10, 9)
+    let immTime = 0 // Time spent doing imm_ compactions
+    console.log('Compacting files...')
+    assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0)
+    assert(!compact.builder)
+    assert(!compact.outfile)
+    if (this.snapshots.length === 0) {
+      compact.smallestSnapshot = this._versionSet.lastSequence
+    } else {
+      compact.smallestSnapshot = this.snapshots[this.snapshots.length - 1]
+    }
+
+    const status = new Status()
+
+    for await (let input of this._versionSet.makeInputIterator(
+      compact.compaction
+    )) {
+    }
+
+    return status
   }
 
   private async compactMemTable() {}
@@ -341,5 +419,69 @@ export default class Database {
 
   private async manualCompactMemTable() {
     await this.write(null, {})
+  }
+
+  private async recordBackgroundError(status: Status) {
+    console.log(await status.message())
+  }
+
+  // TODO
+  private cleanupCompaction(compact: CompactionState) {}
+
+  private async deleteObsoleteFiles() {
+    const live = this.pendingOutputs || []
+    this._versionSet.addLiveFiles(live)
+    const filenames = (await fs.promises.readdir(this._dbpath, {
+      withFileTypes: true,
+    })).reduce((filenames: string[], direct) => {
+      if (direct.isFile()) {
+        filenames.push(direct.name)
+      }
+      return filenames
+    }, [])
+    let number = 0
+    let type: FileType = -1
+    let filesToDelete: string[] = []
+    for (let filename of filenames) {
+      if (parseFilename(filename, number, type)) {
+        let keep = true
+        switch (type) {
+          case FileType.kLogFile:
+            keep =
+              number >= this._versionSet.logNumber ||
+              number === this._versionSet.prevLogNumber
+            break
+          case FileType.kDescriptorFile:
+            // Keep my manifest file, and any newer incarnations'
+            // (in case there is a race that allows other incarnations)
+            keep = number >= this._versionSet.manifestFileNumber
+            break
+          case FileType.kTableFile:
+            keep = live.indexOf(number) !== live[live.length - 1]
+            break
+          case FileType.kTempFile:
+            // Any temp files that are currently being written to must
+            // be recorded in pending_outputs_, which is inserted into "live"
+            keep = live.indexOf(number) !== live[live.length - 1]
+            break
+          case FileType.kCurrentFile:
+          case FileType.kDBLockFile:
+          case FileType.kInfoLogFile:
+            keep = true
+            break
+        }
+        if (!keep) {
+          filesToDelete.push(filename)
+          if (type == FileType.kTableFile) {
+            // TODO this.tableCache.Evict(number)
+          }
+          console.log(`Delete type=${type} #${number}`)
+        }
+      }
+    }
+
+    for (let filename of filesToDelete) {
+      await fs.promises.unlink(path.resolve(this._dbpath, filename))
+    }
   }
 }
