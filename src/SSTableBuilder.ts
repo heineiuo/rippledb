@@ -32,8 +32,10 @@ export default class SSTableBuilder {
     this._footer = new SSTableFooter()
     this._flushTimes = 0
     this._options = options
+    this._numEntries = 0
   }
 
+  private _numEntries: number
   private _options: { size: number }
   private _file: fs.promises.FileHandle
   private _fileSize: number
@@ -46,10 +48,9 @@ export default class SSTableBuilder {
   private _metaIndexBlock: SSTableMetaIndexBlock
   private _indexBlock: SSTableIndexBlock
   private _footer: SSTableFooter
-  private _numEntries!: number
 
   async add(key: Slice, value: Slice) {
-    if (this._lastKey) {
+    if (this._numEntries > 0) {
       assert(
         key.compare(this._lastKey) > 0,
         `new key must bigger then last key`
@@ -57,9 +58,18 @@ export default class SSTableBuilder {
     }
     this._lastKey = new Slice(key)
     this._dataBlock.append({ key, value })
+    this._numEntries++
     if (this._dataBlock.estimateSize > this._options.size) {
       await this.flush()
     }
+  }
+
+  get numEntries() {
+    return this._numEntries
+  }
+
+  get fileSize() {
+    return this._fileSize
   }
 
   async flush() {
@@ -92,7 +102,19 @@ export default class SSTableBuilder {
     this._fileSize += buffer.length
   }
 
+  public async finish() {
+    await this.close()
+  }
+
+  public async abandon() {
+    assert(!!this._file)
+    await this._file.close()
+    delete this._file
+  }
+
   async close() {
+    assert(!!this._file)
+
     if (this._dataBlock.size > 0) {
       await this.flush()
     }
@@ -122,6 +144,7 @@ export default class SSTableBuilder {
     })
     await this.appendFile(this._footer.buffer)
     await this._file.close()
+    delete this._file
     // console.log(`SSTable flush times: ${this._flushTimes}`)
   }
 }

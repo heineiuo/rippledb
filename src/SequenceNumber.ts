@@ -8,26 +8,26 @@
 import varint from 'varint'
 
 export default class SequenceNumber {
-  constructor (initial:number = 0) {
+  constructor(initial: number = 0) {
     this._value = initial
   }
 
-  _value: number
+  private _value: number
 
-  get value ():number {
-    this._value++
+  get value(): number {
     return this._value
   }
 
-  toBuffer ():Buffer {
+  set value(value) {
+    this._value = value
+  }
+
+  toBuffer(): Buffer {
     return Buffer.from(varint.encode(this._value))
   }
 
-  toFixedSizeBuffer (size:number = 7):Buffer {
+  toFixedSizeBuffer(size: number = 7): Buffer {
     let buf = this.toBuffer()
-    return Buffer.concat([
-      buf,
-      Buffer.alloc(size - buf.length)
-    ])
+    return Buffer.concat([buf, Buffer.alloc(size - buf.length)])
   }
 }

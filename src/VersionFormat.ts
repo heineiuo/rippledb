@@ -33,6 +33,24 @@ export class InternalKey extends Slice {
   // so , use 72057594037927935 directly
   static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
 
+  // Attempt to parse an internal key from "internal_key".  On success,
+  // stores the parsed data in "*result", and returns true.
+  //
+  // On error, returns false, leaves "*result" in an undefined state.
+  static parseInternalKey(key: Slice, ikey: ParsedInternalKey): boolean {
+    ikey.userKey = InternalKey.extractUserKey(key)
+    ikey.sn = new SequenceNumber(
+      varint.decode(key.buffer.slice(key.length - 8))
+    )
+    ikey.valueType = varint.decode(key.buffer.slice(key.length - 1))
+    return true
+  }
+
+  static extractUserKey(slice: Slice): Slice {
+    assert(slice.size > 8)
+    return new Slice(slice.buffer.slice(0, slice.size - 8))
+  }
+
   constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
     super()
     if (!!userKey && !!sn && !!valueType) {
@@ -43,12 +61,20 @@ export class InternalKey extends Slice {
     }
   }
 
-  decodeFrom(slice: Slice) {
+  public decodeFrom(slice: Slice) {
     this.buffer = slice.buffer
     return this.size > 0
   }
 
-  appendInternalKey(buf: Buffer, key: ParsedInternalKey) {}
+  // Append the serialization of "key" to *result.
+  appendInternalKey(buf: Buffer, key: ParsedInternalKey) {
+    this.buffer = Buffer.concat([
+      this.buffer,
+      key.userKey.buffer,
+      key.sn.toFixedSizeBuffer(7),
+      Buffer.from(varint.encode(key.valueType)),
+    ])
+  }
 
   extractUserKey(): Slice {
     assert(this.size > 8)
