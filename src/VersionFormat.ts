@@ -11,6 +11,7 @@ import varint from 'varint'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 import { Options } from './Options'
+import { decodeFixed64 } from './Coding'
 
 export class ParsedInternalKey {
   userKey!: Slice
@@ -40,7 +41,7 @@ export class InternalKey extends Slice {
   static parseInternalKey(key: Slice, ikey: ParsedInternalKey): boolean {
     ikey.userKey = InternalKey.extractUserKey(key)
     ikey.sn = new SequenceNumber(
-      varint.decode(key.buffer.slice(key.length - 8))
+      decodeFixed64(key.buffer.slice(key.length - 8))
     )
     ikey.valueType = varint.decode(key.buffer.slice(key.length - 1))
     return true
@@ -68,12 +69,9 @@ export class InternalKey extends Slice {
 
   // Append the serialization of "key" to *result.
   appendInternalKey(buf: Buffer, key: ParsedInternalKey) {
-    this.buffer = Buffer.concat([
-      this.buffer,
-      key.userKey.buffer,
-      key.sn.toFixedSizeBuffer(7),
-      Buffer.from(varint.encode(key.valueType)),
-    ])
+    const sequenceBuf = key.sn.toFixed64Buffer()
+    sequenceBuf.fill(key.valueType, 7, 8)
+    this.buffer = Buffer.concat([this.buffer, key.userKey.buffer, sequenceBuf])
   }
 
   extractUserKey(): Slice {
@@ -94,13 +92,9 @@ export class InternalKeyBuilder {
      * 2. Internal key: key --- type(1Byte)
      * 3. User key: key
      */
-    const slice = new Slice(
-      Buffer.concat([
-        key.buffer,
-        sequence.toFixedSizeBuffer(7),
-        Buffer.from(varint.encode(valueType)),
-      ])
-    )
+    const sequenceBuf = sequence.toFixed64Buffer()
+    sequenceBuf.fill(valueType, 7, 8)
+    const slice = new Slice(Buffer.concat([key.buffer, sequenceBuf]))
     return new InternalKey(slice)
   }
 }

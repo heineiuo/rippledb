@@ -60,12 +60,9 @@ export default class MemTable {
     const keySize = key.size
     const internalKeySize = keySize + 8
     const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize))
-    const buf = Buffer.concat([
-      internalKeySizeBuf,
-      key.buffer,
-      sequence.toFixedSizeBuffer(),
-      Buffer.from(varint.encode(valueType)),
-    ])
+    const sequenceBuf = sequence.toFixed64Buffer()
+    sequenceBuf.fill(Buffer.from(varint.encode(valueType)), 7)
+    const buf = Buffer.concat([internalKeySizeBuf, key.buffer, sequenceBuf])
     return new Slice(buf)
   }
 
@@ -124,12 +121,13 @@ export default class MemTable {
      * 2. Internal key: key --- type(1Byte)
      * 3. User key: key
      */
+    const sequenceBuf = sequence.toFixed64Buffer()
+    sequenceBuf.fill(valueType, 7, 8)
     const buf = new Slice(
       Buffer.concat([
         internalKeySizeBuf,
         key.buffer,
-        sequence.toFixedSizeBuffer(),
-        Buffer.from(varint.encode(valueType)),
+        sequenceBuf,
         valueSizeBuf,
         !value ? Buffer.alloc(0) : value.buffer,
       ])
