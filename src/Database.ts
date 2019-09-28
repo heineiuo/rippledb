@@ -26,6 +26,7 @@ import {
   ParsedInternalKey,
   FileMetaData,
   Entry,
+  kValueTypeForSeek,
 } from './VersionFormat'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
@@ -359,9 +360,9 @@ export default class Database {
       if (!(await status.ok())) {
         await this.recordBackgroundError(status)
       }
-      this.cleanupCompaction(compact)
+      await this.cleanupCompaction(compact)
       c.releaseInputs()
-      this.deleteObsoleteFiles()
+      await this.deleteObsoleteFiles()
     }
 
     if (await status.ok()) {
@@ -558,7 +559,7 @@ export default class Database {
   /**
    * manually compact
    */
-  async compactRange(begin: Slice, end: Slice): Promise<void> {
+  public async compactRange(begin: Slice, end: Slice): Promise<void> {
     let maxLevelWithFiles = 1
     let base = this._versionSet._current
     for (let level = 0; level < Config.kNumLevels; level++) {
@@ -574,11 +575,55 @@ export default class Database {
     // console.log('compactRange end')
   }
 
-  private manualCompactRangeWithLevel(
+  private async manualCompactRangeWithLevel(
     level: number,
     begin: Slice,
     end: Slice
-  ) {}
+  ) {
+    assert(level >= 0)
+    assert(level + 1 < Config.kNumLevels)
+    let beginStorage = new InternalKey()
+    let endStorage = new InternalKey()
+    let manual = {} as ManualCompaction
+
+    manual.level = level
+    manual.done = false
+    if (!begin) {
+      delete manual.begin
+    } else {
+      beginStorage = new InternalKey(
+        begin,
+        InternalKey.kMaxSequenceNumber,
+        kValueTypeForSeek
+      )
+      manual.begin = beginStorage
+    }
+    if (!end) {
+      delete manual.end
+    } else {
+      endStorage = new InternalKey(
+        end,
+        new SequenceNumber(0),
+        ValueType.kTypeValue
+      )
+      manual.end = endStorage
+    }
+
+    while (!manual.done) {
+      if (!this._manualCompaction) {
+        // Idle
+        this._manualCompaction = manual
+        await this.maybeScheduleCompaction()
+      } else {
+        // Running either my compaction or another compaction.
+        // TODO background_work_finished_signal_.Wait();
+      }
+    }
+    if (this._manualCompaction === manual) {
+      // Cancel my manual compaction since we aborted early for some reason.
+      delete this._manualCompaction
+    }
+  }
 
   private async manualCompactMemTable() {
     await this.write(null, {})
@@ -588,8 +633,21 @@ export default class Database {
     console.log(await status.message())
   }
 
-  // TODO
-  private cleanupCompaction(compact: CompactionState) {}
+  private async cleanupCompaction(compact: CompactionState) {
+    if (!!compact.builder) {
+      await compact.builder.abandon()
+      delete compact.builder
+    } else {
+      assert(!compact.outfile)
+    }
+    delete compact.outfile
+    for (let i = 0; i < compact.outputs.length; i++) {
+      const out = compact.outputs[i]
+      this.pendingOutputs = this.pendingOutputs.filter(
+        num => num !== out.number
+      )
+    }
+  }
 
   private async deleteObsoleteFiles() {
     const live = this.pendingOutputs || []
