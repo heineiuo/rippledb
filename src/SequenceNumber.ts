@@ -6,6 +6,8 @@
  */
 
 import varint from 'varint'
+import assert from 'assert'
+import { decodeFixed64, encodeFixed64 } from './Coding'
 
 export default class SequenceNumber {
   constructor(initial: number = 0) {
@@ -26,8 +28,7 @@ export default class SequenceNumber {
     return Buffer.from(varint.encode(this._value))
   }
 
-  toFixedSizeBuffer(size: number = 7): Buffer {
-    let buf = this.toBuffer()
-    return Buffer.concat([buf, Buffer.alloc(size - buf.length)])
+  toFixed64Buffer(): Buffer {
+    return encodeFixed64(this._value)
   }
 }

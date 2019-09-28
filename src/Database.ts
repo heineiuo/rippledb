@@ -242,7 +242,7 @@ export default class Database {
       WriteBatch.insert(batch, this._memtable)
       // console.log('insert to memtable success')
       WriteBatch.setSequence(batch, lastSequence + 1)
-      lastSequence += batch.count
+      lastSequence += WriteBatch.getCount(batch)
       // await this._log.addRecord(batch.contents())
 
       // console.log('memtable size is: ', this._memtable.size)

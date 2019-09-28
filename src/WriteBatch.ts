@@ -12,6 +12,7 @@ import MemTable from './MemTable'
 import LogRecord from './LogRecord'
 import SequenceNumber from './SequenceNumber'
 import { ValueType } from './Format'
+import { decodeFixed64, encodeFixed32, decodeFixed32 } from './Coding'
 
 export type AtomicUpdate = {
   type: ValueType
@@ -22,7 +23,7 @@ export type AtomicUpdate = {
 // Simplified WriteBatch
 export default class WriteBatch {
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
-  static kHeader = 8
+  static kHeader = 12
 
   static insert(batch: WriteBatch, mem: MemTable) {
     const sn = WriteBatch.getSequence(batch)
@@ -33,37 +34,40 @@ export default class WriteBatch {
   }
 
   static setSequence(batch: WriteBatch, sequence: number) {
-    batch.buffer.fill(
-      new SequenceNumber(sequence).toFixedSizeBuffer(WriteBatch.kHeader)
-    )
+    batch.buffer.fill(new SequenceNumber(sequence).toFixed64Buffer(), 0, 7)
   }
 
   static getSequence(batch: WriteBatch): SequenceNumber {
-    return new SequenceNumber(varint.decode(batch.buffer))
+    return new SequenceNumber(decodeFixed64(batch.buffer.slice(0, 8)))
   }
 
-  count: number
+  static setCount(batch: WriteBatch, count: number) {
+    batch.buffer.fill(encodeFixed32(count), 8, 11)
+  }
+  static getCount(batch: WriteBatch): number {
+    return decodeFixed32(batch.buffer)
+  }
+
   buffer: Buffer
 
   constructor() {
     this.buffer = Buffer.alloc(WriteBatch.kHeader)
-    this.count = 0
   }
 
   put(key: Slice, value: Slice) {
     const slice = LogRecord.add(key, value)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
-    this.count++
+    WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
   }
 
   del(key: Slice) {
     const slice = LogRecord.del(key)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
-    this.count++
+    WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
   }
 
   *iterator() {
-    let index = 8
+    let index = WriteBatch.kHeader
     while (index < this.buffer.length) {
       const valueType = this.buffer.readUInt8(index)
       index++
