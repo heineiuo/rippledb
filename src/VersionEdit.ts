@@ -126,7 +126,7 @@ export default class VersionEdit {
   }
 
   // Delete the specified "file" from the specified "level".
-  deletedFile(level: number, fileNum: number) {
+  public deleteFile(level: number, fileNum: number) {
     this.deletedFiles.push({
       level,
       fileNum,

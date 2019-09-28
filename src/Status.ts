@@ -6,30 +6,38 @@
  */
 
 export default class Status {
-  private error!: Error
-  private promise: Promise<any> | void
+  private _error!: Error
+  private _promise: Promise<any> | void
 
   constructor(promise?: Promise<any>) {
-    this.promise = promise
+    this._promise = promise
+  }
+
+  get promise() {
+    return this._promise
+  }
+
+  get error() {
+    return this._error
   }
 
   private async wait(): Promise<void> {
     try {
-      await this.promise
+      await this._promise
     } catch (e) {
-      this.error = e
+      this._error = e
     }
   }
 
   public async ok(): Promise<boolean> {
     await this.wait()
-    return !this.error
+    return !this._error
   }
 
   public async message(): Promise<string | null> {
     await this.wait()
-    if (this.error) {
-      return this.error.message
+    if (this._error) {
+      return this._error.message
     }
     return null
   }

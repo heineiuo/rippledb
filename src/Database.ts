@@ -23,11 +23,17 @@ import {
 import {
   InternalKeyComparator,
   InternalKey,
+  ParsedInternalKey,
   FileMetaData,
+  Entry,
 } from './VersionFormat'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
-import Compaction, { CompactionState } from './Compaction'
+import Compaction, {
+  CompactionState,
+  CompactionStateOutput,
+  CompactionStats,
+} from './Compaction'
 import Slice from './Slice'
 import VersionSet from './VersionSet'
 import VersionEdit from './VersionEdit'
@@ -37,9 +43,12 @@ import {
   getCurrentFilename,
   getLogFilename,
   getManifestFilename,
+  getTableFilename,
 } from './Filename'
 import WriteBatch from './WriteBatch'
 import Status from './Status'
+import Env from './Env'
+import SSTableBuilder from './SSTableBuilder'
 
 interface ManualCompaction {
   level: number
@@ -65,6 +74,7 @@ export default class Database {
   private _bgError!: Status
   private pendingOutputs!: number[]
   private snapshots!: number[]
+  private _stats: CompactionStats[]
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
@@ -75,6 +85,10 @@ export default class Database {
     this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
     this.pendingOutputs = []
+    this._stats = Array.from(
+      { length: Config.kNumLevels },
+      () => new CompactionStats()
+    )
 
     this._versionSet = new VersionSet(
       this._dbpath,
@@ -97,6 +111,10 @@ export default class Database {
     // })
 
     this.recover()
+  }
+
+  private get userComparator() {
+    return this._internalKeyComparator.userComparator
   }
 
   private async existCurrent(): Promise<boolean> {
@@ -155,7 +173,7 @@ export default class Database {
     throw new Error('Database is busy.')
   }
 
-  async *iterator(options?: EncodingOptions) {
+  public async *iterator(options?: EncodingOptions) {
     await this.ok()
     for (let key in this._memtable.iterator()) {
       yield key
@@ -171,7 +189,7 @@ export default class Database {
    * 3. level0 sstable 超过8个
    * 4. leveli(i>0)层sstable占用空间超过10^iMB
    */
-  async get(key: any, options?: EncodingOptions): Promise<any> {
+  public async get(key: any, options?: EncodingOptions): Promise<any> {
     await this.ok()
     // console.log('get ok')
     const sliceKey = new Slice(key)
@@ -198,19 +216,19 @@ export default class Database {
    * 1. 检查memtable是否超过4mb
    * 2. 检查this._immtable是否为null（memtable转sstable）
    */
-  async put(key: any, value: any, options?: EncodingOptions) {
+  public async put(key: any, value: any, options?: EncodingOptions) {
     const batch = new WriteBatch()
     batch.put(new Slice(key), new Slice(value))
     await this.write(batch, options)
   }
 
-  async del(key: any, options?: EncodingOptions) {
+  public async del(key: any, options?: EncodingOptions) {
     const batch = new WriteBatch()
     batch.del(new Slice(key))
     await this.write(batch, options)
   }
 
-  async write(batch: WriteBatch | null, options?: EncodingOptions) {
+  public async write(batch: WriteBatch | null, options?: EncodingOptions) {
     await this.ok()
     await this.makeRoomForWrite(!batch)
     // console.log('makeRoomForWrite end...')
@@ -253,7 +271,7 @@ export default class Database {
         await new Promise(resolve => setTimeout(resolve, 1000))
         allowDelay = false
       } else if (!force && this._memtable.size <= kMemTableDumpSize) {
-        // ✌ There is room in current memtable
+        // There is room in current memtable
         break
       } else if (!!this._immtable) {
         // We have filled up the current memtable, but the previous
@@ -298,7 +316,7 @@ export default class Database {
       // No work to be done
     } else {
       this._backgroundCompactionScheduled = true
-      this.backgroundCompaction()
+      await this.backgroundCompaction()
     }
   }
 
@@ -332,7 +350,7 @@ export default class Database {
     } else if (!this._manualCompaction && c.isTrivialMode()) {
       assert(c.numInputFiles(0) === 1)
       const f = c.inputs[0][0]
-      c.edit.deletedFile(c.level, f.number)
+      c.edit.deleteFile(c.level, f.number)
       c.edit.addFile(c.level + 1, f.number, f.fileSize, f.smallest, f.largest)
       status = await this._versionSet.logAndApply(c.edit)
     } else {
@@ -366,9 +384,8 @@ export default class Database {
     }
   }
 
-  // TODO
   private async doCompactionWork(compact: CompactionState): Promise<Status> {
-    const startTime: number = Number(process.hrtime.bigint()) / Math.pow(10, 9)
+    const startTime: number = Env.now()
     let immTime = 0 // Time spent doing imm_ compactions
     console.log('Compacting files...')
     assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0)
@@ -380,17 +397,163 @@ export default class Database {
       compact.smallestSnapshot = this.snapshots[this.snapshots.length - 1]
     }
 
-    const status = new Status()
-
+    let status = new Status()
+    let ikey = new ParsedInternalKey()
+    let currentUserKey = new Slice()
+    let hasCurrentUserKey: boolean = false
+    let lastSequenceForKey = InternalKey.kMaxSequenceNumber
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
     )) {
+      // Prioritize immutable compaction work
+      if (!!this._immtable) {
+        const immStartTime = Env.now()
+        await this.compactMemTable()
+        immTime += Env.now() - immStartTime
+      }
+
+      const key = input.key
+      if (compact.compaction.shouldStopBefore(key) && !!compact.builder) {
+        status = await this.finishCompactionOutputFile(compact, status)
+        if (!(await status.ok())) {
+          break
+        }
+      }
+      let drop = false
+      if (!InternalKey.parseInternalKey(key, ikey)) {
+        currentUserKey.clear()
+        hasCurrentUserKey = false
+        lastSequenceForKey = InternalKey.kMaxSequenceNumber
+      } else {
+        if (
+          !hasCurrentUserKey ||
+          this.userComparator.compare(ikey.userKey, currentUserKey) !== 0
+        ) {
+          // First occurrence of this user key
+          currentUserKey.buffer = ikey.userKey.buffer
+          hasCurrentUserKey = true
+          lastSequenceForKey = InternalKey.kMaxSequenceNumber
+        }
+        if (lastSequenceForKey.value <= compact.smallestSnapshot) {
+          // Hidden by an newer entry for same user key
+          drop = true // (A)
+        } else if (
+          ikey.valueType === ValueType.kTypeDeletion &&
+          ikey.sn.value <= compact.smallestSnapshot &&
+          compact.compaction.isBaseLevelForKey(ikey.userKey)
+        ) {
+          // For this user key:
+          // (1) there is no data in higher levels
+          // (2) data in lower levels will have larger sequence numbers
+          // (3) data in layers that are being compacted here and have
+          //     smaller sequence numbers will be dropped in the next
+          //     few iterations of this loop (by rule (A) above).
+          // Therefore this deletion marker is obsolete and can be dropped.
+          drop = true
+        }
+        lastSequenceForKey = ikey.sn
+      }
+
+      if (!drop) {
+        // Open output file if necessary
+        if (!compact.builder) {
+          status = await this.openCompactionOutputFile(compact)
+          if (!(await status.ok())) {
+            break
+          }
+        }
+        if (compact.builder.numEntries == 0) {
+          compact.currentOutput().smallest.decodeFrom(key)
+        }
+        compact.currentOutput().largest.decodeFrom(key)
+        compact.builder.add(key, input.value)
+
+        // Close output file if it is big enough
+        if (compact.builder.fileSize >= compact.compaction.maxOutputFilesize) {
+          status = await this.finishCompactionOutputFile(compact, new Status())
+          if (!status.ok()) {
+            break
+          }
+        }
+      }
     }
+
+    if (status.ok() && !!compact.builder) {
+      status = await this.finishCompactionOutputFile(compact, status)
+    }
+
+    const stats = new CompactionStats()
+    stats.times = Env.now() - startTime - immTime
+
+    for (let which = 0 as 0 | 1; which < 2; which++) {
+      for (let i = 0; i < compact.compaction.numInputFiles(which); i++) {
+        stats.bytesRead += compact.compaction.inputs[which][i].fileSize
+      }
+    }
+    for (let i = 0; i < compact.outputs.length; i++) {
+      stats.bytesWritten += compact.outputs[i].fileSize
+    }
+    this._stats[compact.compaction.level + 1].add(stats)
+
+    if (status.ok()) {
+      status = await this.installCompactionResults(compact)
+    }
+
+    // TODO log level summary
 
     return status
   }
 
   private async compactMemTable() {}
+
+  private async openCompactionOutputFile(
+    compact: CompactionState
+  ): Promise<Status> {
+    assert(!!compact)
+    assert(!compact.builder)
+    let fileNumber = this._versionSet.getNextFileNumber()
+    this.pendingOutputs.push(fileNumber)
+    const out = {} as CompactionStateOutput
+    out.number = fileNumber
+    out.smallest = new InternalKey()
+    out.largest = new InternalKey()
+    compact.outputs.push(out)
+    const fname = getTableFilename(this._dbpath, fileNumber)
+    const s = new Status(fs.promises.open(fname, 'a+'))
+    if (await s.ok()) {
+      compact.builder = new SSTableBuilder(await s.promise)
+    }
+    return s
+  }
+
+  private async installCompactionResults(
+    compact: CompactionState
+  ): Promise<Status> {
+    console.log(
+      `Compacted ${compact.compaction.numInputFiles(0)}@${
+        compact.compaction.level
+      } + ${compact.compaction.numInputFiles(1)}@${compact.compaction.level +
+        1} files => ${compact.totalBytes} bytes"`
+    )
+    // Add compaction outputs
+    compact.compaction.addInputDeletions(compact.compaction.edit)
+    const level = compact.compaction.level
+    for (let i = 0; i < compact.outputs.length; i++) {
+      const out = compact.outputs[i]
+      compact.compaction.edit.addFile(
+        level + 1,
+        out.number,
+        out.fileSize,
+        out.smallest,
+        out.largest
+      )
+    }
+    const status = new Status(
+      this._versionSet.logAndApply(compact.compaction.edit)
+    )
+    await status.promise
+    return status
+  }
 
   /**
    * manually compact
@@ -483,5 +646,46 @@ export default class Database {
     for (let filename of filesToDelete) {
       await fs.promises.unlink(path.resolve(this._dbpath, filename))
     }
+  }
+
+  private async finishCompactionOutputFile(
+    compact: CompactionState,
+    inputStatus: Status
+  ): Promise<Status> {
+    let status = new Status()
+    assert(!!compact)
+    assert(!!compact.outfile)
+    assert(!!compact.builder)
+    const outputNumber = compact.currentOutput().number
+    assert(outputNumber !== 0)
+    const currentEntries = compact.builder.numEntries
+    if (await inputStatus.ok()) {
+      status = new Status(compact.builder.finish())
+      await status.ok()
+    } else {
+      await compact.builder.abandon()
+    }
+
+    const currentBytes = compact.builder.fileSize
+    compact.currentOutput().fileSize = currentBytes
+    compact.totalBytes += currentBytes
+    delete compact.builder
+
+    // TODO sync and close outfile
+
+    delete compact.outfile
+
+    if (currentEntries > 0) {
+      status = new Status(
+        fs.promises.access(getTableFilename(this._dbpath, outputNumber))
+      )
+      if (await status.ok()) {
+        console.log(
+          `Generated table #${outputNumber}@${compact.compaction.level}: ${currentEntries} keys, ${currentBytes} bytes`
+        )
+      }
+    }
+
+    return status
   }
 }

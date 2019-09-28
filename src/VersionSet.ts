@@ -673,7 +673,7 @@ export default class VersionSet {
               )
             )
             num++
-            yield sstable.indexBlockIterator()
+            yield* sstable.indexBlockIterator()
           }
         } else {
           num++
