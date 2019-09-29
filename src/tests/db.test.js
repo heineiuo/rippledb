@@ -1,6 +1,9 @@
 import assert from 'assert'
 import Database from '../Database'
-import dbpath from '../../fixtures/dbpath'
+import { createDir, cleanup } from '../../fixtures/dbpath'
+
+const dbpath = createDir()
+afterAll(() => cleanup(dbpath))
 
 test('read record from db', async () => {
   const db = new Database(dbpath)

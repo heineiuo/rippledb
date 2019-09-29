@@ -16,6 +16,7 @@ import SSTableIndexBlock from './SSTableIndexBlock'
 import SSTableMetaIndexBlock from './SSTableMetaIndexBlock'
 import SSTableMetaBlock from './SSTableMetaBlock'
 import SSTableDataBlock from './SSTableDataBlock'
+import { Entry } from './VersionFormat'
 
 export default class SSTableBuilder {
   constructor(
@@ -57,7 +58,7 @@ export default class SSTableBuilder {
       )
     }
     this._lastKey = new Slice(key)
-    this._dataBlock.append({ key, value })
+    this._dataBlock.append({ key, value } as Entry)
     this._numEntries++
     if (this._dataBlock.estimateSize > this._options.size) {
       await this.flush()
@@ -85,7 +86,7 @@ export default class SSTableBuilder {
           Buffer.from(varint.encode(this._dataBlock.size)),
         ])
       ),
-    })
+    } as Entry)
     const keys = []
     for (let result of this._dataBlock.iterator()) {
       keys.push(result.key.toString())
@@ -129,7 +130,7 @@ export default class SSTableBuilder {
           Buffer.from(varint.encode(this._metaBlock.size)),
         ])
       ),
-    })
+    } as Entry)
     const metaIndexOffset = this._fileSize
     await this.appendFile(this._metaIndexBlock.buffer)
     const metaIndexSize = this._fileSize - metaIndexOffset

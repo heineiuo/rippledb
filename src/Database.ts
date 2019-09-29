@@ -28,6 +28,7 @@ import {
   Entry,
   kValueTypeForSeek,
 } from './VersionFormat'
+import Version from './Version'
 import SequenceNumber from './SequenceNumber'
 import LRU from 'lru-cache'
 import Compaction, {
@@ -68,7 +69,7 @@ export default class Database {
   private _log: LogWriter
   private _logFileNumber!: number
   private _memtable: MemTable
-  private _immtable?: MemTable
+  private _immtable!: MemTable
   private _versionSet: VersionSet
   private _ok: boolean
   private _manualCompaction!: ManualCompaction | null
@@ -201,13 +202,17 @@ export default class Database {
       ValueType.kTypeValue
     )
 
+    const current = this._versionSet.current
     this._memtable.ref()
     if (!!this._immtable) this._immtable.ref()
-    this._versionSet.current.ref()
+    current.ref()
 
     let result = this._memtable.get(lookupKey, options)
     if (!result && !!this._immtable) {
       result = this._immtable.get(lookupKey, options)
+    }
+    if (!result) {
+      result = await current.get(lookupKey)
     }
     return result
   }
@@ -236,6 +241,7 @@ export default class Database {
 
     if (!!batch) {
       let lastSequence = this._versionSet.lastSequence
+      // console.log(`VersionSet last sequence is ${lastSequence}`)
 
       // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
       // await this._log.addRecord(LogRecord.del(sliceKey))
@@ -288,8 +294,7 @@ export default class Database {
         console.log('Too many L0 files; waiting...\n')
         // await this._backgroundWorkingPromise
       } else {
-        // TODO break loop
-        // console.log('force')
+        // Attempt to switch to a new memtable and trigger compaction of old
         assert(this._versionSet.logNumber === 0) // no logfile is compaction
         const newLogNumber = this._versionSet.getNextFileNumber()
         this._log = new LogWriter(getLogFilename(this._dbpath, newLogNumber))
@@ -298,7 +303,7 @@ export default class Database {
         this._memtable.ref()
         this._logFileNumber = newLogNumber
         force = false
-        this.maybeScheduleCompaction()
+        await this.maybeScheduleCompaction()
       }
     }
     return status
@@ -316,23 +321,43 @@ export default class Database {
     ) {
       // No work to be done
     } else {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      // console.log(
+      //   `this._backgroundCompactionScheduled=${this._backgroundCompactionScheduled} so passed`
+      // )
+      // console.log(
+      //   `this._bgError && !(await this._bgError.ok())=${this._bgError &&
+      //     !(await this._bgError.ok())} so passed`
+      // )
+      // console.log(
+      //   `!this._immtable=${!this._immtable} !this._manualCompaction=${!this
+      //     ._manualCompaction} !this._versionSet.needsCompaction()=${!this._versionSet.needsCompaction()} so passed`
+      // )
       this._backgroundCompactionScheduled = true
-      await this.backgroundCompaction()
+      // ignore: Env.Schedule, BGWork
+      await this.backgroundCall()
     }
   }
 
-  private schedule() {}
+  private async backgroundCall() {
+    assert(this._backgroundCompactionScheduled)
+    await this.backgroundCompaction()
+    this._backgroundCompactionScheduled = false
 
-  private bgwork() {}
+    // Previous compaction may have produced too many files in a level,
+    // so reschedule another compaction if needed.
+    await this.maybeScheduleCompaction()
+  }
 
-  private backgroundCall() {}
-
-  // ignore: Schedule, BGWork and BackgroundCall
   private async backgroundCompaction(): Promise<void> {
-    if (this._backgroundCompactionScheduled) return
-    this._backgroundCompactionScheduled = true
+    if (!!this._immtable) {
+      this.compactMemTable()
+      return
+    }
+
     let c: Compaction | void
     let manualEnd = new InternalKey()
+
     if (!!this._manualCompaction) {
       let m = this._manualCompaction
       c = this._versionSet.compactRange(m.level, m.begin, m.end)
@@ -340,7 +365,7 @@ export default class Database {
       if (!!c) {
         manualEnd = c.inputs[0][c.numInputFiles(0) - 1].largest
       }
-      console.log(`Manual compaction ...`)
+      // Manual compaction ...
     } else {
       c = this._versionSet.pickCompaction()
     }
@@ -348,7 +373,9 @@ export default class Database {
     let status = new Status()
 
     if (!c) {
+      // console.log('Nothing to do')
     } else if (!this._manualCompaction && c.isTrivialMode()) {
+      // console.log('Move file to next level')
       assert(c.numInputFiles(0) === 1)
       const f = c.inputs[0][0]
       c.edit.deleteFile(c.level, f.number)
@@ -366,22 +393,24 @@ export default class Database {
     }
 
     if (await status.ok()) {
+      // console.log('Done')
     } else {
       console.log(`Compaction error...`)
     }
 
     if (!!this._manualCompaction) {
       let m = this._manualCompaction
-      if (!status.ok()) {
+      if (!(await status.ok())) {
         m.done = true
       }
+
       if (!m.done) {
         // We only compacted part of the requested range.  Update *m
         // to the range that is left to be compacted.
         m.tmpStorage = manualEnd
         m.begin = m.tmpStorage
       }
-      this._manualCompaction = null
+      delete this._manualCompaction
     }
   }
 
@@ -472,14 +501,14 @@ export default class Database {
         // Close output file if it is big enough
         if (compact.builder.fileSize >= compact.compaction.maxOutputFilesize) {
           status = await this.finishCompactionOutputFile(compact, new Status())
-          if (!status.ok()) {
+          if (!(await status.ok())) {
             break
           }
         }
       }
     }
 
-    if (status.ok() && !!compact.builder) {
+    if ((await status.ok()) && !!compact.builder) {
       status = await this.finishCompactionOutputFile(compact, status)
     }
 
@@ -496,7 +525,7 @@ export default class Database {
     }
     this._stats[compact.compaction.level + 1].add(stats)
 
-    if (status.ok()) {
+    if (await status.ok()) {
       status = await this.installCompactionResults(compact)
     }
 
@@ -505,7 +534,96 @@ export default class Database {
     return status
   }
 
-  private async compactMemTable() {}
+  private async compactMemTable() {
+    // console.log(`compactMemTable start`)
+    assert(!!this._immtable)
+
+    // Save the contents of the memtable as a new Table
+    const edit = new VersionEdit()
+    const base = this._versionSet.current
+    base.ref()
+    let s: Status = await this.writeLevel0Table(this._immtable, edit, base)
+    base.unref()
+
+    // Replace immutable memtable with the generated Table
+    if (await s.ok()) {
+      edit.prevLogNumber = 0
+      edit.logNumber = this._logFileNumber // Earlier logs no longer needed
+      s = await this._versionSet.logAndApply(edit)
+    }
+
+    if (await s.ok()) {
+      // Commit to the new state
+      assert(!!this._immtable)
+      this._immtable.unref()
+      delete this._immtable
+      await this.deleteObsoleteFiles()
+    } else {
+      this.recordBackgroundError(s)
+    }
+  }
+
+  private async writeLevel0Table(
+    mem: MemTable,
+    edit: VersionEdit,
+    base: Version
+  ): Promise<Status> {
+    const startTime = Env.now()
+    const meta = new FileMetaData()
+    meta.fileSize = 0
+    meta.number = this._versionSet.getNextFileNumber()
+    this.pendingOutputs.push(meta.number)
+    console.log(`Level-0 table #${meta.number}: started`)
+    const fileHandler = getTableFilename(this._dbpath, meta.number)
+    let s = new Status(fs.promises.open(fileHandler, 'a+'))
+    if (!(await s.ok())) {
+      console.log(await s.message())
+      return s
+    }
+    const tableBuilder = new SSTableBuilder(await s.promise)
+    for (let entry of mem.iterator()) {
+      if (!meta.smallest)
+        meta.smallest = new InternalKey(entry.key, entry.sequence, entry.type)
+      meta.largest = new InternalKey(entry.key, entry.sequence, entry.type)
+      await tableBuilder.add(entry.key, entry.value)
+    }
+
+    s = new Status(tableBuilder.close())
+    if (!(await s.ok())) {
+      console.log(await s.message())
+      return s
+    }
+    meta.fileSize = tableBuilder.fileSize
+
+    console.log(
+      `Level-0 table #${meta.number}: ${meta.fileSize} bytes ${await s.ok()}`
+    )
+    this.pendingOutputs = this.pendingOutputs.filter(num => num !== meta.number)
+
+    // Note that if file_size is zero, the file has been deleted and
+    // should not be added to the manifest.
+    let level = 0
+    if ((await s.ok()) && meta.fileSize > 0) {
+      const minUserKey = meta.smallest.extractUserKey()
+      const maxUserKey = meta.largest.extractUserKey()
+      if (!!base) {
+        level = base.pickLevelForMemTableOutput(minUserKey, maxUserKey)
+      }
+      edit.addFile(
+        level,
+        meta.number,
+        meta.fileSize,
+        meta.smallest,
+        meta.largest
+      )
+    }
+
+    const stats = new CompactionStats()
+    stats.times = Env.now() - startTime
+    stats.bytesWritten = meta.fileSize
+    this._stats[level].add(stats)
+    return s
+  }
 
   private async openCompactionOutputFile(
     compact: CompactionState
@@ -567,12 +685,11 @@ export default class Database {
         maxLevelWithFiles = level
       }
     }
+
     await this.manualCompactMemTable()
-    // console.log('manualCompactMemTable end')
     for (let level = 0; level < maxLevelWithFiles; level++) {
-      this.manualCompactRangeWithLevel(level, begin, end)
+      await this.manualCompactRangeWithLevel(level, begin, end)
     }
-    // console.log('compactRange end')
   }
 
   private async manualCompactRangeWithLevel(
@@ -580,6 +697,9 @@ export default class Database {
     begin: Slice,
     end: Slice
   ) {
+    // console.log(
+    //   `manualCompactRangeWithLevel level:${level} begin:${begin.toString()} end:${end.toString()}`
+    // )
     assert(level >= 0)
     assert(level + 1 < Config.kNumLevels)
     let beginStorage = new InternalKey()

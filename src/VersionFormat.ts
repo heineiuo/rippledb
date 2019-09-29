@@ -18,7 +18,11 @@ export class ParsedInternalKey {
   sn!: SequenceNumber
   valueType!: ValueType
   constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
-    if (!!userKey && !!sn && !!valueType) {
+    if (
+      typeof userKey !== 'undefined' &&
+      typeof sn !== 'undefined' &&
+      typeof valueType !== 'undefined'
+    ) {
       this.userKey = userKey
       this.sn = sn
       this.valueType = valueType
@@ -54,7 +58,11 @@ export class InternalKey extends Slice {
 
   constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
     super()
-    if (!!userKey && !!sn && !!valueType) {
+    if (
+      typeof userKey !== 'undefined' &&
+      typeof sn !== 'undefined' &&
+      typeof valueType !== 'undefined'
+    ) {
       this.appendInternalKey(
         this.buffer,
         new ParsedInternalKey(userKey, sn, valueType)
@@ -74,7 +82,7 @@ export class InternalKey extends Slice {
     this.buffer = Buffer.concat([this.buffer, key.userKey.buffer, sequenceBuf])
   }
 
-  extractUserKey(): Slice {
+  extractUserKey = (): Slice => {
     assert(this.size > 8)
     return new Slice(this.buffer.slice(0, this.size - 8))
   }
@@ -289,6 +297,12 @@ export function getExpandedCompactionByteSizeLimit(options: Options) {
 export const kValueTypeForSeek = ValueType.kTypeValue
 
 export interface Entry {
+  sequence?: SequenceNumber
+  type?: ValueType
   key: Slice
   value: Slice
+}
+
+export interface EntryRequireType extends Entry {
+  type: ValueType
 }

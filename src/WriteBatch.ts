@@ -12,13 +12,8 @@ import MemTable from './MemTable'
 import LogRecord from './LogRecord'
 import SequenceNumber from './SequenceNumber'
 import { ValueType } from './Format'
+import { EntryRequireType } from './VersionFormat'
 import { decodeFixed64, encodeFixed32, decodeFixed32 } from './Coding'
-
-export type AtomicUpdate = {
-  type: ValueType
-  key: Slice
-  value?: Slice
-}
 
 // Simplified WriteBatch
 export default class WriteBatch {
@@ -80,7 +75,8 @@ export default class WriteBatch {
         yield {
           type: valueType,
           key: new Slice(keyBuffer),
-        }
+          value: new Slice(),
+        } as EntryRequireType
         continue
       }
 
@@ -92,7 +88,7 @@ export default class WriteBatch {
         type: valueType,
         key: new Slice(keyBuffer),
         value: new Slice(valueBuffer),
-      } as AtomicUpdate
+      } as EntryRequireType
     }
   }
 }

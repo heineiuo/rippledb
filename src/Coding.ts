@@ -7,10 +7,16 @@
 
 import { Buffer } from 'buffer'
 
+const kFixed64MaxValue = BigInt(Math.pow(2, 56)) - 1n
+
+// only use 1 - 7 bytes
 export function encodeFixed64(value: number | bigint): Buffer {
   // or Buffer.from(new BigUint64Array([BigInt(value)]).buffer)
   let buf = Buffer.alloc(8)
-  buf.writeBigUInt64LE(BigInt(value))
+  let bigIntValue = BigInt(value)
+  buf.writeBigUInt64LE(
+    bigIntValue < kFixed64MaxValue ? bigIntValue : kFixed64MaxValue
+  )
   return buf
 }
 

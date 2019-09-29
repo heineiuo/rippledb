@@ -16,7 +16,9 @@ import {
   BySmallestKey,
 } from './VersionFormat'
 import VersionSet from './VersionSet'
-import { Config } from './Format'
+import { Config, ValueType } from './Format'
+import SequenceNumber from './SequenceNumber'
+import Compaction from './Compaction'
 
 export default class Version {
   static afterFile(ucmp: Comparator, userKey: Slice, f: FileMetaData): boolean {
@@ -68,6 +70,8 @@ export default class Version {
     }
   }
 
+  public get = async (lookupkey: Slice) => {}
+
   someFileOverlapsRange(
     icmp: InternalKeyComparator,
     disjointSortedFile: boolean,
@@ -100,7 +104,7 @@ export default class Version {
         InternalKey.kMaxSequenceNumber,
         kValueTypeForSeek
       )
-      index = this.fildFile(icmp, files, smallkey)
+      index = this.findFile(icmp, files, smallkey)
     }
 
     if (index >= files.length) {
@@ -111,7 +115,7 @@ export default class Version {
   }
 
   // binary search
-  fildFile(
+  findFile(
     icmp: InternalKeyComparator,
     files: FileMetaData[],
     key: Slice
@@ -135,7 +139,13 @@ export default class Version {
     smallestUserKey: Slice,
     largestUserKey: Slice
   ): boolean {
-    return true
+    return this.someFileOverlapsRange(
+      this.versionSet.internalKeyComparator,
+      level > 0,
+      this.files[level],
+      smallestUserKey,
+      largestUserKey
+    )
   }
 
   // Store in "*inputs" all files in "level" that overlap [begin,end]
@@ -176,5 +186,45 @@ export default class Version {
         }
       }
     }
+  }
+
+  public pickLevelForMemTableOutput(
+    minUserKey: Slice,
+    maxUserKey: Slice
+  ): number {
+    let level = 0
+    if (!this.overlapInLevel(0, minUserKey, maxUserKey)) {
+      // Push to next level if there is no overlap in next level,
+      // and the #bytes overlapping in the level after that are limited.
+      const start = new InternalKey(
+        minUserKey,
+        InternalKey.kMaxSequenceNumber,
+        kValueTypeForSeek
+      )
+      const limit = new InternalKey(
+        maxUserKey,
+        new SequenceNumber(0),
+        ValueType.kTypeValue
+      )
+      const overlaps = [] as FileMetaData[]
+      while (level < Config.kMaxMemCompactLevel) {
+        if (this.overlapInLevel(level + 1, minUserKey, maxUserKey)) {
+          break
+        }
+        if (level + 2 < Config.kNumLevels) {
+          // Check that file does not overlap too many grandparent bytes.
+          this.getOverlappingInputs(level + 2, start, limit, overlaps)
+          const sum = Compaction.totalFileSize(overlaps)
+          if (
+            sum >
+            Compaction.maxGrandParentOverlapBytes(this.versionSet._options)
+          ) {
+            break
+          }
+        }
+        level++
+      }
+    }
+    return level
   }
 }

@@ -28,7 +28,7 @@ export default class SequenceNumber {
     return Buffer.from(varint.encode(this._value))
   }
 
-  toFixed64Buffer(): Buffer {
+  public toFixed64Buffer = (): Buffer => {
     return encodeFixed64(this._value)
   }
 }

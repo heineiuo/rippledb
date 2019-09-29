@@ -1,11 +1,12 @@
-import fs_ from 'fs'
+import fs from 'fs'
 import path from 'path'
 import Slice from '../Slice'
 import SSTable from '../SSTable'
 import SSTableBuilder from '../SSTableBuilder'
-import dbpath from '../../fixtures/dbpath'
+import { createDir, cleanup } from '../../fixtures/dbpath'
 
-const fs = fs_.promises
+const dbpath = createDir()
+afterAll(() => cleanup(dbpath))
 
 function padLeft(str, total = 10) {
   if (str.length < total) {
@@ -23,10 +24,10 @@ function randomValue(index) {
 }
 
 test('sstable', async () => {
-  await fs.mkdir(dbpath, { recursive: true })
+  await fs.promises.mkdir(dbpath, { recursive: true })
   const tablePath = path.resolve(dbpath, './0001.ldb')
-  // await fs.writeFile(tablePath, Buffer.alloc(0))
-  const file = await fs.open(tablePath, 'w')
+  // await fs.promises.writeFile(tablePath, Buffer.alloc(0))
+  const file = await fs.promises.open(tablePath, 'w')
   const tableWritter = new SSTableBuilder(file)
 
   let i = 0
@@ -38,7 +39,7 @@ test('sstable', async () => {
   await tableWritter.close()
 
   const ldbPath = path.resolve(dbpath, './0001.ldb')
-  const buf = await fs.readFile(ldbPath)
+  const buf = await fs.promises.readFile(ldbPath)
   const table = new SSTable(buf)
   // console.log(table._footer.get())
 

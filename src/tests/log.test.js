@@ -1,12 +1,17 @@
-import dbpath from '../../fixtures/dbpath'
+import { createDir, cleanup } from '../../fixtures/dbpath'
 import LogReader from '../LogReader'
 import LogWriter from '../LogWriter'
 import LogRecord from '../LogRecord'
 import { getLogFilename } from '../Filename'
 import Slice from '../Slice'
 import path from 'path'
+import fs from 'fs'
+
+const dbpath = createDir()
+afterAll(() => cleanup(dbpath))
 
 test('log writer', async () => {
+  await fs.promises.mkdir(dbpath, { recursive: true })
   const logFilename = getLogFilename(dbpath, 1)
   const log = new LogWriter(logFilename)
   // await log.add(new Slice(`key${i}`), new Slice(`value${i}`))

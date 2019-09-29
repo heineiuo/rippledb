@@ -12,8 +12,9 @@ import { ValueType } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
-import { InternalKeyComparator } from './VersionFormat'
+import { InternalKeyComparator, Entry } from './VersionFormat'
 import { EncodingOptions } from './Options'
+import { decodeFixed64 } from './Coding'
 
 type UserValue = Buffer | null | string
 
@@ -52,6 +53,27 @@ export default class MemTable {
     return valueSlice.buffer
   }
 
+  static getEntryFromMemTableKey(key: Slice): Entry {
+    const entry = {} as Entry
+    let index = 0
+
+    const internalKeySize = varint.decode(key.buffer)
+    index += varint.decode.bytes
+    entry.key = new Slice(key.buffer.slice(index, index + internalKeySize - 8))
+    const internalKeyBuf = key.buffer.slice(index, index + internalKeySize)
+
+    index += internalKeySize
+    const sequenceBuf = Buffer.from(internalKeyBuf.slice(internalKeySize - 8))
+    sequenceBuf.fill(0x00, 7, 8)
+    entry.sequence = new SequenceNumber(decodeFixed64(sequenceBuf))
+    entry.type = varint.decode(internalKeyBuf.slice(internalKeySize - 8))
+
+    const valueSize = varint.decode(key.buffer.slice(index))
+    index += varint.decode.bytes
+    entry.value = new Slice(key.buffer.slice(index, index + valueSize))
+    return entry
+  }
+
   static createLookupKey(
     sequence: SequenceNumber,
     key: Slice,
@@ -66,9 +88,9 @@ export default class MemTable {
     return new Slice(buf)
   }
 
-  _immutable: boolean
-  _list: Skiplist
-  _size: number
+  private _immutable: boolean
+  private _list: Skiplist
+  private _size: number
   refs: number
   internalKeyComparator: InternalKeyComparator
 
@@ -106,7 +128,12 @@ export default class MemTable {
     if (next) this._immutable = true
   }
 
-  add(sequence: SequenceNumber, valueType: number, key: Slice, value?: Slice) {
+  add(
+    sequence: SequenceNumber,
+    valueType: ValueType,
+    key: Slice,
+    value?: Slice
+  ) {
     const keySize = key.length
     const valueSize = !value ? 0 : value.length
     const internalKeySize = keySize + 8 // sequence=7bytes, type = 1byte
@@ -154,9 +181,9 @@ export default class MemTable {
     return MemTable.getValueWithEncoding(result, options)
   }
 
-  *iterator(options: EncodingOptions = {}) {
+  *iterator() {
     for (let value of this._list.iterator()) {
-      yield MemTable.getValueWithEncoding(value, options)
+      yield MemTable.getEntryFromMemTableKey(value)
     }
   }
 }

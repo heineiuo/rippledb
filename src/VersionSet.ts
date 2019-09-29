@@ -128,7 +128,7 @@ export default class VersionSet {
     return this._current.files[level].length
   }
 
-  public async recover() {
+  public recover = async () => {
     // 读取current， 校验是否是\n结尾
     const current = await fs.promises.readFile(
       getCurrentFilename(this._dbpath),
@@ -315,9 +315,7 @@ export default class VersionSet {
   }
 
   public needsCompaction(): boolean {
-    return (
-      this._current.compactionScore >= 1 || this._current.fileToCompact !== null
-    )
+    return this._current.compactionScore >= 1 || !!this._current.fileToCompact
   }
 
   /**
@@ -354,7 +352,10 @@ export default class VersionSet {
 
     // Save compaction pointers
     for (let level = 0; level < Config.kNumLevels; level++) {
-      if (this.compactPointers[level].length !== 0) {
+      if (
+        !!this.compactPointers[level] &&
+        this.compactPointers[level].length !== 0
+      ) {
         let key = new InternalKey()
         key.decodeFrom(this.compactPointers[level])
         edit.setCompactPointer(level, key)
@@ -425,7 +426,6 @@ export default class VersionSet {
     c.inputVersion.ref()
 
     if (level === 0) {
-      // todo
       let smallest = new InternalKey()
       let largest = new InternalKey()
       this.getRange(c.inputs[0], smallest, largest)
