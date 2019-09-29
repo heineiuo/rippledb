@@ -321,7 +321,6 @@ export default class Database {
     ) {
       // No work to be done
     } else {
-      await new Promise(resolve => setTimeout(resolve, 1000))
       // console.log(
       //   `this._backgroundCompactionScheduled=${this._backgroundCompactionScheduled} so passed`
       // )
@@ -351,7 +350,7 @@ export default class Database {
 
   private async backgroundCompaction(): Promise<void> {
     if (!!this._immtable) {
-      this.compactMemTable()
+      await this.compactMemTable()
       return
     }
 
