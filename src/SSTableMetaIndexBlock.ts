@@ -6,7 +6,6 @@
  */
 
 import varint from 'varint'
-import { EncodingOptions } from './Options'
 import TableBlock from './SSTableBlock'
 import SStableMetaBlock from './SSTableMetaBlock'
 
@@ -18,13 +17,13 @@ export default class TableMetaIndexBlock extends TableBlock {
   /**
    * 实际上MetaBlock只创建一个
    */
-  *metaBlockIterator(options?: EncodingOptions) {
+  *metaBlockIterator() {
     for (let record of this.iterator()) {
       const { value } = record
       const offset = varint.decode(value.buffer)
       const size = varint.decode(value.buffer, varint.decode.bytes)
       const metaBlock = new SStableMetaBlock(this.buffer, offset, size)
-      yield metaBlock.iterator()
+      yield* metaBlock.iterator()
     }
   }
 }

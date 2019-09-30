@@ -42,6 +42,14 @@ export default class SSTable {
   }
 
   get(key: Slice, options?: EncodingOptions): Buffer | null | string {
+    let keyMayMatch = false
+    for (let filter of this._metaIndexBlock.metaBlockIterator()) {
+      if (filter.keyMayMatch(key)) {
+        keyMayMatch = true
+        break
+      }
+    }
+    if (!keyMayMatch) return null
     let target
     for (let value of this.dataBlockIterator()) {
       if (key.compare(new Slice(value.key)) === 0) {
