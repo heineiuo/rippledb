@@ -9,9 +9,10 @@ import { Buffer } from 'buffer'
 import varint from 'varint'
 
 /**
- * 置于 table 末尾，固定 48 byte，
- * 包含指向各个分区（ data index block 以及 meta index block ）
- * 的偏移量和大小，读取 table 时从末尾开始读取。
+ * fill in end of table, fixed 48 bytes，
+ * include offset, size of data index block and meta index block
+ *
+ * read sstable from footer
  */
 export default class TableFooter {
   constructor(buffer?: Buffer) {

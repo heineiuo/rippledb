@@ -138,12 +138,12 @@ export class InternalKeyComparator {
   }
 
   compare(key1: Slice, key2: Slice): number {
-    // 先比较user key
+    // first compare user key
     const userKey1 = InternalKeyComparator.extractUserKey(key1)
     const userKey2 = InternalKeyComparator.extractUserKey(key2)
     const r = this.userComparator.compare(userKey1, userKey2)
     if (r !== 0) return r
-    // 再比较sequence number
+    // then compare sequence number
     const sn1 = varint.decode(key1.buffer, key1.size - 8)
     const sn2 = varint.decode(key2.buffer, key2.size - 8)
     if (sn1 === sn2) return 0
@@ -183,8 +183,9 @@ export class BySmallestKey {
   }
 }
 
-// 能自动排序的set（根据internalkey comparator排序，如果small key相同，则比较file number
-// 目前不拷贝插入的值，而是引用
+// sorted set（compared by internalkey comparator, if small key
+// is equal then compare file number
+// TODO not copy inserted value here, just reference, should copy?
 export class FileSet {
   _set: FileMetaData[]
   compare: BySmallestKey

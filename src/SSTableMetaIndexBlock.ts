@@ -15,7 +15,7 @@ export default class TableMetaIndexBlock extends TableBlock {
   }
 
   /**
-   * 实际上MetaBlock只创建一个
+   * in fact, each SSTable has only one MetaBlock
    */
   *metaBlockIterator() {
     for (let record of this.iterator()) {

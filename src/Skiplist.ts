@@ -17,7 +17,7 @@ export default class Skiplist {
     this.maxlevel = 11 // Math.round(Math.log(this.maxsize, 2))
     this.level = 0
 
-    // 开局的时候，tail是NIL， head指向tail
+    // When initial，tail is null head link to tail
     // [] -------> []
     // [] -------> []
     // [] -------> []
@@ -62,12 +62,12 @@ export default class Skiplist {
       shouldUpdatePrevNodes[level] = prevNode
       current = prevNode.levels[level]
 
-      // 如果当前节点的next节点是null
-      //  如果level已经是0，则循环结束，说明插入节点最大，
-      //  否则继续向下查找
-      //  如果key比下一个节点的key小，则循环结束
-      //   如果next节点的key比插入节点小，则查找next节点是否存在
-      //   next节点且比key大
+      // if current node's next is null
+      //  if level === 0，then loop end, the inserted key is biggest
+      //  else keep find in smaller level
+      //  if inserted key is small then current key，then loop end
+      //   if next nodes's key is smaller then inserted key，then check if next node exist
+      //   next node's key is bigger
       if (!!current && this.keyComparator(current.key, key) < 0) {
         prevNode = current
         continue
@@ -117,8 +117,8 @@ export default class Skiplist {
   put(key: Slice) {
     let shouldUpdatePrevNodes = new Array(this.maxlevel + 1)
     let prevNode = this.findPrevNode(key, shouldUpdatePrevNodes)
-    // 如果是相同的key则不处理
-    // 否则创建新节点
+    // do nothing if key is equal
+    // else create new node
     let isDifferent = false
     if (prevNode === this.head) {
       isDifferent = true

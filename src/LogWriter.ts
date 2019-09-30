@@ -38,7 +38,7 @@ export default class LogWriter {
    */
   async addRecord(recordOp: Slice) {
     if (this._currentBlockSize + 7 + recordOp.length <= kBlockSize) {
-      // 不需要分割
+      // do not need to spilt
       const record = new LogRecord(RecordType.kFullType, recordOp)
       this._currentBlockSize += record.length
       await this.appendFile(record.buffer)

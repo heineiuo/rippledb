@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import BitBuffer from './BitBuffer'
@@ -13,8 +12,11 @@ import BloomHash from './MurmurHash'
 import Slice from './Slice'
 
 /**
- * 关键是hash几次。hash次数 = 位图数位 / 元素个数 x ln2(约等于0.69)
- * 其中元素个数和ln2是可确定的，位图数位理论上越大越好，将作为配置项
+ * time of hash is main effect
+ * best time of hash = bits number / elements bumber x ln2(≈0.69)
+ * elements bumber and ln2 is predictable
+ * bits number is configable
+ * from past experience, bitsPerKey = 10 is best
  */
 export default class BloomFilter {
   constructor(buffer?: Buffer, bitsPerKey: number = 10) {

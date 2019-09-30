@@ -57,7 +57,7 @@ export default class LogReader {
         continue
       }
 
-      // buf会被覆盖，所以需要拷贝
+      // buf may be re-fill, to avoid this, copy it
       const record = this.decode(Buffer.from(buf.slice(bufHandledPosition)))
       bufHandledPosition += record.data.length
       if (record.type === RecordType.kFullType) {

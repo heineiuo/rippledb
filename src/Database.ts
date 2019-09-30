@@ -185,11 +185,11 @@ export default class Database {
   }
 
   /**
-   * TODO 触发major compaction
+   * TODO Trigger major compaction's condition:
    * 1. manually compact
-   * 2. 超过allowed_seeks
-   * 3. level0 sstable 超过8个
-   * 4. leveli(i>0)层sstable占用空间超过10^iMB
+   * 2. filter seek miss > allowed_seeks
+   * 3. level0 sstable > 8
+   * 4. leveli(i>0) sstable bytes > 10^iMB
    */
   public async get(key: any, options?: EncodingOptions): Promise<any> {
     await this.ok()
@@ -221,9 +221,9 @@ export default class Database {
   }
 
   /**
-   * TODO 触发minor compaction
-   * 1. 检查memtable是否超过4mb
-   * 2. 检查this._immtable是否为null（memtable转sstable）
+   * TODO Trigger minor compaction's condition
+   * 1. check if memtable bigger then 4mb
+   * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
   public async put(key: any, value: any, options?: EncodingOptions) {
     const batch = new WriteBatch()
