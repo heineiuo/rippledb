@@ -27,10 +27,10 @@ import {
   FileMetaData,
   Entry,
   kValueTypeForSeek,
+  GetStats,
 } from './VersionFormat'
 import Version from './Version'
 import SequenceNumber from './SequenceNumber'
-import LRU from 'lru-cache'
 import Compaction, {
   CompactionState,
   CompactionStateOutput,
@@ -212,7 +212,10 @@ export default class Database {
       result = this._immtable.get(lookupKey, options)
     }
     if (!result) {
-      result = await current.get(lookupKey)
+      const s = await current.get(lookupKey, {} as GetStats)
+      if (await s.ok()) {
+        result = await s.promise
+      }
     }
     return result
   }

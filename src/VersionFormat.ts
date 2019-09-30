@@ -306,3 +306,8 @@ export interface Entry {
 export interface EntryRequireType extends Entry {
   type: ValueType
 }
+
+export interface GetStats {
+  seekFile: FileMetaData
+  seekFileLevel: number
+}
