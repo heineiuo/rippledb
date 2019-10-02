@@ -6,7 +6,6 @@
  */
 
 import assert from 'assert'
-import fs from 'fs'
 import Version from './Version'
 import {
   getCurrentFilename,
@@ -62,8 +61,8 @@ export default class VersionSet {
   manifestWritter?: LogWriter
 
   constructor(
-    dbpath: string,
     options: Options,
+    dbpath: string,
     memtable: MemTable,
     internalKeyComparator: InternalKeyComparator
   ) {
@@ -129,7 +128,7 @@ export default class VersionSet {
 
   public recover = async () => {
     // read current， check if end of content is '\n'
-    const current = await fs.promises.readFile(
+    const current = await this._options.env.readFile(
       getCurrentFilename(this._dbpath),
       'utf8'
     )
@@ -152,6 +151,7 @@ export default class VersionSet {
 
     // Use current to read description file (manifest)
     const reader = new LogReader(
+      this._options,
       getManifestFilename(this._dbpath, manifestNumber)
       // VersionEditRecord
     )
@@ -295,7 +295,7 @@ export default class VersionSet {
         this.manifestFileNumber
       )
       edit.nextFileNumber = this.nextFileNumber
-      this.manifestWritter = new LogWriter(manifestFilename)
+      this.manifestWritter = new LogWriter(this._options, manifestFilename)
       status = this.writeSnapshot(this.manifestWritter)
     }
 
@@ -384,7 +384,7 @@ export default class VersionSet {
     let manifestFilename = getManifestFilename(dbpath, manifestFileNumber)
     assert(manifestFilename.startsWith(dbpath + '/'))
     manifestFilename = manifestFilename.substr(dbpath.length + 1)
-    await fs.promises.writeFile(currentFilename, manifestFilename + '\n')
+    await this._options.env.writeFile(currentFilename, manifestFilename + '\n')
   }
 
   public pickCompaction(): Compaction | void {
@@ -670,7 +670,7 @@ export default class VersionSet {
           for (let i = 0; i < files.length; i++) {
             const file = files[i]
             const sstable = await SSTable.open(
-              await fs.promises.open(
+              await this._options.env.open(
                 getTableFilename(this._dbpath, file.number),
                 'r+'
               ),

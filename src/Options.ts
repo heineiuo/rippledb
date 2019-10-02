@@ -9,6 +9,7 @@ import { BytewiseComparator } from './Comparator'
 import BloomFilter from './BloomFilter'
 import { Comparator } from './Comparator'
 import Slice from './Slice'
+import { Env, NodeEnv } from './Env'
 
 export type Encodings = 'string' | 'buffer' | 'json'
 
@@ -34,5 +35,6 @@ export class Options {
   maxFileSize: number = 1000
   blockSize: number = 2 << 11
   blockRestartInterval: number = 16
+  env: Env = new NodeEnv()
   filterPolicy: FilterPolicy = new BloomFilter()
 }

@@ -5,12 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from 'buffer'
 import path from 'path'
 import assert from 'assert'
-import fs from 'fs'
 import MemTable from './MemTable'
-import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
 import { EncodingOptions, Options } from './Options'
 import {
@@ -48,9 +45,9 @@ import {
 } from './Filename'
 import WriteBatch from './WriteBatch'
 import Status from './Status'
-import Env from './Env'
 import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator } from './Comparator'
+import { Direct } from './Env'
 
 interface ManualCompaction {
   level: number
@@ -77,6 +74,7 @@ export default class Database {
   private pendingOutputs!: number[]
   private snapshots!: number[]
   private _stats: CompactionStats[]
+  private _options: Options
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
@@ -85,7 +83,6 @@ export default class Database {
     )
     this._ok = false
     this._dbpath = dbpath
-    this._log = new LogWriter(getLogFilename(dbpath, 1))
     this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
     this.pendingOutputs = []
@@ -96,10 +93,13 @@ export default class Database {
 
     const options = new Options()
     options.comparator = this._internalKeyComparator
+    this._options = options
+
+    this._log = new LogWriter(this._options, getLogFilename(dbpath, 1))
 
     this._versionSet = new VersionSet(
-      this._dbpath,
       options,
+      this._dbpath,
       this._memtable,
       this._internalKeyComparator
     )
@@ -126,12 +126,12 @@ export default class Database {
     try {
       const currentName = getCurrentFilename(this._dbpath)
       try {
-        await fs.promises.access(this._dbpath, fs.constants.W_OK)
+        await this._options.env.access(this._dbpath)
       } catch (e) {
-        await fs.promises.mkdir(this._dbpath, { recursive: true })
+        await this._options.env.mkdir(this._dbpath)
         return false
       }
-      await fs.promises.access(currentName, fs.constants.W_OK)
+      await this._options.env.access(currentName)
       return true
     } catch (e) {
       return false
@@ -145,10 +145,13 @@ export default class Database {
     edit.nextFileNumber = 2
     edit.lastSequence = 0
     // console.log('initVersionEdit', edit)
-    const writer = new LogWriter(getManifestFilename(this._dbpath, 1))
+    const writer = new LogWriter(
+      this._options,
+      getManifestFilename(this._dbpath, 1)
+    )
     await writer.addRecord(VersionEditRecord.add(edit))
     await writer.close()
-    await fs.promises.writeFile(
+    await this._options.env.writeFile(
       getCurrentFilename(this._dbpath),
       'MANIFEST-000001\n'
     )
@@ -303,7 +306,10 @@ export default class Database {
         // Attempt to switch to a new memtable and trigger compaction of old
         assert(this._versionSet.logNumber === 0) // no logfile is compaction
         const newLogNumber = this._versionSet.getNextFileNumber()
-        this._log = new LogWriter(getLogFilename(this._dbpath, newLogNumber))
+        this._log = new LogWriter(
+          this._options,
+          getLogFilename(this._dbpath, newLogNumber)
+        )
         this._immtable = this._memtable
         this._memtable = new MemTable(this._internalKeyComparator)
         this._memtable.ref()
@@ -420,7 +426,7 @@ export default class Database {
   }
 
   private async doCompactionWork(compact: CompactionState): Promise<Status> {
-    const startTime: number = Env.now()
+    const startTime: number = this._options.env.now()
     let immTime = 0 // Time spent doing imm_ compactions
     console.log('Compacting files...')
     assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0)
@@ -442,9 +448,9 @@ export default class Database {
     )) {
       // Prioritize immutable compaction work
       if (!!this._immtable) {
-        const immStartTime = Env.now()
+        const immStartTime = this._options.env.now()
         await this.compactMemTable()
-        immTime += Env.now() - immStartTime
+        immTime += this._options.env.now() - immStartTime
       }
 
       const key = input.key
@@ -518,7 +524,7 @@ export default class Database {
     }
 
     const stats = new CompactionStats()
-    stats.times = Env.now() - startTime - immTime
+    stats.times = this._options.env.now() - startTime - immTime
 
     for (let which = 0 as 0 | 1; which < 2; which++) {
       for (let i = 0; i < compact.compaction.numInputFiles(which); i++) {
@@ -573,14 +579,14 @@ export default class Database {
     edit: VersionEdit,
     base: Version
   ): Promise<Status> {
-    const startTime = Env.now()
+    const startTime = this._options.env.now()
     const meta = new FileMetaData()
     meta.fileSize = 0
     meta.number = this._versionSet.getNextFileNumber()
     this.pendingOutputs.push(meta.number)
     console.log(`Level-0 table #${meta.number}: started`)
     const fileHandler = getTableFilename(this._dbpath, meta.number)
-    let s = new Status(fs.promises.open(fileHandler, 'a+'))
+    let s = new Status(this._options.env.open(fileHandler, 'a+'))
     if (!(await s.ok())) {
       console.log(await s.message())
       return s
@@ -624,7 +630,7 @@ export default class Database {
     }
 
     const stats = new CompactionStats()
-    stats.times = Env.now() - startTime
+    stats.times = this._options.env.now() - startTime
     stats.bytesWritten = meta.fileSize
     this._stats[level].add(stats)
     return s
@@ -643,7 +649,7 @@ export default class Database {
     out.largest = new InternalKey()
     compact.outputs.push(out)
     const fname = getTableFilename(this._dbpath, fileNumber)
-    const s = new Status(fs.promises.open(fname, 'a+'))
+    const s = new Status(this._options.env.open(fname, 'a+'))
     if (await s.ok()) {
       compact.builder = new SSTableBuilder(await s.promise)
     }
@@ -777,14 +783,15 @@ export default class Database {
   private async deleteObsoleteFiles() {
     const live = this.pendingOutputs || []
     this._versionSet.addLiveFiles(live)
-    const filenames = (await fs.promises.readdir(this._dbpath, {
-      withFileTypes: true,
-    })).reduce((filenames: string[], direct) => {
-      if (direct.isFile()) {
-        filenames.push(direct.name)
-      }
-      return filenames
-    }, [])
+    const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
+      (filenames: string[], direct: Direct) => {
+        if (direct.isFile()) {
+          filenames.push(direct.name)
+        }
+        return filenames
+      },
+      []
+    )
     let number = 0
     let type: FileType = -1
     let filesToDelete: string[] = []
@@ -827,7 +834,7 @@ export default class Database {
     }
 
     for (let filename of filesToDelete) {
-      await fs.promises.unlink(path.resolve(this._dbpath, filename))
+      await this._options.env.unlink(path.resolve(this._dbpath, filename))
     }
   }
 
@@ -860,7 +867,7 @@ export default class Database {
 
     if (currentEntries > 0) {
       status = new Status(
-        fs.promises.access(getTableFilename(this._dbpath, outputNumber))
+        this._options.env.access(getTableFilename(this._dbpath, outputNumber))
       )
       if (await status.ok()) {
         console.log(
