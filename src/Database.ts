@@ -586,10 +586,10 @@ export default class Database {
     this.pendingOutputs.push(meta.number)
     console.log(`Level-0 table #${meta.number}: started`)
     const fileHandler = getTableFilename(this._dbpath, meta.number)
-    let s = new Status(this._options.env.open(fileHandler, 'a+'))
-    if (!(await s.ok())) {
-      console.log(await s.message())
-      return s
+    let status = new Status(this._options.env.open(fileHandler, 'a+'))
+    if (!(await status.ok())) {
+      console.log(status.message())
+      return status
     }
     const tableBuilder = new SSTableBuilder(await s.promise)
     for (let entry of mem.iterator()) {
@@ -599,10 +599,10 @@ export default class Database {
       await tableBuilder.add(entry.key, entry.value)
     }
 
-    s = new Status(tableBuilder.finish())
-    if (!(await s.ok())) {
-      console.log(await s.message())
-      return s
+    status = new Status(tableBuilder.finish())
+    if (!(await status.ok())) {
+      console.log(status.message())
+      return status
     }
     meta.fileSize = tableBuilder.fileSize
 
@@ -761,7 +761,8 @@ export default class Database {
   }
 
   private async recordBackgroundError(status: Status) {
-    console.log(await status.message())
+    await status.ok()
+    console.log(status.message())
   }
 
   private async cleanupCompaction(compact: CompactionState) {
