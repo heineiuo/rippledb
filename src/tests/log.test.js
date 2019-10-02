@@ -6,14 +6,16 @@ import { getLogFilename } from '../Filename'
 import Slice from '../Slice'
 import path from 'path'
 import fs from 'fs'
+import { Options } from '../Options'
 
 const dbpath = createDir()
 afterAll(() => cleanup(dbpath))
 
 test('log writer', async () => {
+  const options = new Options()
   await fs.promises.mkdir(dbpath, { recursive: true })
   const logFilename = getLogFilename(dbpath, 1)
-  const log = new LogWriter(logFilename)
+  const log = new LogWriter(options, logFilename)
   // await log.add(new Slice(`key${i}`), new Slice(`value${i}`))
   // max block sisze = 32768
   const slice = LogRecord.add(
@@ -23,7 +25,7 @@ test('log writer', async () => {
   await log.addRecord(slice)
   await log.close()
 
-  const logReader = new LogReader(logFilename)
+  const logReader = new LogReader(options, logFilename)
   for await (let slice of logReader.iterator()) {
     const op = LogRecord.decode(slice)
     const strKey = op.key.toString()

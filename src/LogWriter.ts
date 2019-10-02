@@ -6,26 +6,28 @@
  */
 
 import assert from 'assert'
-import fs from 'fs'
 import { Buffer } from 'buffer'
 import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
 import LogRecord from './LogRecord'
 import { FileHandle } from './Env'
+import { Options } from './Options'
 
 export default class LogWriter {
-  constructor(filename: string) {
+  constructor(options: Options, filename: string) {
     this._filename = filename
     this._currentBlockSize = 0
+    this._options = options
   }
 
+  _options: Options
   _file!: FileHandle
   _filename: string
   _currentBlockSize: number
 
   async appendFile(buf: Buffer) {
     if (!this._file) {
-      this._file = await fs.promises.open(this._filename, 'a+')
+      this._file = await this._options.env.open(this._filename, 'a+')
     }
     await this._file.appendFile(buf, {})
   }

@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import fs from 'fs'
 import { FileMetaData, InternalKey } from './VersionFormat'
 import Version from './Version'
 import VersionEdit from './VersionEdit'
@@ -14,6 +13,7 @@ import SequenceNumber from './SequenceNumber'
 import Slice from './Slice'
 import SSTableBuilder from './SSTableBuilder'
 import { Config } from './Format'
+import { FileHandle } from './Env'
 
 export default class Compaction {
   static targetFileSize(options: Options) {
@@ -198,7 +198,7 @@ export class CompactionState {
   outputs!: CompactionStateOutput[]
   smallestSnapshot: number
   compaction: Compaction
-  outfile!: fs.promises.FileHandle
+  outfile!: FileHandle
   builder!: SSTableBuilder
   public totalBytes: number
 
