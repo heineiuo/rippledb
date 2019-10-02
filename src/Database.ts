@@ -12,16 +12,15 @@ import fs from 'fs'
 import MemTable from './MemTable'
 import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
-import { EncodingOptions } from './Options'
+import { EncodingOptions, Options } from './Options'
 import {
   ValueType,
   kMemTableDumpSize,
-  kInternalKeyComparatorName,
   Config,
   FileType,
+  InternalKeyComparator,
 } from './Format'
 import {
-  InternalKeyComparator,
   InternalKey,
   ParsedInternalKey,
   FileMetaData,
@@ -51,6 +50,7 @@ import WriteBatch from './WriteBatch'
 import Status from './Status'
 import Env from './Env'
 import SSTableBuilder from './SSTableBuilder'
+import { BytewiseComparator } from './Comparator'
 
 interface ManualCompaction {
   level: number
@@ -80,7 +80,9 @@ export default class Database {
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
-    this._internalKeyComparator = new InternalKeyComparator()
+    this._internalKeyComparator = new InternalKeyComparator(
+      new BytewiseComparator()
+    )
     this._ok = false
     this._dbpath = dbpath
     this._log = new LogWriter(getLogFilename(dbpath, 1))
@@ -92,11 +94,12 @@ export default class Database {
       () => new CompactionStats()
     )
 
+    const options = new Options()
+    options.comparator = this._internalKeyComparator
+
     this._versionSet = new VersionSet(
       this._dbpath,
-      {
-        maxFileSize: 1024 * 1024 * 2,
-      },
+      options,
       this._memtable,
       this._internalKeyComparator
     )
@@ -137,7 +140,7 @@ export default class Database {
 
   private async initVersionEdit(): Promise<void> {
     const edit = new VersionEdit()
-    edit.comparator = kInternalKeyComparatorName
+    edit.comparator = this._internalKeyComparator.getName()
     edit.logNumber = 0
     edit.nextFileNumber = 2
     edit.lastSequence = 0
@@ -590,7 +593,7 @@ export default class Database {
       await tableBuilder.add(entry.key, entry.value)
     }
 
-    s = new Status(tableBuilder.close())
+    s = new Status(tableBuilder.finish())
     if (!(await s.ok())) {
       console.log(await s.message())
       return s

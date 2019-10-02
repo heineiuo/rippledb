@@ -5,6 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import assert from 'assert'
+import varint from 'varint'
+import Slice from './Slice'
+import { Comparator } from './Comparator'
+
 export enum FileType {
   kLogFile,
   kDBLockFile,
@@ -75,4 +80,72 @@ export class Config {
   static kReadBytesPeriod = 1048576
 }
 
-export const kInternalKeyComparatorName = 'leveldb.InternalKeyComparator'
+export class InternalKeyComparator implements Comparator {
+  static extractUserKey(slice: Slice) {
+    assert(slice.size > 8)
+    return new Slice(slice.buffer.slice(0, slice.size - 8))
+  }
+
+  constructor(userComparator: Comparator) {
+    this.userComparator = userComparator
+  }
+
+  public userComparator: Comparator
+
+  getUserComparator() {
+    return this.userComparator
+  }
+
+  getName(): string {
+    return 'leveldb.InternalKeyComparator'
+  }
+
+  findShortestSeparator(start: Slice, limit: Slice) {
+    // Find length of common prefix
+    let minLength = Math.min(start.length, limit.length)
+    let diffIndex = 0
+    while (
+      diffIndex < minLength &&
+      start.buffer[diffIndex] == limit.buffer[diffIndex]
+    ) {
+      diffIndex++
+    }
+
+    if (diffIndex >= minLength) {
+      // Do not shorten if one string is a prefix of the other
+    } else {
+      let diffByte = start.buffer[diffIndex]
+      if (diffByte < 0xff && diffByte + 1 < limit.buffer[diffIndex]) {
+        start.buffer[diffIndex]++
+        start.buffer = start.buffer.slice(0, diffIndex + 1)
+        assert(this.compare(start, limit) < 0)
+      }
+    }
+  }
+
+  findShortSuccessor(key: Slice) {
+    // Find first character that can be incremented
+    let n = key.length
+    for (let i = 0; i < n; i++) {
+      const byte = key.buffer[i]
+      if (byte !== 0xff) {
+        key.buffer[i] = byte + 1
+        key.buffer = key.buffer.slice(0, i + 1)
+        return
+      }
+    }
+  }
+
+  compare(key1: Slice, key2: Slice) {
+    // first compare user key
+    const userKey1 = InternalKeyComparator.extractUserKey(key1)
+    const userKey2 = InternalKeyComparator.extractUserKey(key2)
+    const r = this.userComparator.compare(userKey1, userKey2)
+    if (r !== 0) return r
+    // then compare sequence number
+    const sn1 = varint.decode(key1.buffer, key1.size - 8)
+    const sn2 = varint.decode(key2.buffer, key2.size - 8)
+    if (sn1 === sn2) return 0
+    return sn1 > sn2 ? -1 : 1
+  }
+}

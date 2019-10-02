@@ -5,28 +5,25 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import crc32 from 'buffer-crc32'
-import varint from 'varint'
-import { Buffer } from 'buffer'
-import Slice from './Slice'
 import SSTableRecord from './SSTableRecord'
-import { CompressionTypes } from './Format'
 import { Entry } from './VersionFormat'
+import { BlockContents } from './SSTableFormat'
+import { Comparator } from './Comparator'
+import { decodeFixed32 } from './Coding'
 
 export default class SSTableBlock {
-  constructor(
-    buffer: Buffer = Buffer.from([]),
-    offset?: number,
-    size?: number
-  ) {
-    this._buffer = buffer
-    this._offset = offset || 0
-    this._size = size || this._buffer.length - this._offset
+  static *createIter(): IterableIterator<Entry> { }
+
+  constructor(contents: BlockContents) {
+    this._buffer = contents.data.buffer
+    this._size = contents.data.size
   }
 
   _size: number
-  _offset: number
+  _offset!: number
   _buffer: Buffer
+
+  _restarts!: number[] // Restart points
 
   get buffer(): Buffer {
     return this._buffer
@@ -40,29 +37,22 @@ export default class SSTableBlock {
     return this._offset
   }
 
-  get crc32(): Buffer {
-    return this._buffer.slice(this.offset + this._size - 4)
+  getNumRestarts() {
+    return decodeFixed32(this._buffer.slice(this._size - 4))
   }
 
-  get compressionType(): CompressionTypes {
-    const num = varint.decode(this._buffer, this.offset + this._size - 5)
-    return num
-  }
-
-  get estimateSize(): number {
-    return this.size * 2
-  }
-
-  *iterator() {
+  *iterator(comparator: Comparator): IterableIterator<Entry> {
+    if (this.size <= 5) throw new Error('bad block contents')
     let recordSizeSummary: number = 0
+    const numRestarts = this.getNumRestarts()
+
     while (true) {
-      if (recordSizeSummary >= this.size - 5) {
+      if (this.size - 5 <= recordSizeSummary) {
         // console.log('SSTableBlock iterator done because offset is: ' + offset + ' and size is ' + this._size + ' and record.size is ' + record.size + ' and data is ' + JSON.stringify(data))
         return
       }
       const record = new SSTableRecord(
-        this.buffer,
-        this.offset + recordSizeSummary
+        this.buffer.slice(this.offset + recordSizeSummary)
       )
       if (record.isEmpty()) return
       const data = record.get()
@@ -72,23 +62,4 @@ export default class SSTableBlock {
     }
   }
 
-  append(data: Entry): void {
-    const record = new SSTableRecord(Buffer.alloc(0))
-    record.put(data.key, data.value)
-    let body
-    if (this._buffer && this._size > 5) {
-      body = Buffer.concat([
-        this._buffer.slice(0, this._size - 5),
-        record.buffer,
-      ])
-    } else {
-      body = record.buffer
-    }
-
-    const compressionType = Buffer.from(varint.encode(CompressionTypes.none))
-    const crc32buffer = crc32(body)
-    this._buffer = Buffer.concat([body, compressionType, crc32buffer])
-    this._offset = 0
-    this._size = this._buffer.length
-  }
 }

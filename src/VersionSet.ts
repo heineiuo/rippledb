@@ -17,7 +17,6 @@ import Slice from './Slice'
 import {
   Entry,
   CompactPointer,
-  InternalKeyComparator,
   getExpandedCompactionByteSizeLimit,
   getMaxBytesForLevel,
   InternalKey,
@@ -29,7 +28,7 @@ import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
 import MemTable from './MemTable'
 import VersionEdit from './VersionEdit'
-import { Config } from './Format'
+import { Config, InternalKeyComparator } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
@@ -669,13 +668,15 @@ export default class VersionSet {
           const files = c.inputs[which]
           for (let i = 0; i < files.length; i++) {
             const file = files[i]
-            const sstable = new SSTable(
-              await fs.promises.readFile(
-                getTableFilename(this._dbpath, file.number)
-              )
+            const sstable = await SSTable.open(
+              await fs.promises.open(
+                getTableFilename(this._dbpath, file.number),
+                'r+'
+              ),
+              this._options
             )
             num++
-            yield* sstable.indexBlockIterator()
+            yield* sstable.entryIterator()
           }
         } else {
           num++

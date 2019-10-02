@@ -9,18 +9,17 @@ import assert from 'assert'
 import Slice from './Slice'
 import {
   InternalKey,
-  Comparator,
-  InternalKeyComparator,
   FileMetaData,
   kValueTypeForSeek,
   BySmallestKey,
   GetStats,
 } from './VersionFormat'
 import VersionSet from './VersionSet'
-import { Config, ValueType } from './Format'
+import { Config, ValueType, InternalKeyComparator } from './Format'
 import SequenceNumber from './SequenceNumber'
 import Compaction from './Compaction'
 import Status from './Status'
+import { Comparator } from './Comparator'
 
 export default class Version {
   static afterFile(ucmp: Comparator, userKey: Slice, f: FileMetaData): boolean {

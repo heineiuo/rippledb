@@ -71,4 +71,8 @@ export default class Slice {
   compare(slice: Slice): number {
     return this._buffer.compare(slice.buffer)
   }
+
+  isEqual(slice: Slice): boolean {
+    return this.compare(slice) === 0
+  }
 }

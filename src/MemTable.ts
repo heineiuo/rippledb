@@ -8,11 +8,11 @@
 import assert from 'assert'
 import varint from 'varint'
 import { Buffer } from 'buffer'
-import { ValueType } from './Format'
+import { ValueType, InternalKeyComparator } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
-import { InternalKeyComparator, Entry } from './VersionFormat'
+import { Entry } from './VersionFormat'
 import { EncodingOptions } from './Options'
 import { decodeFixed64 } from './Coding'
 

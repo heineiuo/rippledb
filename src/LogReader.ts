@@ -10,11 +10,7 @@ import fs from 'fs'
 import { Buffer } from 'buffer'
 import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
-
-interface Record {
-  type: number
-  data: Slice
-}
+import { Record } from './LogFormat'
 
 export default class LogReader {
   constructor(filename: string) {
@@ -31,7 +27,7 @@ export default class LogReader {
     }
   }
 
-  async *iterator() {
+  async *iterator(): AsyncIterableIterator<Slice> {
     if (!this._file) {
       this._file = await fs.promises.open(this._filename, 'r')
     }
