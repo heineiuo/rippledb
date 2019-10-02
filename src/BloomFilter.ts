@@ -101,7 +101,7 @@ export default class BloomFilter implements FilterPolicy {
     for (let i = 0; i < n; i++) {
       // Use double-hashing to generate a sequence of hash values.
       // See analysis in [Kirsch,Mitzenmacher 2006].
-      let h = BloomHash(String(keys[i].buffer))
+      let h = BloomHash(keys[i].toString())
       let delta = (h >> 17) | (h << 15)
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits
@@ -121,14 +121,11 @@ export default class BloomFilter implements FilterPolicy {
   }
 
   public keyMayMatch(key: Slice): boolean {
-    // console.log('this._bitBuffer.bits', this._bitBuffer.bits)
     if (this.kNumber > 30) return true
     let h = BloomHash(key.toString())
-    // console.log('h', h)
     let delta = (h >> 17) | (h << 15)
     for (let j = 0; j < this.kNumber; j++) {
       const bitPosition = h % this._bitBuffer.bits
-      // console.log(`bitPosition`, bitPosition)
       if (!this._bitBuffer.get(bitPosition)) return false
       h += delta
     }

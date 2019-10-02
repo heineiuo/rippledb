@@ -95,7 +95,7 @@ export default class Version {
     smallestUserKey: Slice,
     largestUserKey: Slice
   ): boolean {
-    const ucmp = icmp.getUserComparator()
+    const ucmp = icmp.userComparator
     if (!disjointSortedFile) {
       // Need to check against all files
       for (let i = 0; i < files.length; i++) {
@@ -178,7 +178,7 @@ export default class Version {
     let userBegin = begin ? begin : new Slice()
     let userEnd = end ? end : new Slice()
 
-    const userComparator = this.versionSet.internalKeyComparator.getUserComparator()
+    const userComparator = this.versionSet.internalKeyComparator.userComparator
     for (let i = 0; i < this.files[level].length; ) {
       const fileMetaData = this.files[level][i++]
       const fileStart = fileMetaData.smallest.extractUserKey()

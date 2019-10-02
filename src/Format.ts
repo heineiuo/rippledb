@@ -87,13 +87,13 @@ export class InternalKeyComparator implements Comparator {
   }
 
   constructor(userComparator: Comparator) {
-    this.userComparator = userComparator
+    this._userComparator = userComparator
   }
 
-  public userComparator: Comparator
+  private _userComparator: Comparator
 
-  getUserComparator() {
-    return this.userComparator
+  get userComparator() {
+    return this._userComparator
   }
 
   getName(): string {

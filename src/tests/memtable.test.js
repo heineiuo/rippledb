@@ -4,6 +4,7 @@ import MemTable from '../MemTable'
 import { ValueType } from '../Format'
 import SequenceNumber from '../SequenceNumber'
 import { InternalKeyComparator } from '../Format'
+import { BytewiseComparator } from '../Comparator'
 
 function createLookupKey(sequence, key, valueType) {
   const keySize = key.size
@@ -17,7 +18,9 @@ function createLookupKey(sequence, key, valueType) {
 
 test('memtable add and get', () => {
   const sequence = new SequenceNumber()
-  const memtable = new MemTable(new InternalKeyComparator())
+  const memtable = new MemTable(
+    new InternalKeyComparator(new BytewiseComparator())
+  )
   memtable.add(
     sequence,
     ValueType.kTypeValue,

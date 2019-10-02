@@ -550,7 +550,7 @@ export default class VersionSet {
     levelFiles: FileMetaData[],
     largestKey: InternalKey
   ): FileMetaData {
-    const userComparator = icmp.getUserComparator()
+    const userComparator = icmp.userComparator
     let smallestBoundryFile!: FileMetaData
     for (let i = 0; i < levelFiles.length; i++) {
       const f = levelFiles[i]
