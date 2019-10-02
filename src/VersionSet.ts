@@ -658,6 +658,7 @@ export default class VersionSet {
     }
   }
 
+  // TODO
   // Create an iterator that reads over the compaction inputs for "*c".
   // The caller should delete the iterator when no longer needed.
   public async *makeInputIterator(c: Compaction) {
@@ -676,13 +677,14 @@ export default class VersionSet {
               this._options
             )
             num++
-            yield* sstable.entryIterator()
           }
         } else {
           num++
           // Create concatenating iterator for the files from this level
         }
       }
+      // NOT Implemented
+      yield {} as Entry
     }
   }
 }

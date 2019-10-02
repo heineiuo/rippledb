@@ -113,36 +113,4 @@ export class TableMetaIndexBlock extends TableBlock {
   get filterKey(): string {
     return `filter.leveldb.BuiltinBloomFilter2`
   }
-
-  // get() {
-  //   let key = new Slice()
-  //   let value = new Slice()
-  //   for (let entry of this.iterator()) {
-  //     key = entry.key
-  //     value = entry.value
-  //     break
-  //   }
-
-  //   assert(key.length > 0)
-  //   assert(value.length > 0)
-  //   const offset = varint.decode(value.buffer)
-  //   const size = varint.decode(value.buffer, varint.decode.bytes)
-  //   return {
-  //     key,
-  //     offset,
-  //     size,
-  //   }
-  // }
-
-  *metaBlockEntryIterator(): IterableIterator<MetaBlockEntry> {
-    for (let record of this.iterator()) {
-      const { value, key } = record
-      const offset = varint.decode(value.buffer)
-      const size = varint.decode(value.buffer, varint.decode.bytes)
-      const metaBlockEntry = {} as MetaBlockEntry
-      metaBlockEntry.handle = { offset, size }
-      metaBlockEntry.name = key.toString()
-      yield metaBlockEntry
-    }
-  }
 }
