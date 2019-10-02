@@ -591,7 +591,7 @@ export default class Database {
       console.log(status.message())
       return status
     }
-    const tableBuilder = new SSTableBuilder(await s.promise)
+    const tableBuilder = new SSTableBuilder(await status.promise)
     for (let entry of mem.iterator()) {
       if (!meta.smallest)
         meta.smallest = new InternalKey(entry.key, entry.sequence, entry.type)
@@ -607,14 +607,16 @@ export default class Database {
     meta.fileSize = tableBuilder.fileSize
 
     console.log(
-      `Level-0 table #${meta.number}: ${meta.fileSize} bytes ${await s.ok()}`
+      `Level-0 table #${meta.number}: ${
+        meta.fileSize
+      } bytes ${await status.ok()}`
     )
     this.pendingOutputs = this.pendingOutputs.filter(num => num !== meta.number)
 
     // Note that if file_size is zero, the file has been deleted and
     // should not be added to the manifest.
     let level = 0
-    if ((await s.ok()) && meta.fileSize > 0) {
+    if ((await status.ok()) && meta.fileSize > 0) {
       const minUserKey = meta.smallest.extractUserKey()
       const maxUserKey = meta.largest.extractUserKey()
       if (!!base) {
@@ -633,7 +635,7 @@ export default class Database {
     stats.times = this._options.env.now() - startTime
     stats.bytesWritten = meta.fileSize
     this._stats[level].add(stats)
-    return s
+    return status
   }
 
   private async openCompactionOutputFile(
