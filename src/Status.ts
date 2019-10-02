@@ -5,12 +5,38 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import assert from 'assert'
+
+enum Code {
+  kOk = 0,
+  kNotFound = 1,
+  kCorruption = 2,
+  kNotSupported = 3,
+  kInvalidArgument = 4,
+  kIOError = 5,
+}
+
+class StatusError extends Error {
+  _code: Code
+  constructor(message: string, code: Code) {
+    super(message)
+    this._code = code
+  }
+}
+
 export default class Status {
+  static createNotFoundError(message: string) {
+    return new Status(Promise.reject(new StatusError(message, Code.kNotFound)))
+  }
+
   private _error!: Error
   private _promise: Promise<any> | void
+  private _code!: Code
+  private _finish: boolean
 
   constructor(promise?: Promise<any>) {
     this._promise = promise
+    this._finish = false
   }
 
   get promise() {
@@ -22,10 +48,14 @@ export default class Status {
   }
 
   private async wait(): Promise<void> {
+    if (this._finish) return
     try {
       await this._promise
     } catch (e) {
+      if (e.code) this._code = e.code
       this._error = e
+    } finally {
+      this._finish = true
     }
   }
 
@@ -34,11 +64,35 @@ export default class Status {
     return !this._error
   }
 
-  public async message(): Promise<string | null> {
-    await this.wait()
+  public message(): string | void {
+    assert(this._finish)
     if (this._error) {
       return this._error.message
     }
-    return null
+  }
+
+  public isNotFound() {
+    assert(this._finish)
+    return this._code === Code.kNotFound
+  }
+
+  public isCorruption() {
+    assert(this._finish)
+    return this._code === Code.kCorruption
+  }
+
+  public isIOError() {
+    assert(this._finish)
+    return this._code === Code.kIOError
+  }
+
+  public isNotSupportedError() {
+    assert(this._finish)
+    return this._code === Code.kNotSupported
+  }
+
+  public isInvalidArgument() {
+    assert(this._finish)
+    return this._code === Code.kNotSupported
   }
 }
