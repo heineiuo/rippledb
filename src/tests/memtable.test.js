@@ -3,7 +3,7 @@ import Slice from '../Slice'
 import MemTable from '../MemTable'
 import { ValueType } from '../Format'
 import SequenceNumber from '../SequenceNumber'
-import { InternalKeyComparator } from '../VersionFormat'
+import { InternalKeyComparator } from '../Format'
 
 function createLookupKey(sequence, key, valueType) {
   const keySize = key.size

@@ -14,10 +14,13 @@ const metaBlock = new SSTableMetaBlock()
 metaBlock.appendFilter(filter.buffer)
 metaBlock.appendFilter(filter2.buffer)
 
-let iterator = metaBlock.iterator()
+let iterator = metaBlock.filterIterator()
 let result = iterator.next()
 while (!result.done) {
   let reverseFilter = result.value
-  console.log('filter test key: ', reverseFilter.keyMayMatch('a'))
+  console.log(
+    `filter<${reverseFilter._bitBuffer}> keyMayMatch a: `,
+    reverseFilter.keyMayMatch('a')
+  )
   result = iterator.next()
 }

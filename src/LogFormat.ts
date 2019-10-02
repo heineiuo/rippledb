@@ -5,11 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import Slice from './Slice'
 
-export function createHexStringFromDecimal (decimal:number):string {
+export function createHexStringFromDecimal(decimal: number): string {
   let str = decimal.toString(16)
   while (str.length < 4) {
     str = `0${str}`
   }
   return str
+}
+
+export interface Record {
+  type: number
+  data: Slice
 }

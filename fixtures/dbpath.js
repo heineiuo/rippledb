@@ -1,7 +1,7 @@
-const path = require('path')
-const rimraf = require('rimraf')
+import path from 'path'
+import rimraf from 'rimraf'
 
-module.exports.createDir = function() {
+export function createDir() {
   return path.resolve(
     __dirname,
     `../.db/${Math.random()
@@ -10,6 +10,6 @@ module.exports.createDir = function() {
   )
 }
 
-module.exports.cleanup = function cleanup(dbpath) {
+export function cleanup(dbpath) {
   rimraf.sync(dbpath)
 }

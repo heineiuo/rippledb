@@ -10,11 +10,7 @@ import fs from 'fs'
 import { Buffer } from 'buffer'
 import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
-
-interface Record {
-  type: number
-  data: Slice
-}
+import { Record } from './LogFormat'
 
 export default class LogReader {
   constructor(filename: string) {
@@ -31,7 +27,7 @@ export default class LogReader {
     }
   }
 
-  async *iterator() {
+  async *iterator(): AsyncIterableIterator<Slice> {
     if (!this._file) {
       this._file = await fs.promises.open(this._filename, 'r')
     }
@@ -57,7 +53,7 @@ export default class LogReader {
         continue
       }
 
-      // buf会被覆盖，所以需要拷贝
+      // buf may be re-fill, to avoid this, copy it
       const record = this.decode(Buffer.from(buf.slice(bufHandledPosition)))
       bufHandledPosition += record.data.length
       if (record.type === RecordType.kFullType) {

@@ -17,7 +17,6 @@ import Slice from './Slice'
 import {
   Entry,
   CompactPointer,
-  InternalKeyComparator,
   getExpandedCompactionByteSizeLimit,
   getMaxBytesForLevel,
   InternalKey,
@@ -29,7 +28,7 @@ import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
 import MemTable from './MemTable'
 import VersionEdit from './VersionEdit'
-import { Config } from './Format'
+import { Config, InternalKeyComparator } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
@@ -129,7 +128,7 @@ export default class VersionSet {
   }
 
   public recover = async () => {
-    // 读取current， 校验是否是\n结尾
+    // read current， check if end of content is '\n'
     const current = await fs.promises.readFile(
       getCurrentFilename(this._dbpath),
       'utf8'
@@ -151,22 +150,23 @@ export default class VersionSet {
     const currentValue = current.substr(0, current.length - 1)
     const manifestNumber = Number(currentValue.substr('MANIFEST-'.length))
 
-    // 根据current读取dscfile(description file), 即manifest文件
+    // Use current to read description file (manifest)
     const reader = new LogReader(
       getManifestFilename(this._dbpath, manifestNumber)
       // VersionEditRecord
     )
-    // 读取record，apply到versionSet(apply方法)
-    // 更新log number和prev log number（可省略，因为prevlognumber其实被废弃了）
-    // 更新next file
-    // 更新last sequence
-    // 通过version builder 创建一个新的version
+    // read record，apply to versionSet(apply method)
+    // Update log number and prev log number（can be ignore because prevlognumber has
+    // been deprecated in fact ）
+    // Update next file
+    // Update last sequence
+    // Use version builder to create a new version
     for await (let slice of reader.iterator()) {
       const edit = VersionEditRecord.decode(slice)
       // console.log(edit)
       builder.apply(edit)
 
-      // 更新manifest_file_number_， next_file_number_， last_sequence_， log_number_， prev_log_number_
+      // Update manifest_file_number_， next_file_number_， last_sequence_， log_number_， prev_log_number_
       if (edit.hasLogNumber) {
         logNumber = edit.logNumber
         hasLogNumber = true
@@ -203,12 +203,12 @@ export default class VersionSet {
     this.markFileNumberUsed(prevLogNumber)
     this.markFileNumberUsed(logNumber)
 
-    // 将apply的结果添加到version(finalize)
+    // put apply's result to version(use finalize method)
     const version = new Version(this)
     builder.saveTo(version)
     this.finalize(version)
 
-    // 将version添加到version set(append version)
+    // put version to version set(append version)
     this.appendVersion(version)
     this.manifestFileNumber = nextFileNumber
     this.nextFileNumber = nextFileNumber + 1
@@ -216,7 +216,7 @@ export default class VersionSet {
     this.logNumber = logNumber
     this.prevLogNumber = prevLogNumber
 
-    // 检查是否需要创建新的manifest（ reuseManifest ）
+    // check if we can reuse manifest of need to create a new one
   }
 
   private markFileNumberUsed(num: number) {
@@ -228,9 +228,10 @@ export default class VersionSet {
   // Precomputed best level for next compaction
   private finalize(ver: Version) {
     // traverse levels(0-6),
-    // 计算score，0级用文件数量 / 8（设置到最大允许值）， 其他用文件体积 / 最大允许体积10^level
-    // 如果score > best_score（best_score初始值-1）, 更新best_score和best_level
-    // traverse结束更新version的best_score和best_level
+    // calculate score，0 level use files number / 8（kLevel0MaxFileSize)
+    // other level use file bytes / maxFileBytes * 10^level
+    // if score > best_score（best_score initial value - 1）, Update best_score and best_level
+    // when traverse end,  Update version's best_score and best_level
     let bestLevel = -1
     let bestScore = -1
     for (let level = 0; level < Config.kNumLevels; level++) {
@@ -260,7 +261,7 @@ export default class VersionSet {
     return sum
   }
 
-  // 需要写入manifest
+  // append to manifest
   public async logAndApply(edit: VersionEdit): Promise<Status> {
     if (edit.hasLogNumber) {
       assert(edit.logNumber >= this.logNumber)
@@ -319,7 +320,7 @@ export default class VersionSet {
   }
 
   /**
-   * 主要目的是更新this._current
+   * update this._current
    */
   private appendVersion(ver: Version): void {
     assert(ver.refs === 0)
@@ -342,7 +343,7 @@ export default class VersionSet {
   }
 
   /**
-   * 将current写入manifest
+   * dump current to manifest
    */
   private writeSnapshot(writter: LogWriter): Status {
     const edit = new VersionEdit()
@@ -667,13 +668,15 @@ export default class VersionSet {
           const files = c.inputs[which]
           for (let i = 0; i < files.length; i++) {
             const file = files[i]
-            const sstable = new SSTable(
-              await fs.promises.readFile(
-                getTableFilename(this._dbpath, file.number)
-              )
+            const sstable = await SSTable.open(
+              await fs.promises.open(
+                getTableFilename(this._dbpath, file.number),
+                'r+'
+              ),
+              this._options
             )
             num++
-            yield* sstable.indexBlockIterator()
+            yield* sstable.entryIterator()
           }
         } else {
           num++

@@ -9,16 +9,17 @@ import assert from 'assert'
 import Slice from './Slice'
 import {
   InternalKey,
-  Comparator,
-  InternalKeyComparator,
   FileMetaData,
   kValueTypeForSeek,
   BySmallestKey,
+  GetStats,
 } from './VersionFormat'
 import VersionSet from './VersionSet'
-import { Config, ValueType } from './Format'
+import { Config, ValueType, InternalKeyComparator } from './Format'
 import SequenceNumber from './SequenceNumber'
 import Compaction from './Compaction'
+import Status from './Status'
+import { Comparator } from './Comparator'
 
 export default class Version {
   static afterFile(ucmp: Comparator, userKey: Slice, f: FileMetaData): boolean {
@@ -70,7 +71,22 @@ export default class Version {
     }
   }
 
-  public get = async (lookupkey: Slice) => {}
+  public get = async (lookupkey: Slice, stats: GetStats): Promise<Status> => {
+    let s = new Status()
+    return s
+  }
+
+  // Call match() for every file that overlaps userKey in
+  // order from newest to oldest.  If an invocation of func returns
+  // false, makes no more calls.
+  //
+  // REQUIRES: user portion of internal_key == user_key.
+  forEachOverlapping(
+    userKey: Slice,
+    internalKey: Slice,
+    arg: any,
+    match: (arg: any, level: number, f: FileMetaData) => boolean
+  ) {}
 
   someFileOverlapsRange(
     icmp: InternalKeyComparator,

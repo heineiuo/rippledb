@@ -14,11 +14,8 @@ import {
 } from './VersionFormat'
 
 export default class VersionEdit {
-  // major compaction时选择文件
-  // compact_pointer_是 string 类型，记录了该层上次 compact 时文件的 largest key，初始值为空，
-  // 也就是选择该层第一个文件。
-  // 如果seek_compaction = true，则直接使用满足条件的文件。
-
+  // compact_pointer_ is a string  which record this level latest
+  // compaction file's largest key，default is empty
   compactPointers: CompactPointer[]
   deletedFiles: DeletedFile[]
   newFiles: NewFile[]

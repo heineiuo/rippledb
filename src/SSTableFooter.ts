@@ -7,23 +7,45 @@
 
 import { Buffer } from 'buffer'
 import varint from 'varint'
+import assert from 'assert'
+import { BlockHandle } from './SSTableFormat'
 
 /**
- * 置于 table 末尾，固定 48 byte，
- * 包含指向各个分区（ data index block 以及 meta index block ）
- * 的偏移量和大小，读取 table 时从末尾开始读取。
+ * fill in end of table, fixed 48 bytes，
+ * include offset, size of data index block and meta index block
+ *
+ * read sstable from footer
  */
 export default class TableFooter {
-  constructor(buffer?: Buffer) {
-    this._buffer = buffer || Buffer.alloc(48)
-    this._offset = this._buffer.length > 48 ? this._buffer.length - 48 : 0
+  static kEncodedLength = 48
+
+  constructor(buffer: Buffer) {
+    assert(buffer.length === 48)
+    this._buffer = buffer
   }
 
-  _offset: number
   _buffer: Buffer
 
+  get indexHandle(): BlockHandle {
+    const data = this.get()
+    const handle = {
+      offset: data.indexOffset,
+      size: data.indexSize,
+    } as BlockHandle
+    return handle
+  }
+
+  get metaIndexHandle(): BlockHandle {
+    const data = this.get()
+    const handle = {
+      offset: data.metaIndexOffset,
+      size: data.metaIndexSize,
+    } as BlockHandle
+    return handle
+  }
+
   get buffer(): Buffer {
-    return this._buffer.slice(this._offset, this._offset + 48)
+    return this._buffer
   }
 
   set metaIndexOffset(value: number) {

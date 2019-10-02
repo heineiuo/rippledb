@@ -12,25 +12,24 @@ import fs from 'fs'
 import MemTable from './MemTable'
 import LogRecord from './LogRecord'
 import LogWriter from './LogWriter'
-import { EncodingOptions } from './Options'
+import { EncodingOptions, Options } from './Options'
 import {
   ValueType,
   kMemTableDumpSize,
-  kInternalKeyComparatorName,
   Config,
   FileType,
+  InternalKeyComparator,
 } from './Format'
 import {
-  InternalKeyComparator,
   InternalKey,
   ParsedInternalKey,
   FileMetaData,
   Entry,
   kValueTypeForSeek,
+  GetStats,
 } from './VersionFormat'
 import Version from './Version'
 import SequenceNumber from './SequenceNumber'
-import LRU from 'lru-cache'
 import Compaction, {
   CompactionState,
   CompactionStateOutput,
@@ -51,6 +50,7 @@ import WriteBatch from './WriteBatch'
 import Status from './Status'
 import Env from './Env'
 import SSTableBuilder from './SSTableBuilder'
+import { BytewiseComparator } from './Comparator'
 
 interface ManualCompaction {
   level: number
@@ -80,7 +80,9 @@ export default class Database {
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
-    this._internalKeyComparator = new InternalKeyComparator()
+    this._internalKeyComparator = new InternalKeyComparator(
+      new BytewiseComparator()
+    )
     this._ok = false
     this._dbpath = dbpath
     this._log = new LogWriter(getLogFilename(dbpath, 1))
@@ -92,11 +94,12 @@ export default class Database {
       () => new CompactionStats()
     )
 
+    const options = new Options()
+    options.comparator = this._internalKeyComparator
+
     this._versionSet = new VersionSet(
       this._dbpath,
-      {
-        maxFileSize: 1024 * 1024 * 2,
-      },
+      options,
       this._memtable,
       this._internalKeyComparator
     )
@@ -137,7 +140,7 @@ export default class Database {
 
   private async initVersionEdit(): Promise<void> {
     const edit = new VersionEdit()
-    edit.comparator = kInternalKeyComparatorName
+    edit.comparator = this._internalKeyComparator.getName()
     edit.logNumber = 0
     edit.nextFileNumber = 2
     edit.lastSequence = 0
@@ -185,11 +188,11 @@ export default class Database {
   }
 
   /**
-   * TODO 触发major compaction
+   * TODO Trigger major compaction's condition:
    * 1. manually compact
-   * 2. 超过allowed_seeks
-   * 3. level0 sstable 超过8个
-   * 4. leveli(i>0)层sstable占用空间超过10^iMB
+   * 2. filter seek miss > allowed_seeks
+   * 3. level0 sstable > 8
+   * 4. leveli(i>0) sstable bytes > 10^iMB
    */
   public async get(key: any, options?: EncodingOptions): Promise<any> {
     await this.ok()
@@ -212,15 +215,18 @@ export default class Database {
       result = this._immtable.get(lookupKey, options)
     }
     if (!result) {
-      result = await current.get(lookupKey)
+      const s = await current.get(lookupKey, {} as GetStats)
+      if (await s.ok()) {
+        result = await s.promise
+      }
     }
     return result
   }
 
   /**
-   * TODO 触发minor compaction
-   * 1. 检查memtable是否超过4mb
-   * 2. 检查this._immtable是否为null（memtable转sstable）
+   * TODO Trigger minor compaction's condition
+   * 1. check if memtable bigger then 4mb
+   * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
   public async put(key: any, value: any, options?: EncodingOptions) {
     const batch = new WriteBatch()
@@ -587,7 +593,7 @@ export default class Database {
       await tableBuilder.add(entry.key, entry.value)
     }
 
-    s = new Status(tableBuilder.close())
+    s = new Status(tableBuilder.finish())
     if (!(await s.ok())) {
       console.log(await s.message())
       return s

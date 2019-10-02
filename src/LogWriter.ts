@@ -11,6 +11,7 @@ import { Buffer } from 'buffer'
 import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
 import LogRecord from './LogRecord'
+import { FileHandle } from './Env'
 
 export default class LogWriter {
   constructor(filename: string) {
@@ -18,7 +19,7 @@ export default class LogWriter {
     this._currentBlockSize = 0
   }
 
-  _file!: fs.promises.FileHandle
+  _file!: FileHandle
   _filename: string
   _currentBlockSize: number
 
@@ -38,7 +39,7 @@ export default class LogWriter {
    */
   async addRecord(recordOp: Slice) {
     if (this._currentBlockSize + 7 + recordOp.length <= kBlockSize) {
-      // 不需要分割
+      // do not need to spilt
       const record = new LogRecord(RecordType.kFullType, recordOp)
       this._currentBlockSize += record.length
       await this.appendFile(record.buffer)

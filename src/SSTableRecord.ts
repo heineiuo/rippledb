@@ -10,37 +10,31 @@ import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { Entry } from './VersionFormat'
 
-function getSize(buffer: Buffer, offset: number = 0): number {
-  if (buffer.length === 0) return 0
-  const buf = buffer.slice(offset)
-  const keyLength = varint.decode(buf)
-  const keyStartIndex = varint.decode.bytes
-  const valueLength = varint.decode(buf, keyStartIndex + keyLength)
-  const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
-  return valueStartIndex + valueLength
-}
-
+// Record format: [key_length, key, value_length, value]
 export default class SSTableRecord {
-  constructor(buffer: Buffer, offset?: number, size?: number) {
-    this._buffer = buffer || Buffer.from([])
-    this._offset = offset || 0
-    this._size = size || getSize(this._buffer, this._offset)
+  static getSize(buffer: Buffer, offset: number = 0): number {
+    if (buffer.length === 0) return 0
+    const buf = buffer.slice(offset)
+    const keyLength = varint.decode(buf)
+    const keyStartIndex = varint.decode.bytes
+    const valueLength = varint.decode(buf, keyStartIndex + keyLength)
+    const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
+    return valueStartIndex + valueLength
+  }
+
+  constructor(buffer: Buffer) {
+    const size = SSTableRecord.getSize(buffer)
+    this._buffer = buffer.slice(0, size)
   }
 
   _buffer: Buffer
-  _offset: number
-  _size: number
 
   get size(): number {
-    return this._size
+    return this._buffer.length
   }
 
   get buffer(): Buffer {
     return this._buffer
-  }
-
-  get offset(): number {
-    return this._offset
   }
 
   isEmpty(): boolean {
@@ -48,43 +42,30 @@ export default class SSTableRecord {
   }
 
   get(): Entry {
-    const keyLength = varint.decode(this.buffer, this.offset)
+    const keyLength = varint.decode(this.buffer)
     const keyStartIndex = varint.decode.bytes
-    const key = this.buffer.slice(
-      this.offset + keyStartIndex,
-      this.offset + keyStartIndex + keyLength
-    )
-    const valueLength = varint.decode(
-      this.buffer,
-      this.offset + keyStartIndex + keyLength
-    )
+    const key = this.buffer.slice(keyStartIndex, keyStartIndex + keyLength)
+    const valueLength = varint.decode(this.buffer, keyStartIndex + keyLength)
     const valueStartIndex = keyStartIndex + keyLength + varint.decode.bytes
     const value = this.buffer.slice(
-      this.offset + valueStartIndex,
-      this.offset + valueStartIndex + valueLength
+      valueStartIndex,
+      valueStartIndex + valueLength
     )
 
     return {
       key: new Slice(key),
       value: new Slice(value),
-    }
+    } as Entry
   }
 
-  /**
-   * [key_length, key, value_length, value]
-   */
   put(key: Slice, value: Slice): void {
-    if (key && value) {
-      const keyLength = varint.encode(key.length)
-      const valueLength = varint.encode(value.length)
-      this._buffer = Buffer.concat([
-        Buffer.from(keyLength),
-        Buffer.from(key.buffer),
-        Buffer.from(valueLength),
-        Buffer.from(value.buffer),
-      ])
-      this._offset = 0
-      this._size = this._buffer.length
-    }
+    const keyLength = varint.encode(key.length)
+    const valueLength = varint.encode(value.length)
+    this._buffer = Buffer.concat([
+      Buffer.from(keyLength),
+      Buffer.from(key.buffer),
+      Buffer.from(valueLength),
+      Buffer.from(value.buffer),
+    ])
   }
 }

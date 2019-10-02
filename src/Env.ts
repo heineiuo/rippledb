@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import fs from 'fs'
+
 export default class Env {
   /**
    * get current time
@@ -13,3 +15,5 @@ export default class Env {
     return Number(process.hrtime.bigint()) / Math.pow(10, 9)
   }
 }
+
+export interface FileHandle extends fs.promises.FileHandle {}

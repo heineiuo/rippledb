@@ -5,18 +5,21 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import BitBuffer from './BitBuffer'
 import BloomHash from './MurmurHash'
 import Slice from './Slice'
+import { FilterPolicy } from './Options'
 
 /**
- * 关键是hash几次。hash次数 = 位图数位 / 元素个数 x ln2(约等于0.69)
- * 其中元素个数和ln2是可确定的，位图数位理论上越大越好，将作为配置项
+ * time of hash is main effect
+ * best time of hash = bits number / elements bumber x ln2(≈0.69)
+ * elements bumber and ln2 is predictable
+ * bits number is configable
+ * from past experience, bitsPerKey = 10 is best
  */
-export default class BloomFilter {
+export default class BloomFilter implements FilterPolicy {
   constructor(buffer?: Buffer, bitsPerKey: number = 10) {
     this._offset = 0
     this._bitsPerKey = bitsPerKey
@@ -42,12 +45,12 @@ export default class BloomFilter {
     this._size = this._buffer.length
   }
 
-  _buffer: Buffer
-  _offset: number
-  _size: number
-  _kNumber: number
-  _bitBuffer: BitBuffer
-  _bitsPerKey: number
+  private _buffer: Buffer
+  private _offset: number
+  private _size: number
+  private _kNumber: number
+  private _bitBuffer: BitBuffer
+  private _bitsPerKey: number
 
   get bitsPerKey(): number {
     return this._bitsPerKey
@@ -65,14 +68,40 @@ export default class BloomFilter {
     return this._kNumber
   }
 
-  putKeys(keys: string[], n: number): void {
+  // Return the name of this policy.  Note that if the filter encoding
+  // changes in an incompatible way, the name returned by this method
+  // must be changed.  Otherwise, old incompatible filters may be
+  // passed to methods of this type.
+  public name() {
+    return 'leveldb.BuiltinBloomFilter2'
+  }
+
+  // keys[0,n-1] contains a list of keys (potentially with duplicates)
+  // that are ordered according to the user supplied comparator.
+  // Append a filter that summarizes keys[0,n-1] to *dst.
+  //
+  // Warning: do not change the initial contents of *dst.  Instead,
+  // append the newly constructed filter to *dst.
+  public putKeys(keys: Slice[], n: number): void {
+    // Compute bloom filter size (in both bits and bytes)
     let bits = this.bitsPerKey * n
+
+    // For small n, we can see a very high false positive rate.  Fix it
+    // by enforcing a minimum bloom filter length.
+    if (bits < 64) bits = 64
+
+    let bytes = (bits + 7) / 8
+    bits = bytes * 8
+
     this._bitBuffer.resizeBits(bits)
     bits = this._bitBuffer.bits
+
     // console.log('putKeys bits', bits)
 
     for (let i = 0; i < n; i++) {
-      let h = BloomHash(keys[i])
+      // Use double-hashing to generate a sequence of hash values.
+      // See analysis in [Kirsch,Mitzenmacher 2006].
+      let h = BloomHash(String(keys[i].buffer))
       let delta = (h >> 17) | (h << 15)
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits
@@ -91,7 +120,7 @@ export default class BloomFilter {
     this._size = this._buffer.length
   }
 
-  keyMayMatch(key: Slice): boolean {
+  public keyMayMatch(key: Slice): boolean {
     // console.log('this._bitBuffer.bits', this._bitBuffer.bits)
     if (this.kNumber > 30) return true
     let h = BloomHash(key.toString())

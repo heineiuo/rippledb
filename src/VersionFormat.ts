@@ -6,12 +6,13 @@
  */
 
 import assert from 'assert'
-import { ValueType } from './Format'
+import { ValueType, InternalKeyComparator } from './Format'
 import varint from 'varint'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 import { Options } from './Options'
 import { decodeFixed64 } from './Coding'
+import { Comparator } from './Comparator'
 
 export class ParsedInternalKey {
   userKey!: Slice
@@ -107,50 +108,6 @@ export class InternalKeyBuilder {
   }
 }
 
-export class Comparator {
-  getName(): string {
-    return '0'
-  }
-
-  compare(key1: Slice, key2: Slice) {
-    return key1.compare(key2)
-  }
-
-  findShortestSeparator() {}
-
-  findShortSuccessor() {}
-}
-
-export class InternalKeyComparator {
-  static extractUserKey(slice: Slice) {
-    assert(slice.size > 8)
-    return new Slice(slice.buffer.slice(0, slice.size - 8))
-  }
-
-  getUserComparator() {
-    return this.userComparator
-  }
-
-  userComparator: Comparator
-
-  constructor(userComparator: Comparator = new Comparator()) {
-    this.userComparator = userComparator
-  }
-
-  compare(key1: Slice, key2: Slice): number {
-    // 先比较user key
-    const userKey1 = InternalKeyComparator.extractUserKey(key1)
-    const userKey2 = InternalKeyComparator.extractUserKey(key2)
-    const r = this.userComparator.compare(userKey1, userKey2)
-    if (r !== 0) return r
-    // 再比较sequence number
-    const sn1 = varint.decode(key1.buffer, key1.size - 8)
-    const sn2 = varint.decode(key2.buffer, key2.size - 8)
-    if (sn1 === sn2) return 0
-    return sn1 > sn2 ? -1 : 1
-  }
-}
-
 export class FileMetaData {
   // reference count
   refs: number
@@ -183,8 +140,9 @@ export class BySmallestKey {
   }
 }
 
-// 能自动排序的set（根据internalkey comparator排序，如果small key相同，则比较file number
-// 目前不拷贝插入的值，而是引用
+// sorted set（compared by internalkey comparator, if small key
+// is equal then compare file number
+// TODO not copy inserted value here, just reference, should copy?
 export class FileSet {
   _set: FileMetaData[]
   compare: BySmallestKey
@@ -305,4 +263,9 @@ export interface Entry {
 
 export interface EntryRequireType extends Entry {
   type: ValueType
+}
+
+export interface GetStats {
+  seekFile: FileMetaData
+  seekFileLevel: number
 }

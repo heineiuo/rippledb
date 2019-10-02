@@ -20,7 +20,7 @@ export default class SkiplistNode {
   levels: SkiplistNode[]
 
   /**
-   * 将这个节点的每一级都链接到next
+   * link every level in this node to next
    */
   fill(next: SkiplistNode) {
     for (let i = 0; i <= this.maxlevel; i++) {

@@ -47,7 +47,7 @@ export default class VersionBuilder {
       this._versionSet.compactPointers[level] =
         edit.compactPointers[i].internalKey
     }
-    // traverse deleted_files_ 记录可删除文件到各level对应的deleted_files
+    // traverse deleted_files_ put file to each level's deleted_files
     for (let i = 0; i < edit.deletedFiles.length; i++) {
       const { level, fileNum } = edit.deletedFiles[i]
       this._levels[level].deletedFiles.add(fileNum)
@@ -57,7 +57,7 @@ export default class VersionBuilder {
     for (let file of edit.newFiles) {
       const { level, fileMetaData } = file
       fileMetaData.refs = 1
-      fileMetaData.allowedSeeks = file.fileMetaData.fileSize / 16384 // 16kb, 经验值
+      fileMetaData.allowedSeeks = file.fileMetaData.fileSize / 16384 // 16kb, experience value
       if (fileMetaData.allowedSeeks < 100) fileMetaData.allowedSeeks = 100
       this._levels[level].deletedFiles.delete(fileMetaData.number)
       this._levels[level].addedFiles.add(fileMetaData)

@@ -8,11 +8,11 @@
 import assert from 'assert'
 import varint from 'varint'
 import { Buffer } from 'buffer'
-import { ValueType } from './Format'
+import { ValueType, InternalKeyComparator } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
-import { InternalKeyComparator, Entry } from './VersionFormat'
+import { Entry } from './VersionFormat'
 import { EncodingOptions } from './Options'
 import { decodeFixed64 } from './Coding'
 
@@ -160,7 +160,7 @@ export default class MemTable {
       ])
     )
     assert(encodedLength === buf.length, 'Incorrect length')
-    // buf包含key和value
+    // buf include both key and value
     this._list.put(buf)
     this._size += buf.length
   }
@@ -174,7 +174,8 @@ export default class MemTable {
   // Check that it belongs to same user key.  We do not check the
   // sequence number since the Seek() call above should have skipped
   // all entries with overly large sequence numbers.
-  // 这里的key是lookup key
+  //
+  // this key is lookup key
   get(key: Slice, options?: EncodingOptions): any {
     const result = this._list.get(key)
     if (!result) return result
