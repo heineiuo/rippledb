@@ -17,7 +17,6 @@ import {
   Entry,
   getExpandedCompactionByteSizeLimit,
   getMaxBytesForLevel,
-  InternalKey,
 } from './VersionFormat'
 import Status from './Status'
 import { FileMetaData } from './VersionFormat'
@@ -26,7 +25,7 @@ import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
 import MemTable from './MemTable'
 import VersionEdit from './VersionEdit'
-import { Config, InternalKeyComparator } from './Format'
+import { Config, InternalKeyComparator, InternalKey } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
@@ -555,10 +554,7 @@ export default class VersionSet {
       const f = levelFiles[i]
       if (
         icmp.compare(f.smallest, largestKey) > 0 &&
-        userComparator.compare(
-          f.smallest.extractUserKey(),
-          largestKey.extractUserKey()
-        ) === 0
+        userComparator.compare(f.smallest.userKey, largestKey.userKey) === 0
       ) {
         if (
           !smallestBoundryFile ||

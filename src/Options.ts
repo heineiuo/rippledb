@@ -10,6 +10,8 @@ import BloomFilter from './BloomFilter'
 import { Comparator } from './Comparator'
 import Slice from './Slice'
 import { Env, NodeEnv } from './Env'
+import { Snapshot } from './Snapshot'
+import { SequenceNumber } from './Format'
 
 export type Encodings = 'string' | 'buffer' | 'json'
 
@@ -24,8 +26,6 @@ export interface FilterPolicy {
   keyMayMatch(key: Slice, filter: Slice): boolean
 }
 
-export class Snapshot {}
-
 export class ReadOptions {
   // If true, all data read from underlying storage will be
   // verified against corresponding checksums.
@@ -39,7 +39,7 @@ export class ReadOptions {
   // (which must belong to the DB that is being read and which must
   // not have been released).  If "snapshot" is null, use an implicit
   // snapshot of the state at the beginning of this read operation.
-  snapshot!: Snapshot
+  snapshot!: SequenceNumber
 }
 
 export class Options {

@@ -7,22 +7,19 @@
 
 import assert from 'assert'
 import Slice from './Slice'
-import {
-  InternalKey,
-  FileMetaData,
-  BySmallestKey,
-  GetStats,
-} from './VersionFormat'
+import { FileMetaData, BySmallestKey, GetStats } from './VersionFormat'
 import VersionSet from './VersionSet'
 import {
   Config,
+  InternalKey,
+  SequenceNumber,
   ValueType,
   InternalKeyComparator,
   parseInternalKey,
   ParsedInternalKey,
   kValueTypeForSeek,
+  LookupKey,
 } from './Format'
-import SequenceNumber from './SequenceNumber'
 import Compaction from './Compaction'
 import Status from './Status'
 import { Comparator } from './Comparator'
@@ -110,14 +107,14 @@ export default class Version {
   }
 
   static afterFile(ucmp: Comparator, userKey: Slice, f: FileMetaData): boolean {
-    return !!userKey && ucmp.compare(userKey, f.largest.extractUserKey()) > 0
+    return !!userKey && ucmp.compare(userKey, f.largest.userKey) > 0
   }
   static beforeFile(
     ucmp: Comparator,
     userKey: Slice,
     f: FileMetaData
   ): boolean {
-    return !!userKey && ucmp.compare(userKey, f.smallest.extractUserKey()) < 0
+    return !!userKey && ucmp.compare(userKey, f.smallest.userKey) < 0
   }
 
   versionSet: VersionSet
@@ -138,7 +135,6 @@ export default class Version {
     this.next = this
     this.prev = this
     this.refs = 0
-    // this.fileToCompact = null
     this.fileToCompactLevel = -1
     this.compactionScore = -1
     this.compactionLevel = -1
@@ -154,15 +150,31 @@ export default class Version {
     assert(this.refs >= 1)
     this.refs--
     if (this.refs === 0) {
-      // delete
+      // TODO delete
     }
   }
 
-  public get = async (lookupkey: Slice, stats: GetStats): Promise<Status> => {
-    let s = new Status()
+  public async get(lkey: LookupKey, stats: GetStats): Promise<Status> {
+    delete stats.seekFile
+    stats.seekFileLevel = -1
 
-    // s = await this.forEachOverlapping(userKey, internalKey, arg, match)
-    return s
+    let state = new State()
+    state.found = false
+    state.stats = stats
+    state.lastFileReadLevel = -1
+    state.options = {} as ReadOptions
+    state.ikey = lkey.internalKey
+
+    let status = await this.forEachOverlapping(
+      lkey.userKey,
+      lkey.internalKey,
+      state,
+      function match(arg, level, f) {
+        return true
+      }
+    )
+
+    return status
   }
 
   // Call match() for every file that overlaps userKey in
@@ -170,12 +182,14 @@ export default class Version {
   // false, makes no more calls.
   //
   // REQUIRES: user portion of internal_key == user_key.
-  forEachOverlapping(
+  async forEachOverlapping(
     userKey: Slice,
     internalKey: Slice,
     arg: any,
     match: (arg: any, level: number, f: FileMetaData) => boolean
-  ) {}
+  ): Promise<Status> {
+    return new Status()
+  }
 
   someFileOverlapsRange(
     icmp: InternalKeyComparator,
@@ -270,8 +284,8 @@ export default class Version {
     const userComparator = this.versionSet.internalKeyComparator.userComparator
     for (let i = 0; i < this.files[level].length; ) {
       const fileMetaData = this.files[level][i++]
-      const fileStart = fileMetaData.smallest.extractUserKey()
-      const fileLimit = fileMetaData.largest.extractUserKey()
+      const fileStart = fileMetaData.smallest.userKey
+      const fileLimit = fileMetaData.largest.userKey
       if (!!begin && userComparator.compare(fileLimit, userBegin) < 0) {
         // "f" is completely before specified range; skip it
       } else if (!!end && userComparator.compare(fileStart, userEnd) > 0) {
