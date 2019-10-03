@@ -9,7 +9,7 @@ import path from 'path'
 import assert from 'assert'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
-import { EncodingOptions, Options } from './Options'
+import { EncodingOptions, Options, ReadOptions } from './Options'
 import {
   ValueType,
   kMemTableDumpSize,
@@ -18,11 +18,13 @@ import {
   InternalKeyComparator,
   parseInternalKey,
   ParsedInternalKey,
+  InternalKey,
+  SequenceNumber,
   kValueTypeForSeek,
+  LookupKey,
 } from './Format'
-import { InternalKey, FileMetaData, Entry, GetStats } from './VersionFormat'
+import { FileMetaData, Entry, GetStats } from './VersionFormat'
 import Version from './Version'
-import SequenceNumber from './SequenceNumber'
 import Compaction, {
   CompactionState,
   CompactionStateOutput,
@@ -45,6 +47,7 @@ import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator } from './Comparator'
 import { Direct } from './Env'
 import { TableCache } from './SSTableCache'
+import { Snapshot, SnapshotList } from './Snapshot'
 
 interface ManualCompaction {
   level: number
@@ -76,7 +79,7 @@ export default class Database {
   private _manualCompaction!: ManualCompaction | null
   private _bgError!: Status
   private pendingOutputs!: number[]
-  private snapshots!: number[]
+  private snapshots!: SnapshotList
   private _stats: CompactionStats[]
   private _options: Options
   private _tableCache: TableCache
@@ -206,26 +209,27 @@ export default class Database {
    * 2. filter seek miss > allowed_seeks
    * 3. level0 sstable > 8
    * 4. leveli(i>0) sstable bytes > 10^iMB
+   *
+   * db.get -> memtable.get -> imm.get -> versionCurrent.get ->
+   * versionCurrent.forEachOverlapping -> tableCache.get -> tableCache.findTable ->
+   * table.get
    */
-  public async get(key: any, options?: EncodingOptions): Promise<any> {
+  public async get(options: ReadOptions, userKey: Slice): Promise<any> {
     await this.ok()
-    // console.log('get ok')
-    const sliceKey = new Slice(key)
-    // console.log('sliceKey', sliceKey)
-    const lookupKey = MemTable.createLookupKey(
-      this._sn,
-      sliceKey,
-      ValueType.kTypeValue
-    )
+    const slicedUserKey = new Slice(userKey)
+    const sequence = options.snapshot
+      ? new Snapshot(options.snapshot).sequenceNumber
+      : new SequenceNumber(this._versionSet.lastSequence)
+    const lookupKey = new LookupKey(slicedUserKey, sequence)
 
     const current = this._versionSet.current
     this._memtable.ref()
     if (!!this._immtable) this._immtable.ref()
     current.ref()
 
-    let result = this._memtable.get(lookupKey, options)
+    let result = this._memtable.get(lookupKey)
     if (!result && !!this._immtable) {
-      result = this._immtable.get(lookupKey, options)
+      result = this._immtable.get(lookupKey)
     }
     if (!result) {
       const s = await current.get(lookupKey, {} as GetStats)
@@ -442,10 +446,10 @@ export default class Database {
     assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0)
     assert(!compact.builder)
     assert(!compact.outfile)
-    if (this.snapshots.length === 0) {
+    if (!this.snapshots) {
       compact.smallestSnapshot = this._versionSet.lastSequence
     } else {
-      compact.smallestSnapshot = this.snapshots[this.snapshots.length - 1]
+      compact.smallestSnapshot = this.snapshots.oldest().sequenceNumber.value
     }
 
     let status = new Status()
@@ -627,8 +631,8 @@ export default class Database {
     // should not be added to the manifest.
     let level = 0
     if ((await status.ok()) && meta.fileSize > 0) {
-      const minUserKey = meta.smallest.extractUserKey()
-      const maxUserKey = meta.largest.extractUserKey()
+      const minUserKey = meta.smallest.userKey
+      const maxUserKey = meta.largest.userKey
       if (!!base) {
         level = base.pickLevelForMemTableOutput(minUserKey, maxUserKey)
       }

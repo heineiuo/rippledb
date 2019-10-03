@@ -9,9 +9,7 @@ import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
 import { Comparator } from './Comparator'
-import { InternalKey } from './VersionFormat'
-import SequenceNumber from './SequenceNumber'
-import { decodeFixed64 } from './Coding'
+import { decodeFixed64, encodeFixed64 } from './Coding'
 
 export enum FileType {
   kLogFile,
@@ -61,6 +59,94 @@ export enum CompressionTypes {
 export const kBlockSize = 32768 // 32KB
 export const kMemTableDumpSize = 4194304 // 4MB
 
+export class SequenceNumber {
+  constructor(initial: number = 0) {
+    this._value = initial
+  }
+
+  private _value: number
+
+  get value(): number {
+    return this._value
+  }
+
+  set value(value) {
+    this._value = value
+  }
+
+  toBuffer(): Buffer {
+    return Buffer.from(varint.encode(this._value))
+  }
+
+  public toFixed64Buffer = (): Buffer => {
+    return encodeFixed64(this._value)
+  }
+}
+
+// Returns the user key portion of an internal key.
+export function extractUserKey(ikey: Slice): Slice {
+  assert(ikey.size > 8)
+  return new Slice(ikey.buffer.slice(0, ikey.size - 8))
+}
+
+export class InternalKey extends Slice {
+  // We leave eight bits empty at the bottom so a type and sequence#
+  // can be packed together into 64-bits.
+  // in c++ , it is (0x1llu << 56) -1, 72057594037927935
+  // in javascript , Math.pow(2, 56) - 1 = 72057594037927940, Math.pow(2, 56) - 5 = 72057594037927930
+  // so , use 72057594037927935 directly
+  static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
+
+  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
+    super()
+    if (
+      typeof userKey !== 'undefined' &&
+      typeof sn !== 'undefined' &&
+      typeof valueType !== 'undefined'
+    ) {
+      this.appendInternalKey(
+        this.buffer,
+        new ParsedInternalKey(userKey, sn, valueType)
+      )
+    }
+  }
+
+  public decodeFrom(slice: Slice) {
+    this.buffer = slice.buffer
+    return this.size > 0
+  }
+
+  // Append the serialization of "key" to *result.
+  appendInternalKey(buf: Buffer, key: ParsedInternalKey) {
+    const sequenceBuf = key.sn.toFixed64Buffer()
+    sequenceBuf.fill(key.valueType, 7, 8)
+    this.buffer = Buffer.concat([this.buffer, key.userKey.buffer, sequenceBuf])
+  }
+
+  get userKey() {
+    return extractUserKey(new Slice(this.buffer))
+  }
+}
+
+export class InternalKeyBuilder {
+  build(
+    sequence: SequenceNumber,
+    valueType: ValueType,
+    key: Slice
+  ): InternalKey {
+    /**
+     * encoded(internal_key_size) | key | sequence(7Bytes) | type (1Byte) | encoded(value_size) | value
+     * 1. Lookup key/ Memtable Key: encoded(internal_key_size) --- type(1Byte)
+     * 2. Internal key: key --- type(1Byte)
+     * 3. User key: key
+     */
+    const sequenceBuf = sequence.toFixed64Buffer()
+    sequenceBuf.fill(valueType, 7, 8)
+    const slice = new Slice(Buffer.concat([key.buffer, sequenceBuf]))
+    return new InternalKey(slice)
+  }
+}
+
 export class Config {
   static kNumLevels = 7 // 0...6
 
@@ -86,11 +172,6 @@ export class Config {
 }
 
 export class InternalKeyComparator implements Comparator {
-  static extractUserKey(slice: Slice) {
-    assert(slice.size > 8)
-    return new Slice(slice.buffer.slice(0, slice.size - 8))
-  }
-
   constructor(userComparator: Comparator) {
     this._userComparator = userComparator
   }
@@ -143,8 +224,8 @@ export class InternalKeyComparator implements Comparator {
 
   compare(key1: Slice, key2: Slice) {
     // first compare user key
-    const userKey1 = InternalKeyComparator.extractUserKey(key1)
-    const userKey2 = InternalKeyComparator.extractUserKey(key2)
+    const userKey1 = extractUserKey(key1)
+    const userKey2 = extractUserKey(key2)
     const r = this.userComparator.compare(userKey1, userKey2)
     if (r !== 0) return r
     // then compare sequence number
@@ -177,8 +258,45 @@ export class ParsedInternalKey {
 //
 // On error, returns false, leaves "*result" in an undefined state.
 export function parseInternalKey(key: Slice, ikey: ParsedInternalKey): boolean {
-  ikey.userKey = InternalKey.extractUserKey(key)
+  ikey.userKey = extractUserKey(key)
   ikey.sn = new SequenceNumber(decodeFixed64(key.buffer.slice(key.length - 8)))
   ikey.valueType = varint.decode(key.buffer.slice(key.length - 1))
   return true
+}
+
+export class LookupKey {
+  private _buffer: Buffer
+  private _internalKeyBuf: Buffer
+  private _userKeyBuf: Buffer
+
+  // We construct a char array of the form:
+  //    klength  varint32               <-- start_
+  //    userkey  char[klength]          <-- kstart_
+  //    tag      uint64
+  //                                    <-- end_
+  // The array is a suitable MemTable key.
+  // The suffix starting with "userkey" can be used as an InternalKey.
+  constructor(userKey: Slice, sequence: SequenceNumber) {
+    const keySize = userKey.size
+    const internalKeySize = keySize + 8
+    const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize))
+    const sequenceBuf = sequence.toFixed64Buffer()
+    sequenceBuf.fill(Buffer.from(varint.encode(kValueTypeForSeek)), 7)
+    const buf = Buffer.concat([internalKeySizeBuf, userKey.buffer, sequenceBuf])
+    this._internalKeyBuf = buf.slice(internalKeySizeBuf.length)
+    this._userKeyBuf = userKey.buffer
+    this._buffer = buf
+  }
+
+  get internalKey(): Slice {
+    return new Slice(this._internalKeyBuf)
+  }
+
+  get memKey(): Slice {
+    return new Slice(this._buffer)
+  }
+
+  get userKey(): Slice {
+    return new Slice(this._userKeyBuf)
+  }
 }

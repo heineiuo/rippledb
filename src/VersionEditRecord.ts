@@ -10,9 +10,9 @@ import assert from 'assert'
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
-import { RecordType, VersionEditTag } from './Format'
+import { RecordType, InternalKey, VersionEditTag } from './Format'
 import VersionEdit from './VersionEdit'
-import { FileMetaData, NewFile, InternalKey } from './VersionFormat'
+import { FileMetaData, NewFile } from './VersionFormat'
 import { createHexStringFromDecimal } from './LogFormat'
 
 export default class VersionEditRecord {

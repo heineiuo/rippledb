@@ -6,6 +6,8 @@
  */
 
 import { Buffer } from 'buffer'
+import varint from 'varint'
+import Slice from './Slice'
 
 const kFixed64MaxValue = BigInt(Math.pow(2, 56)) - 1n
 
@@ -44,3 +46,9 @@ export function decodeFixed32(buf: Buffer): number {
 //   }
 //   return ab
 // }
+
+export function getLengthPrefixedSlice(key: Slice): Slice {
+  const internalKeySize = varint.decode(key.buffer)
+  const internalKeyBuffer = key.buffer.slice(0, internalKeySize)
+  return new Slice(internalKeyBuffer)
+}

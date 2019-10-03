@@ -1,20 +1,13 @@
 import varint from 'varint'
 import Slice from '../Slice'
 import MemTable from '../MemTable'
-import { ValueType } from '../Format'
-import SequenceNumber from '../SequenceNumber'
-import { InternalKeyComparator } from '../Format'
+import {
+  LookupKey,
+  ValueType,
+  SequenceNumber,
+  InternalKeyComparator,
+} from '../Format'
 import { BytewiseComparator } from '../Comparator'
-
-function createLookupKey(sequence, key, valueType) {
-  const keySize = key.size
-  const internalKeySize = keySize + 8
-  const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize))
-  const sequenceBuf = sequence.toFixed64Buffer()
-  sequenceBuf.fill(valueType.value, 7, 8)
-  const buf = Buffer.concat([internalKeySizeBuf, key.buffer, sequenceBuf])
-  return new Slice(buf)
-}
 
 test('memtable add and get', () => {
   const sequence = new SequenceNumber()
@@ -40,27 +33,17 @@ test('memtable add and get', () => {
     new Slice('key3value12389fdajj123')
   )
 
-  const lookupkey1 = createLookupKey(
-    sequence,
-    new Slice('key'),
-    ValueType.kTypeValue
-  )
+  const lookupkey1 = new LookupKey(new Slice('key'), sequence)
   const result = memtable.get(lookupkey1)
-  expect(result).toBe('key1valuevalue1')
-  const lookupkey2 = createLookupKey(
-    sequence,
-    new Slice('key3'),
-    ValueType.kTypeValue
-  )
-  expect(memtable.get(lookupkey2)).toBe('key3value12389fdajj123')
+  expect(!!result).toBe(true)
+  expect(result.buffer.toString()).toBe('key1valuevalue1')
+  const lookupkey2 = new LookupKey(new Slice('key3'), sequence)
+  const result2 = memtable.get(lookupkey2)
+  expect(!!result2).toBe(true)
+  expect(result2.buffer.toString()).toBe('key3value12389fdajj123')
 
-  const lookupkey3 = createLookupKey(
-    sequence,
-    new Slice('key4'),
-    ValueType.kTypeValue
-  )
-  memtable.get(lookupkey3)
+  const lookupkey3 = new LookupKey(new Slice('key4'), sequence)
   memtable.add(sequence, ValueType.kTypeDeletion, new Slice('key3'))
-
-  expect(memtable.get(lookupkey3)).toBe(null)
+  const result3 = memtable.get(lookupkey3)
+  expect(!!result3).toBe(false)
 })

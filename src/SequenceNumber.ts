@@ -8,27 +8,3 @@
 import varint from 'varint'
 import assert from 'assert'
 import { decodeFixed64, encodeFixed64 } from './Coding'
-
-export default class SequenceNumber {
-  constructor(initial: number = 0) {
-    this._value = initial
-  }
-
-  private _value: number
-
-  get value(): number {
-    return this._value
-  }
-
-  set value(value) {
-    this._value = value
-  }
-
-  toBuffer(): Buffer {
-    return Buffer.from(varint.encode(this._value))
-  }
-
-  public toFixed64Buffer = (): Buffer => {
-    return encodeFixed64(this._value)
-  }
-}

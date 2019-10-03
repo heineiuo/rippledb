@@ -6,74 +6,14 @@
  */
 
 import assert from 'assert'
-import { ValueType, InternalKeyComparator, ParsedInternalKey } from './Format'
+import {
+  ValueType,
+  SequenceNumber,
+  InternalKeyComparator,
+  InternalKey,
+} from './Format'
 import Slice from './Slice'
-import SequenceNumber from './SequenceNumber'
 import { Options } from './Options'
-
-export class InternalKey extends Slice {
-  // We leave eight bits empty at the bottom so a type and sequence#
-  // can be packed together into 64-bits.
-  // in c++ , it is (0x1llu << 56) -1, 72057594037927935
-  // in javascript , Math.pow(2, 56) - 1 = 72057594037927940, Math.pow(2, 56) - 5 = 72057594037927930
-  // so , use 72057594037927935 directly
-  static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
-
-  static extractUserKey(slice: Slice): Slice {
-    assert(slice.size > 8)
-    return new Slice(slice.buffer.slice(0, slice.size - 8))
-  }
-
-  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
-    super()
-    if (
-      typeof userKey !== 'undefined' &&
-      typeof sn !== 'undefined' &&
-      typeof valueType !== 'undefined'
-    ) {
-      this.appendInternalKey(
-        this.buffer,
-        new ParsedInternalKey(userKey, sn, valueType)
-      )
-    }
-  }
-
-  public decodeFrom(slice: Slice) {
-    this.buffer = slice.buffer
-    return this.size > 0
-  }
-
-  // Append the serialization of "key" to *result.
-  appendInternalKey(buf: Buffer, key: ParsedInternalKey) {
-    const sequenceBuf = key.sn.toFixed64Buffer()
-    sequenceBuf.fill(key.valueType, 7, 8)
-    this.buffer = Buffer.concat([this.buffer, key.userKey.buffer, sequenceBuf])
-  }
-
-  extractUserKey = (): Slice => {
-    assert(this.size > 8)
-    return new Slice(this.buffer.slice(0, this.size - 8))
-  }
-}
-
-export class InternalKeyBuilder {
-  build(
-    sequence: SequenceNumber,
-    valueType: ValueType,
-    key: Slice
-  ): InternalKey {
-    /**
-     * encoded(internal_key_size) | key | sequence(7Bytes) | type (1Byte) | encoded(value_size) | value
-     * 1. Lookup key/ Memtable Key: encoded(internal_key_size) --- type(1Byte)
-     * 2. Internal key: key --- type(1Byte)
-     * 3. User key: key
-     */
-    const sequenceBuf = sequence.toFixed64Buffer()
-    sequenceBuf.fill(valueType, 7, 8)
-    const slice = new Slice(Buffer.concat([key.buffer, sequenceBuf]))
-    return new InternalKey(slice)
-  }
-}
 
 export class FileMetaData {
   // reference count

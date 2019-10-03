@@ -5,14 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { FileMetaData, InternalKey } from './VersionFormat'
+import { FileMetaData } from './VersionFormat'
 import Version from './Version'
 import VersionEdit from './VersionEdit'
 import { Options } from './Options'
-import SequenceNumber from './SequenceNumber'
 import Slice from './Slice'
 import SSTableBuilder from './SSTableBuilder'
-import { Config } from './Format'
+import { Config, InternalKey } from './Format'
 import { FileHandle } from './Env'
 
 export default class Compaction {
@@ -102,11 +101,9 @@ export default class Compaction {
       const files = this.inputVersion.files[level]
       while (this.levelPtrs[level] < files.length) {
         const f = files[this.levelPtrs[level]]
-        if (userComparator.compare(userKey, f.largest.extractUserKey()) <= 0) {
+        if (userComparator.compare(userKey, f.largest.userKey) <= 0) {
           // We've advanced far enough
-          if (
-            userComparator.compare(userKey, f.smallest.extractUserKey()) >= 0
-          ) {
+          if (userComparator.compare(userKey, f.smallest.userKey) >= 0) {
             // Key falls in this file's range, so definitely not base level
             return false
           }

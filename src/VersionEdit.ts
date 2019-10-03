@@ -5,12 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { InternalKey } from './Format'
 import {
   CompactPointer,
   DeletedFile,
   NewFile,
   FileMetaData,
-  InternalKey,
 } from './VersionFormat'
 
 export default class VersionEdit {
