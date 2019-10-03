@@ -16,15 +16,11 @@ import {
   Config,
   FileType,
   InternalKeyComparator,
-} from './Format'
-import {
-  InternalKey,
+  parseInternalKey,
   ParsedInternalKey,
-  FileMetaData,
-  Entry,
   kValueTypeForSeek,
-  GetStats,
-} from './VersionFormat'
+} from './Format'
+import { InternalKey, FileMetaData, Entry, GetStats } from './VersionFormat'
 import Version from './Version'
 import SequenceNumber from './SequenceNumber'
 import Compaction, {
@@ -48,6 +44,7 @@ import Status from './Status'
 import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator } from './Comparator'
 import { Direct } from './Env'
+import { TableCache } from './SSTableCache'
 
 interface ManualCompaction {
   level: number
@@ -57,7 +54,14 @@ interface ManualCompaction {
   tmpStorage: InternalKey
 }
 
+const kNumNonTableCacheFiles = 10
+
 export default class Database {
+  static getTableCacheSize(sanitizedOptions: Options) {
+    // Reserve ten files or so for other uses and give the rest to TableCache.
+    return sanitizedOptions.maxOpenFiles - kNumNonTableCacheFiles
+  }
+
   private _internalKeyComparator: InternalKeyComparator
   private _backgroundCompactionScheduled: boolean
   private _dbpath: string
@@ -75,6 +79,7 @@ export default class Database {
   private snapshots!: number[]
   private _stats: CompactionStats[]
   private _options: Options
+  private _tableCache: TableCache
 
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
@@ -96,11 +101,16 @@ export default class Database {
     this._options = options
 
     this._log = new LogWriter(this._options, getLogFilename(dbpath, 1))
+    this._tableCache = new TableCache(
+      dbpath,
+      options,
+      Database.getTableCacheSize(options)
+    )
 
     this._versionSet = new VersionSet(
-      options,
       this._dbpath,
-      this._memtable,
+      options,
+      this._tableCache,
       this._internalKeyComparator
     )
 
@@ -461,7 +471,7 @@ export default class Database {
         }
       }
       let drop = false
-      if (!InternalKey.parseInternalKey(key, ikey)) {
+      if (!parseInternalKey(key, ikey)) {
         currentUserKey.clear()
         hasCurrentUserKey = false
         lastSequenceForKey = InternalKey.kMaxSequenceNumber

@@ -6,30 +6,10 @@
  */
 
 import assert from 'assert'
-import { ValueType, InternalKeyComparator } from './Format'
-import varint from 'varint'
+import { ValueType, InternalKeyComparator, ParsedInternalKey } from './Format'
 import Slice from './Slice'
 import SequenceNumber from './SequenceNumber'
 import { Options } from './Options'
-import { decodeFixed64 } from './Coding'
-import { Comparator } from './Comparator'
-
-export class ParsedInternalKey {
-  userKey!: Slice
-  sn!: SequenceNumber
-  valueType!: ValueType
-  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
-    if (
-      typeof userKey !== 'undefined' &&
-      typeof sn !== 'undefined' &&
-      typeof valueType !== 'undefined'
-    ) {
-      this.userKey = userKey
-      this.sn = sn
-      this.valueType = valueType
-    }
-  }
-}
 
 export class InternalKey extends Slice {
   // We leave eight bits empty at the bottom so a type and sequence#
@@ -38,19 +18,6 @@ export class InternalKey extends Slice {
   // in javascript , Math.pow(2, 56) - 1 = 72057594037927940, Math.pow(2, 56) - 5 = 72057594037927930
   // so , use 72057594037927935 directly
   static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
-
-  // Attempt to parse an internal key from "internal_key".  On success,
-  // stores the parsed data in "*result", and returns true.
-  //
-  // On error, returns false, leaves "*result" in an undefined state.
-  static parseInternalKey(key: Slice, ikey: ParsedInternalKey): boolean {
-    ikey.userKey = InternalKey.extractUserKey(key)
-    ikey.sn = new SequenceNumber(
-      decodeFixed64(key.buffer.slice(key.length - 8))
-    )
-    ikey.valueType = varint.decode(key.buffer.slice(key.length - 1))
-    return true
-  }
 
   static extractUserKey(slice: Slice): Slice {
     assert(slice.size > 8)
@@ -251,8 +218,6 @@ export function getMaxBytesForLevel(level: number) {
 export function getExpandedCompactionByteSizeLimit(options: Options) {
   return 25 * options.maxFileSize
 }
-
-export const kValueTypeForSeek = ValueType.kTypeValue
 
 export interface Entry {
   sequence?: SequenceNumber

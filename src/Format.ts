@@ -9,6 +9,9 @@ import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
 import { Comparator } from './Comparator'
+import { InternalKey } from './VersionFormat'
+import SequenceNumber from './SequenceNumber'
+import { decodeFixed64 } from './Coding'
 
 export enum FileType {
   kLogFile,
@@ -24,6 +27,8 @@ export enum ValueType {
   kTypeDeletion = 0x00,
   kTypeValue = 0x01,
 }
+
+export const kValueTypeForSeek = ValueType.kTypeValue
 
 export enum RecordType {
   // Zero is reserved for preallocated files
@@ -148,4 +153,32 @@ export class InternalKeyComparator implements Comparator {
     if (sn1 === sn2) return 0
     return sn1 > sn2 ? -1 : 1
   }
+}
+
+export class ParsedInternalKey {
+  userKey!: Slice
+  sn!: SequenceNumber
+  valueType!: ValueType
+  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
+    if (
+      typeof userKey !== 'undefined' &&
+      typeof sn !== 'undefined' &&
+      typeof valueType !== 'undefined'
+    ) {
+      this.userKey = userKey
+      this.sn = sn
+      this.valueType = valueType
+    }
+  }
+}
+
+// Attempt to parse an internal key from "internal_key".  On success,
+// stores the parsed data in "*result", and returns true.
+//
+// On error, returns false, leaves "*result" in an undefined state.
+export function parseInternalKey(key: Slice, ikey: ParsedInternalKey): boolean {
+  ikey.userKey = InternalKey.extractUserKey(key)
+  ikey.sn = new SequenceNumber(decodeFixed64(key.buffer.slice(key.length - 8)))
+  ikey.valueType = varint.decode(key.buffer.slice(key.length - 1))
+  return true
 }

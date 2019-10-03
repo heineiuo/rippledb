@@ -10,18 +10,105 @@ import Slice from './Slice'
 import {
   InternalKey,
   FileMetaData,
-  kValueTypeForSeek,
   BySmallestKey,
   GetStats,
 } from './VersionFormat'
 import VersionSet from './VersionSet'
-import { Config, ValueType, InternalKeyComparator } from './Format'
+import {
+  Config,
+  ValueType,
+  InternalKeyComparator,
+  parseInternalKey,
+  ParsedInternalKey,
+  kValueTypeForSeek,
+} from './Format'
 import SequenceNumber from './SequenceNumber'
 import Compaction from './Compaction'
 import Status from './Status'
 import { Comparator } from './Comparator'
+import { ReadOptions } from './Options'
+
+enum SaverState {
+  kNotFound,
+  kFound,
+  kDeleted,
+  kCorrupt,
+}
+
+class Saver {
+  state!: SaverState
+  ucmp!: Comparator
+  userKey!: Slice
+  value!: Buffer
+}
+
+class State {
+  s!: Status
+  vset!: VersionSet
+  options!: ReadOptions
+  ikey!: Slice
+  lastFileRead!: FileMetaData
+  lastFileReadLevel!: number
+  stats!: GetStats
+  found!: boolean
+  saver!: Saver
+  async match(arg: void, level: number, f: FileMetaData): Promise<boolean> {
+    if (!this.stats.seekFile && !!this.lastFileRead) {
+      // We have had more than one seek for this read.  Charge the 1st file.
+      this.stats.seekFile = this.lastFileRead
+      this.stats.seekFileLevel = this.lastFileReadLevel
+    }
+
+    this.lastFileRead = f
+    this.lastFileReadLevel = level
+
+    this.s = await this.vset.tableCache.get(
+      this.options,
+      f.number,
+      f.fileSize,
+      this.ikey,
+      this.saver,
+      Version.saveValue
+    )
+
+    switch (this.saver.state) {
+      case SaverState.kNotFound:
+        return true // Keep searching in other files
+      case SaverState.kFound:
+        this.found = true
+        return false
+      case SaverState.kDeleted:
+        return false
+      case SaverState.kCorrupt:
+        this.s = Status.createCorruption(
+          `corrupted key for ${this.saver.userKey.toString()}`
+        )
+        this.found = true
+        return false
+    }
+    return false
+  }
+}
 
 export default class Version {
+  static saveValue(arg: void, ikey: Slice, v: Slice) {
+    const saver = new Saver()
+    const parsedKey = new ParsedInternalKey()
+    if (!parseInternalKey(ikey, parsedKey)) {
+      saver.state = SaverState.kCorrupt
+    } else {
+      if (saver.ucmp.compare(parsedKey.userKey, saver.userKey) == 0) {
+        saver.state =
+          parsedKey.valueType == ValueType.kTypeValue
+            ? SaverState.kFound
+            : SaverState.kDeleted
+        if (saver.state == SaverState.kFound) {
+          saver.value = Buffer.concat([saver.value, v.buffer])
+        }
+      }
+    }
+  }
+
   static afterFile(ucmp: Comparator, userKey: Slice, f: FileMetaData): boolean {
     return !!userKey && ucmp.compare(userKey, f.largest.extractUserKey()) > 0
   }
@@ -73,6 +160,8 @@ export default class Version {
 
   public get = async (lookupkey: Slice, stats: GetStats): Promise<Status> => {
     let s = new Status()
+
+    // s = await this.forEachOverlapping(userKey, internalKey, arg, match)
     return s
   }
 

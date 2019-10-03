@@ -130,14 +130,16 @@ export default class SSTable {
         !this._filterReader.keyMayMatch(handle.offset, key)
       ) {
         // Not found
-        return new Status(Promise.reject('Not Found'))
       } else {
         for (let entry of this.blockIterator(this, this._options, handle)) {
+          if (entry.key.isEqual(key)) {
+            return new Status(Promise.resolve(entry))
+          }
         }
+        break
       }
     }
-
-    return new Status()
+    return Status.createNotFound()
   }
 
   *blockIterator(

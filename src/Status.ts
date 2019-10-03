@@ -18,15 +18,20 @@ enum Code {
 
 class StatusError extends Error {
   _code: Code
-  constructor(message: string, code: Code) {
+  constructor(code: Code, message?: string) {
     super(message)
     this._code = code
   }
 }
 
 export default class Status {
-  static createNotFoundError(message: string) {
-    return new Status(Promise.reject(new StatusError(message, Code.kNotFound)))
+  static createNotFound(message?: string) {
+    return new Status(Promise.reject(new StatusError(Code.kNotFound, message)))
+  }
+  static createCorruption(message?: string) {
+    return new Status(
+      Promise.reject(new StatusError(Code.kCorruption, message))
+    )
   }
 
   private _error!: Error

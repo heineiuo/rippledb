@@ -15,7 +15,6 @@ import {
 import Slice from './Slice'
 import {
   Entry,
-  CompactPointer,
   getExpandedCompactionByteSizeLimit,
   getMaxBytesForLevel,
   InternalKey,
@@ -31,8 +30,8 @@ import { Config, InternalKeyComparator } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
-import SequenceNumber from './SequenceNumber'
 import SSTable from './SSTable'
+import { TableCache } from './SSTableCache'
 
 export default class VersionSet {
   // Per-level key at which the next compaction at that level should start.
@@ -55,20 +54,20 @@ export default class VersionSet {
 
   private _dbpath: string
   _options: Options
-  _memtable: MemTable
   internalKeyComparator: InternalKeyComparator
+  public tableCache: TableCache
 
   manifestWritter?: LogWriter
 
   constructor(
-    options: Options,
     dbpath: string,
-    memtable: MemTable,
+    options: Options,
+    tableCache: TableCache,
     internalKeyComparator: InternalKeyComparator
   ) {
     this._dbpath = dbpath
     this._options = options
-    this._memtable = memtable
+    this.tableCache = tableCache
     this.internalKeyComparator = internalKeyComparator
     this._dummyVersions = new Version(this)
     this.appendVersion(new Version(this))
