@@ -83,9 +83,10 @@ export class SequenceNumber {
   }
 }
 
-export function extractUserKey(slice: Slice): Slice {
-  assert(slice.size > 8)
-  return new Slice(slice.buffer.slice(0, slice.size - 8))
+// Returns the user key portion of an internal key.
+export function extractUserKey(ikey: Slice): Slice {
+  assert(ikey.size > 8)
+  return new Slice(ikey.buffer.slice(0, ikey.size - 8))
 }
 
 export class InternalKey extends Slice {

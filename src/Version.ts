@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from 'assert'
+import assert, { strictEqual } from 'assert'
 import Slice from './Slice'
 import { FileMetaData, BySmallestKey, GetStats } from './VersionFormat'
 import VersionSet from './VersionSet'
@@ -48,39 +48,44 @@ class State {
   lastFileReadLevel!: number
   stats!: GetStats
   found!: boolean
-  saver!: Saver
-  async match(arg: void, level: number, f: FileMetaData): Promise<boolean> {
-    if (!this.stats.seekFile && !!this.lastFileRead) {
+  saver: Saver = new Saver()
+
+  static async match(
+    state: State,
+    level: number,
+    f: FileMetaData
+  ): Promise<boolean> {
+    if (!state.stats.seekFile && !!state.lastFileRead) {
       // We have had more than one seek for this read.  Charge the 1st file.
-      this.stats.seekFile = this.lastFileRead
-      this.stats.seekFileLevel = this.lastFileReadLevel
+      state.stats.seekFile = state.lastFileRead
+      state.stats.seekFileLevel = state.lastFileReadLevel
     }
 
-    this.lastFileRead = f
-    this.lastFileReadLevel = level
+    state.lastFileRead = f
+    state.lastFileReadLevel = level
 
-    this.s = await this.vset.tableCache.get(
-      this.options,
+    state.s = await state.vset.tableCache.get(
+      state.options,
       f.number,
       f.fileSize,
-      this.ikey,
-      this.saver,
+      state.ikey,
+      state.saver,
       Version.saveValue
     )
 
-    switch (this.saver.state) {
+    switch (state.saver.state) {
       case SaverState.kNotFound:
         return true // Keep searching in other files
       case SaverState.kFound:
-        this.found = true
+        state.found = true
         return false
       case SaverState.kDeleted:
         return false
       case SaverState.kCorrupt:
-        this.s = Status.createCorruption(
-          `corrupted key for ${this.saver.userKey.toString()}`
+        state.s = Status.createCorruption(
+          `corrupted key for ${state.saver.userKey.toString()}`
         )
-        this.found = true
+        state.found = true
         return false
     }
     return false
@@ -164,17 +169,24 @@ export default class Version {
     state.lastFileReadLevel = -1
     state.options = {} as ReadOptions
     state.ikey = lkey.internalKey
+    state.vset = this.versionSet
 
-    let status = await this.forEachOverlapping(
+    state.saver.state = SaverState.kNotFound
+    state.saver.ucmp = this.versionSet.internalKeyComparator.userComparator
+    state.saver.userKey = lkey.userKey
+
+    await this.forEachOverlapping(
       lkey.userKey,
       lkey.internalKey,
       state,
-      function match(arg, level, f) {
-        return true
-      }
+      State.match
     )
 
-    return status
+    if (!state.found) {
+      return Status.createNotFound()
+    }
+
+    return state.s
   }
 
   // Call match() for every file that overlaps userKey in
@@ -186,9 +198,54 @@ export default class Version {
     userKey: Slice,
     internalKey: Slice,
     arg: any,
-    match: (arg: any, level: number, f: FileMetaData) => boolean
-  ): Promise<Status> {
-    return new Status()
+    match: (arg: any, level: number, f: FileMetaData) => Promise<boolean>
+  ): Promise<void> {
+    const ucmp = this.versionSet.internalKeyComparator.userComparator
+    // Search level-0 in order from newest to oldest.
+    const tmp = [] as FileMetaData[]
+    console.log(this.files)
+
+    for (let i = 0; i < this.files[0].length; i++) {
+      const f = this.files[0][i]
+
+      if (
+        ucmp.compare(userKey, f.smallest.userKey) >= 0 &&
+        ucmp.compare(userKey, f.largest.userKey) <= 0
+      ) {
+        tmp.push(f)
+      }
+    }
+    if (tmp.length > 0) {
+      // NewestFirst
+      tmp.sort((a, b) => (a.number > b.number ? -1 : 1))
+    }
+
+    for (let i = 0; i < tmp.length; i++) {
+      if (!(await match(arg, 0, tmp[i]))) {
+        return
+      }
+    }
+
+    // Search other levels.
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      const numFiles = this.files[level].length
+      if (numFiles === 0) continue
+      const index = this.findFile(
+        this.versionSet.internalKeyComparator,
+        this.files[level],
+        internalKey
+      )
+      if (index < numFiles) {
+        const f = this.files[level][index]
+        if (ucmp.compare(userKey, f.smallest.userKey) < 0) {
+          // All of "f" is past any data for user_key
+        } else {
+          if (!(await match(arg, level, f))) {
+            return
+          }
+        }
+      }
+    }
   }
 
   someFileOverlapsRange(
