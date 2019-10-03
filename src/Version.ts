@@ -203,7 +203,7 @@ export default class Version {
     const ucmp = this.versionSet.internalKeyComparator.userComparator
     // Search level-0 in order from newest to oldest.
     const tmp = [] as FileMetaData[]
-    console.log(this.files)
+    // console.log(this.files)
 
     for (let i = 0; i < this.files[0].length; i++) {
       const f = this.files[0][i]
