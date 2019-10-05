@@ -16,7 +16,6 @@ export default class VersionBuilder {
   _versionSet: VersionSet
   _base: Version
   _levels: {
-    // TODO: JavaScript native Set cannot compare object value, should be rewritten
     addedFiles: FileSet
     deletedFiles: Set<number>
   }[]
@@ -66,24 +65,33 @@ export default class VersionBuilder {
 
   saveTo(ver: Version) {
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
-    // traverse every level and put added files in right position [ baseFiles_A, addedFiles, baseFiels_B ) ]
+    // traverse every level and put added files in right
+    // position [ baseFiles_A, addedFiles, baseFiels_B ) ]
     for (let level = 0; level < Config.kNumLevels; level++) {
-      if (!this._base.files[level]) continue
-      // addedFiles is sorted
+      // Merge the set of added files with the set of pre-existing files.
+      // Drop any deleted files.  Store the result in ver.
       const addedFileIterator = this._levels[level].addedFiles.iterator()
       let addedFile = addedFileIterator.next()
-      for (let i = 0; i < this._base.files[level].length; ) {
-        let baseFile = this._base.files[level][i++]
-        if (!addedFile.done) {
-          if (cmp.operator(baseFile, addedFile.value)) {
-            this.maybeAddFile(ver, level, baseFile)
-            i--
+      if (this._base.files[level].length === 0) {
+        while (!addedFile.done) {
+          this.maybeAddFile(ver, level, addedFile.value)
+          addedFile = addedFileIterator.next()
+        }
+      } else {
+        for (let i = 0; i < this._base.files[level].length; ) {
+          let baseFile = this._base.files[level][i++]
+          console.log('addedFile=', addedFile, 'baseFile=', baseFile)
+          if (!addedFile.done) {
+            if (cmp.operator(baseFile, addedFile.value)) {
+              this.maybeAddFile(ver, level, baseFile)
+              i--
+            } else {
+              this.maybeAddFile(ver, level, addedFile.value)
+              addedFile = addedFileIterator.next()
+            }
           } else {
-            this.maybeAddFile(ver, level, addedFile.value)
-            addedFile = addedFileIterator.next()
+            this.maybeAddFile(ver, level, baseFile)
           }
-        } else {
-          this.maybeAddFile(ver, level, baseFile)
         }
       }
     }

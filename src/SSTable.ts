@@ -11,10 +11,8 @@ import Slice from './Slice'
 import Footer from './SSTableFooter'
 import DataBlock from './SSTableBlock'
 import FilterBlock from './SSTableFilterBlock'
-import { Entry } from './VersionFormat'
-import SSTableBlock from './SSTableBlock'
 import { BlockContents, kBlockTrailerSize, BlockHandle } from './SSTableFormat'
-import { CompressionTypes } from './Format'
+import { CompressionTypes, Entry } from './Format'
 import Status from './Status'
 import { Options } from './Options'
 
@@ -62,9 +60,10 @@ export default class SSTable {
     }
     const footer = new Footer(buf.slice(buf.length - Footer.kEncodedLength))
 
+    // console.log(`footer.indexHandle=${JSON.stringify(footer.indexHandle)}`)
     const indexBlockContents = await this.readBlock(buf, footer.indexHandle)
-    const indexBlock = new SSTableBlock(indexBlockContents)
-
+    const indexBlock = new DataBlock(indexBlockContents)
+    indexBlock.blockType = 'indexblock'
     const table = new SSTable({
       options,
       indexBlock,
@@ -78,7 +77,7 @@ export default class SSTable {
   constructor(rep: {
     buf: Buffer
     options: Options
-    indexBlock: SSTableBlock
+    indexBlock: DataBlock
     metaIndexHandle: BlockHandle
   }) {
     this._options = rep.options
@@ -90,7 +89,7 @@ export default class SSTable {
   private _buffer: Buffer
   private _options: Options
   private _metaIndexHandle: BlockHandle
-  private _indexBlock: SSTableBlock
+  private _indexBlock: DataBlock
   private _dataBlock!: DataBlock
   private _filterBuffer!: Buffer
   private _filterReader!: FilterBlock
@@ -103,7 +102,8 @@ export default class SSTable {
       this._buffer,
       footer.metaIndexHandle
     )
-    const meta = new SSTableBlock(contents)
+    const meta = new DataBlock(contents)
+    meta.blockType = 'metaindexblock'
     const key = new Slice('filter.' + this._options.filterPolicy.name())
     for (let entry of meta.iterator(this._options.comparator)) {
       if (entry.key.isEqual(key)) {
@@ -114,24 +114,43 @@ export default class SSTable {
 
   private async readFilter(filterHandleBuffer: Buffer) {
     const filterHandle = BlockHandle.from(filterHandleBuffer)
+    // console.log(`filterHandle=${JSON.stringify(filterHandle)}`)
+
     const readOptions = {} // TODO
     const block = await SSTable.readBlock(this._buffer, filterHandle)
     this._filterBuffer = block.data.buffer
     this._filterReader = new FilterBlock(this._options.filterPolicy, block.data)
+    // console.log(`table filterReader: `, this._filterReader)
   }
 
+  // key: internalkey
   public async get(key: Slice): Promise<Status> {
     for (let handleValue of this._indexBlock.iterator(
       this._options.comparator
     )) {
+      // console.log(`sstable.get start`)
       const handle = BlockHandle.from(handleValue.value.buffer)
+      // console.log(`sstable.get handleValue=`, handleValue.value)
+      // console.log(`sstable.get indexBlock handle=${JSON.stringify(handle)}`)
+
       if (
         !!this._filterReader &&
         !this._filterReader.keyMayMatch(handle.offset, key)
       ) {
         // Not found
+        console.log(
+          `not found... because ${
+            !this._filterReader ? 'no filter reader' : 'keyNotMatch'
+          }`
+        )
       } else {
-        for (let entry of this.blockIterator(this, this._options, handle)) {
+        for (let entry of this.blockIterator(
+          this,
+          this._options,
+          handle,
+          'datablock'
+        )) {
+          // console.log(key.buffer, entry.key.buffer)
           if (entry.key.isEqual(key)) {
             return new Status(Promise.resolve(entry))
           }
@@ -142,9 +161,21 @@ export default class SSTable {
     return Status.createNotFound()
   }
 
+  // Convert an index iterator value (i.e., an encoded BlockHandle)
+  // into an iterator over the contents of the corresponding block.
   *blockIterator(
     table: SSTable,
     options: Options,
-    handle: BlockHandle
-  ): IterableIterator<Entry> {}
+    handle: BlockHandle,
+    blockType?: string
+  ): IterableIterator<Entry> {
+    const contents = {
+      data: new Slice(
+        this._buffer.slice(handle.offset, handle.offset + handle.size)
+      ),
+    } as BlockContents
+    const dataBlock = new DataBlock(contents)
+    if (blockType) dataBlock.blockType = blockType
+    yield* dataBlock.iterator(options.comparator)
+  }
 }

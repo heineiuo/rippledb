@@ -7,6 +7,7 @@
 
 import assert from 'assert'
 import Slice from './Slice'
+import { InternalKey } from './Format'
 
 export interface Comparator {
   // Three-way comparison.  Returns value:
@@ -74,6 +75,8 @@ export class BytewiseComparator implements Comparator {
   }
 
   findShortSuccessor(key: Slice): void {
+    return
+
     // Find first character that can be incremented
     let n = key.length
     for (let i = 0; i < n; i++) {

@@ -10,8 +10,7 @@ import { Buffer } from 'buffer'
 import Slice from './Slice'
 import MemTable from './MemTable'
 import LogRecord from './LogRecord'
-import { SequenceNumber, ValueType } from './Format'
-import { EntryRequireType } from './VersionFormat'
+import { SequenceNumber, EntryRequireType, ValueType } from './Format'
 import { decodeFixed64, encodeFixed32, decodeFixed32 } from './Coding'
 
 // Simplified WriteBatch

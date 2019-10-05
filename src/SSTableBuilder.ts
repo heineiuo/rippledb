@@ -15,7 +15,7 @@ import { FileHandle } from './Env'
 import { BlockHandle, kBlockTrailerSize } from './SSTableFormat'
 import { encodeFixed32 } from './Coding'
 import { Options } from './Options'
-import { CompressionTypes } from './Format'
+import { CompressionTypes, kSizeOfUint32 } from './Format'
 
 export default class SSTableBuilder {
   constructor(file: FileHandle, options: Options = new Options()) {
@@ -29,7 +29,9 @@ export default class SSTableBuilder {
     this._closed = false
     this._options = options
     this._dataBlock = new BlockBuilder(this._options)
+    this._dataBlock.blockType = 'datablock'
     this._indexBlock = new BlockBuilder(this._options)
+    this._indexBlock.blockType = 'indexblock'
     this._pendingHandle = new BlockHandle()
   }
 
@@ -60,6 +62,9 @@ export default class SSTableBuilder {
       assert(this._dataBlock.isEmpty())
       this._options.comparator.findShortestSeparator(this._lastKey, key)
       let handleEncoding = this._pendingHandle.buffer
+      console.log(
+        `table indexblock handle = ${this._pendingHandle.offset}, ${this._pendingHandle.size}`
+      )
       this._indexBlock.add(this._lastKey, new Slice(handleEncoding))
       this._pendingIndexEntry = false
     }
@@ -154,6 +159,7 @@ export default class SSTableBuilder {
     }
 
     const metaIndexBlock = new BlockBuilder(this._options)
+    metaIndexBlock.blockType = 'metaindexblock'
     if (!!this._metaBlock) {
       let key = 'filter.'
       key += this._options.filterPolicy.name()
@@ -168,10 +174,14 @@ export default class SSTableBuilder {
     if (this._pendingIndexEntry) {
       this._options.comparator.findShortSuccessor(this._lastKey)
       const handleEncoding = this._pendingHandle.buffer
+      // console.log(
+      //   `table indexblock handle = ${this._pendingHandle.offset}, ${this._pendingHandle.size} finish...`
+      // )
       this._indexBlock.add(this._lastKey, new Slice(handleEncoding))
       this._pendingIndexEntry = false
     }
     await this.writeBlock(this._indexBlock, indexBlockHandle)
+    // console.log(`indexBlockHandle=${JSON.stringify(indexBlockHandle)}`)
 
     // Write footer
     this._footer.put({
@@ -196,6 +206,7 @@ class BlockBuilder {
     this._lastKey = new Slice()
   }
 
+  public blockType!: string
   private _options: Options
   private _buffer: Buffer
   private _restarts: number[] // First restart point is at offset 0
@@ -215,7 +226,7 @@ class BlockBuilder {
     this._lastKey = new Slice()
   }
 
-  public add(key: Slice, value: Slice) {
+  public add(key: Slice, value: Slice): void {
     assert(!this._finished)
     assert(this._counter <= this._options.blockRestartInterval)
     assert(
@@ -263,6 +274,7 @@ class BlockBuilder {
     return this._buffer.length === 0
   }
 
+  // Add <Buffer restarts.start>...<Buffer restarts[restarts.end]><Buffer restarts count> to tail
   public finish(): Slice {
     // Append restart array
     for (let i = 0; i < this._restarts.length; i++) {
@@ -282,8 +294,8 @@ class BlockBuilder {
   public currentSizeEstimate(): number {
     return (
       this._buffer.length + // Raw data buffer
-      this._restarts.length * 4 + // sizeof(uint32_t), Restart array
-      4 // sizeof(uint32_t)  // Restart array length
+      this._restarts.length * kSizeOfUint32 + // sizeof(uint32_t), Restart array
+      kSizeOfUint32 // sizeof(uint32_t)  // Restart array length
     )
   }
 }
