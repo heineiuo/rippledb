@@ -23,7 +23,7 @@ import {
   kValueTypeForSeek,
   LookupKey,
 } from './Format'
-import { FileMetaData, Entry, GetStats } from './VersionFormat'
+import { FileMetaData, GetStats } from './VersionFormat'
 import Version from './Version'
 import Compaction, {
   CompactionState,
@@ -468,6 +468,7 @@ export default class Database {
       }
 
       const key = input.key
+
       if (compact.compaction.shouldStopBefore(key) && !!compact.builder) {
         status = await this.finishCompactionOutputFile(compact, status)
         if (!(await status.ok())) {
@@ -597,6 +598,7 @@ export default class Database {
     const meta = new FileMetaData()
     meta.fileSize = 0
     meta.number = this._versionSet.getNextFileNumber()
+    meta.largest = new InternalKey()
     this.pendingOutputs.push(meta.number)
     console.log(`Level-0 table #${meta.number}: started`)
     const fileHandler = getTableFilename(this._dbpath, meta.number)
@@ -607,9 +609,11 @@ export default class Database {
     }
     const tableBuilder = new SSTableBuilder(await status.promise)
     for (let entry of mem.iterator()) {
-      if (!meta.smallest)
-        meta.smallest = new InternalKey(entry.key, entry.sequence, entry.type)
-      meta.largest = new InternalKey(entry.key, entry.sequence, entry.type)
+      if (!meta.smallest) {
+        meta.smallest = new InternalKey()
+        meta.smallest.decodeFrom(entry.key)
+      }
+      meta.largest.decodeFrom(entry.key)
       await tableBuilder.add(entry.key, entry.value)
     }
 

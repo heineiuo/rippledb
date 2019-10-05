@@ -14,6 +14,7 @@ import {
 } from './Format'
 import Slice from './Slice'
 import { Options } from './Options'
+import { decodeFixed64 } from './Coding'
 
 export class FileMetaData {
   // reference count
@@ -33,10 +34,10 @@ export class FileMetaData {
 }
 
 export class BySmallestKey {
-  internalComparator: InternalKeyComparator
+  internalComparator!: InternalKeyComparator
 
-  constructor(cmp: InternalKeyComparator) {
-    this.internalComparator = cmp
+  constructor(cmp?: InternalKeyComparator) {
+    if (cmp) this.internalComparator = cmp
   }
 
   // if file1 < file2 then true
@@ -157,17 +158,6 @@ export function getMaxBytesForLevel(level: number) {
 
 export function getExpandedCompactionByteSizeLimit(options: Options) {
   return 25 * options.maxFileSize
-}
-
-export interface Entry {
-  sequence?: SequenceNumber
-  type?: ValueType
-  key: Slice
-  value: Slice
-}
-
-export interface EntryRequireType extends Entry {
-  type: ValueType
 }
 
 export interface GetStats {

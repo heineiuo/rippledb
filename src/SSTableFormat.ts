@@ -29,7 +29,7 @@ export class BlockHandle {
     assert(typeof this.size === 'number')
     return Buffer.concat([
       Buffer.from(varint.encode(this.offset)),
-      Buffer.from(varint.encode(this.offset)),
+      Buffer.from(varint.encode(this.size)),
     ])
   }
 }

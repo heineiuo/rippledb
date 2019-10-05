@@ -14,7 +14,6 @@ import {
 } from './Filename'
 import Slice from './Slice'
 import {
-  Entry,
   getExpandedCompactionByteSizeLimit,
   getMaxBytesForLevel,
 } from './VersionFormat'
@@ -23,9 +22,8 @@ import { FileMetaData } from './VersionFormat'
 import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
-import MemTable from './MemTable'
 import VersionEdit from './VersionEdit'
-import { Config, InternalKeyComparator, InternalKey } from './Format'
+import { Config, InternalKeyComparator, InternalKey, Entry } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
@@ -275,11 +273,11 @@ export default class VersionSet {
     edit.nextFileNumber = this.nextFileNumber
     edit.lastSequence = this.lastSequence
 
-    const v = new Version(this)
+    const ver = new Version(this)
     const builder = new VersionBuilder(this, this._current)
     builder.apply(edit)
-    builder.saveTo(v)
-    this.finalize(v)
+    builder.saveTo(ver)
+    this.finalize(ver)
 
     // Initialize new descriptor log file if necessary by creating
     // a temporary file that contains a snapshot of the current version.
@@ -308,6 +306,19 @@ export default class VersionSet {
       status = new Status(
         this.writeCurrentFile(this._dbpath, this.manifestFileNumber)
       )
+    }
+
+    // Install the new version
+    if (await status.ok()) {
+      this.appendVersion(ver)
+      this.logNumber = edit.logNumber
+      this.prevLogNumber = edit.prevLogNumber
+    } else {
+      // delete ver
+      if (!!manifestFilename) {
+        delete this.manifestWritter
+        await this._options.env.unlink(manifestFilename)
+      }
     }
 
     return status
@@ -403,7 +414,7 @@ export default class VersionSet {
           !this.compactPointers[level].length ||
           this.internalKeyComparator.compare(
             f.largest,
-            new Slice(this.compactPointers[level])
+            this.compactPointers[level]
           ) > 0
         ) {
           c.inputs[0].push(f)
@@ -465,7 +476,10 @@ export default class VersionSet {
           smallest.buffer = fileMetaData.smallest.buffer
         }
         if (
-          this.internalKeyComparator.compare(fileMetaData.largest, largest) > 0
+          this.internalKeyComparator.compare(
+            new Slice(fileMetaData.largest.buffer),
+            new Slice(largest)
+          ) > 0
         ) {
           largest.buffer = fileMetaData.largest.buffer
         }
@@ -634,7 +648,7 @@ export default class VersionSet {
     // We update this immediately instead of waiting for the VersionEdit
     // to be applied so that if the compaction fails, we will try a different
     // key range next time.
-    this.compactPointers[level] = largest
+    this.compactPointers[level] = new Slice(largest.buffer)
     c.edit.compactPointers.push({ level, internalKey: largest })
   }
 

@@ -105,15 +105,19 @@ export class InternalKey extends Slice {
       typeof valueType !== 'undefined'
     ) {
       this.appendInternalKey(
-        this.buffer,
+        userKey.buffer,
         new ParsedInternalKey(userKey, sn, valueType)
       )
     }
   }
 
+  get userKey() {
+    return extractUserKey(this)
+  }
+
   public decodeFrom(slice: Slice) {
     this.buffer = slice.buffer
-    return this.size > 0
+    return this.buffer.length > 0
   }
 
   // Append the serialization of "key" to *result.
@@ -121,10 +125,6 @@ export class InternalKey extends Slice {
     const sequenceBuf = key.sn.toFixed64Buffer()
     sequenceBuf.fill(key.valueType, 7, 8)
     this.buffer = Buffer.concat([this.buffer, key.userKey.buffer, sequenceBuf])
-  }
-
-  get userKey() {
-    return extractUserKey(new Slice(this.buffer))
   }
 }
 
@@ -171,6 +171,8 @@ export class Config {
   static kReadBytesPeriod = 1048576
 }
 
+export const kSizeOfUint32 = 4
+
 export class InternalKeyComparator implements Comparator {
   constructor(userComparator: Comparator) {
     this._userComparator = userComparator
@@ -210,6 +212,7 @@ export class InternalKeyComparator implements Comparator {
   }
 
   findShortSuccessor(key: Slice) {
+    return
     // Find first character that can be incremented
     let n = key.length
     for (let i = 0; i < n; i++) {
@@ -299,4 +302,15 @@ export class LookupKey {
   get userKey(): Slice {
     return new Slice(this._userKeyBuf)
   }
+}
+
+export interface Entry {
+  sequence?: SequenceNumber
+  type?: ValueType
+  key: Slice
+  value: Slice
+}
+
+export interface EntryRequireType extends Entry {
+  type: ValueType
 }

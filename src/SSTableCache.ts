@@ -36,13 +36,18 @@ export class TableCache {
     fileSize: number,
     k: Slice,
     arg: any,
-    handleResult: (arg: void, key: Slice, value: Slice) => void
+    handleResult: (arg: any, key: Slice, value: Slice) => void
   ): Promise<Status> {
     let status = await this.findTable(fileNumber, fileSize)
     if (await status.ok()) {
       const tf = (await status.promise) as TableAndFile
       const table = tf.table
       status = await table.get(k)
+    }
+
+    if (await status.ok()) {
+      const { key, value } = await status.promise
+      handleResult(arg, key, value)
     }
     return status
   }

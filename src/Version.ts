@@ -73,6 +73,9 @@ class State {
       Version.saveValue
     )
 
+    if (!(await state.s.ok())) return false
+
+    // console.log(`before switch state.saver.state=${state.saver.state}`)
     switch (state.saver.state) {
       case SaverState.kNotFound:
         return true // Keep searching in other files
@@ -93,8 +96,7 @@ class State {
 }
 
 export default class Version {
-  static saveValue(arg: void, ikey: Slice, v: Slice) {
-    const saver = new Saver()
+  static saveValue(saver: Saver, ikey: Slice, v: Slice) {
     const parsedKey = new ParsedInternalKey()
     if (!parseInternalKey(ikey, parsedKey)) {
       saver.state = SaverState.kCorrupt
@@ -105,7 +107,7 @@ export default class Version {
             ? SaverState.kFound
             : SaverState.kDeleted
         if (saver.state == SaverState.kFound) {
-          saver.value = Buffer.concat([saver.value, v.buffer])
+          saver.value = Buffer.concat([v.buffer])
         }
       }
     }
@@ -182,11 +184,13 @@ export default class Version {
       State.match
     )
 
+    // console.log(`after version gett, state is `, state)
+
     if (!state.found) {
       return Status.createNotFound()
     }
 
-    return state.s
+    return new Status(Promise.resolve(state.saver.value))
   }
 
   // Call match() for every file that overlaps userKey in
@@ -203,7 +207,7 @@ export default class Version {
     const ucmp = this.versionSet.internalKeyComparator.userComparator
     // Search level-0 in order from newest to oldest.
     const tmp = [] as FileMetaData[]
-    // console.log(this.files)
+    // console.log(`forEachOverlapping current.files=`, this.files)
 
     for (let i = 0; i < this.files[0].length; i++) {
       const f = this.files[0][i]
@@ -218,11 +222,11 @@ export default class Version {
     if (tmp.length > 0) {
       // NewestFirst
       tmp.sort((a, b) => (a.number > b.number ? -1 : 1))
-    }
 
-    for (let i = 0; i < tmp.length; i++) {
-      if (!(await match(arg, 0, tmp[i]))) {
-        return
+      for (let i = 0; i < tmp.length; i++) {
+        if (!(await match(arg, 0, tmp[i]))) {
+          return
+        }
       }
     }
 
@@ -299,8 +303,9 @@ export default class Version {
     let left = 0 //  uint32_t
     let right = files.length // uint32_t
     while (left < right) {
-      let mid = (left + right) / 2
+      let mid = Math.floor((left + right) / 2)
       let file = files[mid]
+      // console.log(`mid=${mid}`, `file=`, file)
       if (icmp.compare(file.largest, key) < 0) {
         left = mid + 1
       } else {

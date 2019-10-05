@@ -13,10 +13,10 @@ import {
   ValueType,
   InternalKeyComparator,
   LookupKey,
+  Entry,
 } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
-import { Entry } from './VersionFormat'
 import { decodeFixed64, getLengthPrefixedSlice } from './Coding'
 
 export default class MemTable {
@@ -35,25 +35,20 @@ export default class MemTable {
     return new Slice(value)
   }
 
+  // key: <Buffer internalkeyzise><Buffer internalkey><Buffer valuesize><Buffer value>
   static getEntryFromMemTableKey(key: Slice): Entry {
-    const entry = {} as Entry
     let index = 0
 
     const internalKeySize = varint.decode(key.buffer)
     index += varint.decode.bytes
-    entry.key = new Slice(key.buffer.slice(index, index + internalKeySize - 8))
-    const internalKeyBuf = key.buffer.slice(index, index + internalKeySize)
-
+    let internalKey = new Slice(
+      key.buffer.slice(index, index + internalKeySize)
+    )
     index += internalKeySize
-    const sequenceBuf = Buffer.from(internalKeyBuf.slice(internalKeySize - 8))
-    sequenceBuf.fill(0x00, 7, 8)
-    entry.sequence = new SequenceNumber(decodeFixed64(sequenceBuf))
-    entry.type = varint.decode(internalKeyBuf.slice(internalKeySize - 8))
-
     const valueSize = varint.decode(key.buffer.slice(index))
     index += varint.decode.bytes
-    entry.value = new Slice(key.buffer.slice(index, index + valueSize))
-    return entry
+    let value = new Slice(key.buffer.slice(index, index + valueSize))
+    return { key: internalKey, value } as Entry
   }
 
   private _immutable: boolean
@@ -151,7 +146,7 @@ export default class MemTable {
     return MemTable.getValueSlice(result)
   }
 
-  *iterator() {
+  *iterator(): IterableIterator<Entry> {
     for (let value of this._list.iterator()) {
       yield MemTable.getEntryFromMemTableKey(value)
     }
