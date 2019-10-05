@@ -62,9 +62,9 @@ export default class SSTableBuilder {
       assert(this._dataBlock.isEmpty())
       this._options.comparator.findShortestSeparator(this._lastKey, key)
       let handleEncoding = this._pendingHandle.buffer
-      console.log(
-        `table indexblock handle = ${this._pendingHandle.offset}, ${this._pendingHandle.size}`
-      )
+      // console.log(
+      //   `table indexblock handle = ${this._pendingHandle.offset}, ${this._pendingHandle.size}`
+      // )
       this._indexBlock.add(this._lastKey, new Slice(handleEncoding))
       this._pendingIndexEntry = false
     }
