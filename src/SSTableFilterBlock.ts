@@ -6,13 +6,11 @@
  */
 
 import { Buffer } from 'buffer'
+import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
 import BloomFilter from './BloomFilter'
-import { Filter, kFilterBase, BlockContents } from './SSTableFormat'
-import assert from 'assert'
-import { MetaBlockEntry } from './SSTableFormat'
-import TableBlock from './SSTableBlock'
+import { Filter } from './SSTableFormat'
 import { FilterPolicy } from './Options'
 import { decodeFixed32 } from './Coding'
 
@@ -64,6 +62,7 @@ export default class SSTableFilterBlock {
   }
 
   public keyMayMatch(blockOffset: number, key: Slice): boolean {
+    // TODO
     return true
     let index = blockOffset >> this._baseLg
     if (index < this._num) {
@@ -109,14 +108,5 @@ export default class SSTableFilterBlock {
       count += 1
       yield offset
     }
-  }
-}
-
-// A "metaindex" block.  It contains one entry for every other meta
-// block where the key is the name of the meta block and the value is a
-// BlockHandle pointing to that meta block.
-export class TableMetaIndexBlock extends TableBlock {
-  get filterKey(): string {
-    return `filter.leveldb.BuiltinBloomFilter2`
   }
 }
