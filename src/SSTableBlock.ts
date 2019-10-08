@@ -5,10 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { BlockContents } from './SSTableFormat'
 import { Comparator } from './Comparator'
 import { decodeFixed32 } from './Coding'
-import { kSizeOfUint32, Entry } from './Format'
+import { BlockContents, kSizeOfUint32, Entry } from './Format'
 import Slice from './Slice'
 
 interface RestartedEntry {

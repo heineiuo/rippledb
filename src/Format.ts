@@ -10,6 +10,7 @@ import varint from 'varint'
 import Slice from './Slice'
 import { Comparator } from './Comparator'
 import { decodeFixed64, encodeFixed64 } from './Coding'
+import BloomFilter from './BloomFilter'
 
 export enum FileType {
   kLogFile,
@@ -147,6 +148,9 @@ export class InternalKeyBuilder {
   }
 }
 
+// 1-byte type + 32-bit crc
+export const kBlockTrailerSize = 5
+
 export class Config {
   static kNumLevels = 7 // 0...6
 
@@ -260,10 +264,16 @@ export class ParsedInternalKey {
 // stores the parsed data in "*result", and returns true.
 //
 // On error, returns false, leaves "*result" in an undefined state.
-export function parseInternalKey(key: Slice, ikey: ParsedInternalKey): boolean {
-  ikey.userKey = extractUserKey(key)
-  ikey.sn = new SequenceNumber(decodeFixed64(key.buffer.slice(key.length - 8)))
-  ikey.valueType = varint.decode(key.buffer.slice(key.length - 1))
+export function parseInternalKey(
+  internalKey: Slice,
+  ikey: ParsedInternalKey
+): boolean {
+  ikey.userKey = extractUserKey(internalKey)
+  const snBuf = Buffer.alloc(8)
+  snBuf.fill(internalKey.buffer.slice(internalKey.length - 8), 0, 7)
+  ikey.sn = new SequenceNumber(decodeFixed64(snBuf))
+  ikey.valueType = internalKey.buffer[internalKey.length - 1]
+  console.log(ikey)
   return true
 }
 
@@ -313,4 +323,43 @@ export interface Entry {
 
 export interface EntryRequireType extends Entry {
   type: ValueType
+}
+
+export interface Filter extends BloomFilter {}
+
+export class BlockHandle {
+  static from(buf: Buffer) {
+    const handle = new BlockHandle()
+    handle.offset = varint.decode(buf)
+    handle.size = varint.decode(buf, varint.decode.bytes)
+    return handle
+  }
+
+  offset!: number
+  size!: number
+
+  get buffer(): Buffer {
+    assert(typeof this.offset === 'number')
+    assert(typeof this.size === 'number')
+    return Buffer.concat([
+      Buffer.from(varint.encode(this.offset)),
+      Buffer.from(varint.encode(this.size)),
+    ])
+  }
+}
+
+export interface MetaBlockEntry {
+  name: string
+  handle: BlockHandle
+}
+
+export interface DataBlockEntry {
+  largest: Slice // a key >= largest key in the data block
+  handle: BlockHandle
+}
+
+export interface BlockContents {
+  data: Slice // Actual contents of data
+  cachable: boolean // True iff data can be cached
+  heapAllocated: boolean // True iff caller should delete[] data.data()
 }

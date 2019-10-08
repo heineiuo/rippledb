@@ -504,7 +504,7 @@ export default class VersionSet {
 
   // Finds the largest key in a vector of files. Returns true if files it not
   // empty.
-  findLargestKey(
+  private findLargestKey(
     icmp: InternalKeyComparator,
     files: FileMetaData[],
     largestKey: InternalKey
@@ -534,7 +534,7 @@ export default class VersionSet {
   // parameters:
   //   in     level_files:      List of files to search for boundary files.
   //   in/out compaction_files: List of files to extend by adding boundary files.
-  addBoundryInputs(
+  private addBoundryInputs(
     icmp: InternalKeyComparator,
     levelFiles: FileMetaData[],
     compactionFiles: FileMetaData[]
@@ -654,12 +654,12 @@ export default class VersionSet {
 
   public addLiveFiles(live: number[]) {
     for (
-      let v = this._dummyVersions.next;
-      v != this._dummyVersions;
-      v = v.next
+      let ver = this._dummyVersions.next;
+      ver != this._dummyVersions;
+      ver = ver.next
     ) {
       for (let level = 0; level < Config.kNumLevels; level++) {
-        const files = v.files[level]
+        const files = ver.files[level]
         for (let i = 0; i < files.length; i++) {
           live.push(files[i].number)
         }

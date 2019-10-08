@@ -11,8 +11,13 @@ import Slice from './Slice'
 import Footer from './SSTableFooter'
 import DataBlock from './SSTableBlock'
 import FilterBlock from './SSTableFilterBlock'
-import { BlockContents, kBlockTrailerSize, BlockHandle } from './SSTableFormat'
-import { CompressionTypes, Entry } from './Format'
+import {
+  BlockContents,
+  BlockHandle,
+  CompressionTypes,
+  kBlockTrailerSize,
+  Entry,
+} from './Format'
 import Status from './Status'
 import { Options } from './Options'
 
@@ -150,7 +155,7 @@ export default class SSTable {
           handle,
           'datablock'
         )) {
-          // console.log(key.buffer, entry.key.buffer)
+          console.log(key.buffer, entry.key.buffer)
           if (entry.key.isEqual(key)) {
             return new Status(Promise.resolve(entry))
           }

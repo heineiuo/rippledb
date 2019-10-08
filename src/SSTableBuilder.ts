@@ -12,10 +12,14 @@ import Slice from './Slice'
 import BloomFilter from './BloomFilter'
 import Footer from './SSTableFooter'
 import { FileHandle } from './Env'
-import { BlockHandle, kBlockTrailerSize } from './SSTableFormat'
 import { encodeFixed32 } from './Coding'
 import { Options } from './Options'
-import { CompressionTypes, kSizeOfUint32 } from './Format'
+import {
+  BlockHandle,
+  CompressionTypes,
+  kBlockTrailerSize,
+  kSizeOfUint32,
+} from './Format'
 
 export default class SSTableBuilder {
   constructor(file: FileHandle, options: Options = new Options()) {
