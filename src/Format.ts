@@ -9,7 +9,8 @@ import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
 import { Comparator } from './Comparator'
-import { decodeFixed64, encodeFixed64 } from './Coding'
+import { decodeFixed64, encodeFixed64, decodeFixed32 } from './Coding'
+import BloomFilter from './BloomFilter'
 
 export enum FileType {
   kLogFile,
@@ -97,6 +98,12 @@ export class InternalKey extends Slice {
   // so , use 72057594037927935 directly
   static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
 
+  static from(slice: Slice): InternalKey {
+    const internalKey = new InternalKey()
+    assert(internalKey.decodeFrom(slice))
+    return internalKey
+  }
+
   constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
     super()
     if (
@@ -113,6 +120,16 @@ export class InternalKey extends Slice {
 
   get userKey() {
     return extractUserKey(this)
+  }
+
+  get type(): ValueType {
+    return this.buffer[this.buffer.length - 1]
+  }
+
+  get sequence(): number {
+    const sequenceBuf = Buffer.alloc(8)
+    sequenceBuf.fill(this.buffer.slice(this.buffer.length - 8), 0, 7)
+    return decodeFixed32(sequenceBuf)
   }
 
   public decodeFrom(slice: Slice) {
@@ -146,6 +163,9 @@ export class InternalKeyBuilder {
     return new InternalKey(slice)
   }
 }
+
+// 1-byte type + 32-bit crc
+export const kBlockTrailerSize = 5
 
 export class Config {
   static kNumLevels = 7 // 0...6
@@ -260,10 +280,15 @@ export class ParsedInternalKey {
 // stores the parsed data in "*result", and returns true.
 //
 // On error, returns false, leaves "*result" in an undefined state.
-export function parseInternalKey(key: Slice, ikey: ParsedInternalKey): boolean {
-  ikey.userKey = extractUserKey(key)
-  ikey.sn = new SequenceNumber(decodeFixed64(key.buffer.slice(key.length - 8)))
-  ikey.valueType = varint.decode(key.buffer.slice(key.length - 1))
+export function parseInternalKey(
+  internalKey: Slice,
+  ikey: ParsedInternalKey
+): boolean {
+  ikey.userKey = extractUserKey(internalKey)
+  const snBuf = Buffer.alloc(8)
+  snBuf.fill(internalKey.buffer.slice(internalKey.length - 8), 0, 7)
+  ikey.sn = new SequenceNumber(decodeFixed64(snBuf))
+  ikey.valueType = internalKey.buffer[internalKey.length - 1]
   return true
 }
 
@@ -286,6 +311,14 @@ export class LookupKey {
     const sequenceBuf = sequence.toFixed64Buffer()
     sequenceBuf.fill(Buffer.from(varint.encode(kValueTypeForSeek)), 7)
     const buf = Buffer.concat([internalKeySizeBuf, userKey.buffer, sequenceBuf])
+    // console.log(
+    //   `buf used to create internalKey`,
+    //   buf,
+    //   'userKey',
+    //   userKey,
+    //   'sequenceBuf',
+    //   sequenceBuf
+    // )
     this._internalKeyBuf = buf.slice(internalKeySizeBuf.length)
     this._userKeyBuf = userKey.buffer
     this._buffer = buf
@@ -307,10 +340,49 @@ export class LookupKey {
 export interface Entry {
   sequence?: SequenceNumber
   type?: ValueType
-  key: Slice
+  key: Slice // this is internal key in most situation, except filter key
   value: Slice
 }
 
 export interface EntryRequireType extends Entry {
   type: ValueType
+}
+
+export interface Filter extends BloomFilter {}
+
+export class BlockHandle {
+  static from(buf: Buffer) {
+    const handle = new BlockHandle()
+    handle.offset = varint.decode(buf)
+    handle.size = varint.decode(buf, varint.decode.bytes)
+    return handle
+  }
+
+  offset!: number
+  size!: number
+
+  get buffer(): Buffer {
+    assert(typeof this.offset === 'number')
+    assert(typeof this.size === 'number')
+    return Buffer.concat([
+      Buffer.from(varint.encode(this.offset)),
+      Buffer.from(varint.encode(this.size)),
+    ])
+  }
+}
+
+export interface MetaBlockEntry {
+  name: string
+  handle: BlockHandle
+}
+
+export interface DataBlockEntry {
+  largest: Slice // a key >= largest key in the data block
+  handle: BlockHandle
+}
+
+export interface BlockContents {
+  data: Slice // Actual contents of data
+  cachable: boolean // True iff data can be cached
+  heapAllocated: boolean // True iff caller should delete[] data.data()
 }

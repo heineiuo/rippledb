@@ -8,7 +8,7 @@
 import { Buffer } from 'buffer'
 import varint from 'varint'
 import assert from 'assert'
-import { BlockHandle } from './SSTableFormat'
+import { BlockHandle } from './Format'
 
 /**
  * fill in end of table, fixed 48 bytes，

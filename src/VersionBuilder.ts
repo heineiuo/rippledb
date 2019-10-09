@@ -13,15 +13,6 @@ import { FileMetaData, BySmallestKey, FileSet } from './VersionFormat'
 import assert from 'assert'
 
 export default class VersionBuilder {
-  _versionSet: VersionSet
-  _base: Version
-  _levels: {
-    addedFiles: FileSet
-    deletedFiles: Set<number>
-  }[]
-
-  cmp: BySmallestKey
-
   constructor(versionSet: VersionSet, base: Version) {
     this._versionSet = versionSet
     this._base = base
@@ -37,8 +28,17 @@ export default class VersionBuilder {
     }
   }
 
+  private _versionSet: VersionSet
+  private _base: Version
+  private _levels: {
+    addedFiles: FileSet
+    deletedFiles: Set<number>
+  }[]
+
+  private cmp: BySmallestKey
+
   // Apply all of the edits in *edit to the current state.
-  apply(edit: VersionEdit) {
+  public apply(edit: VersionEdit) {
     // Update compaction pointers
     // compactPointers: type = <int, InternalKey>
     for (let i = 0; i < edit.compactPointers.length; i++) {
@@ -63,7 +63,10 @@ export default class VersionBuilder {
     }
   }
 
-  saveTo(ver: Version) {
+  public saveTo(ver: Version) {
+    // console.log(`VersionBuilder.saveTo`, ver)
+    // console.log(`VersionBuilder._levels`, this._levels)
+    // console.log(`VersionBuilder._base.files`, this._base.files)
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
     // traverse every level and put added files in right
     // position [ baseFiles_A, addedFiles, baseFiels_B ) ]
@@ -97,7 +100,8 @@ export default class VersionBuilder {
     }
   }
 
-  maybeAddFile(ver: Version, level: number, file: FileMetaData) {
+  private maybeAddFile(ver: Version, level: number, file: FileMetaData) {
+    // console.log(`VersionBuilder maybyAddFile level=${level}`)
     if (this._levels[level].deletedFiles.has(file.number)) {
       // File is deleted: do nothing
     } else {

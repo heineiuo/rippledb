@@ -10,7 +10,7 @@ import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
 import BloomFilter from './BloomFilter'
-import { Filter } from './SSTableFormat'
+import { Filter } from './Format'
 import { FilterPolicy } from './Options'
 import { decodeFixed32 } from './Coding'
 

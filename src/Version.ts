@@ -70,7 +70,7 @@ class State {
       f.fileSize,
       state.ikey,
       state.saver,
-      Version.saveValue
+      Version.saveValue // handleResult
     )
 
     if (!(await state.s.ok())) return false
@@ -135,7 +135,8 @@ export default class Version {
 
   compactionScore: number
   compactionLevel: number
-  files: FileMetaData[][]
+
+  public files: FileMetaData[][]
 
   constructor(versionSet: VersionSet) {
     this.versionSet = versionSet
@@ -149,11 +150,11 @@ export default class Version {
     this.files = Array.from({ length: Config.kNumLevels }, () => [])
   }
 
-  ref() {
+  public ref() {
     this.refs++
   }
 
-  unref() {
+  public unref() {
     assert(this.refs >= 1)
     this.refs--
     if (this.refs === 0) {
@@ -198,7 +199,7 @@ export default class Version {
   // false, makes no more calls.
   //
   // REQUIRES: user portion of internal_key == user_key.
-  async forEachOverlapping(
+  public async forEachOverlapping(
     userKey: Slice,
     internalKey: Slice,
     arg: any,
@@ -208,6 +209,8 @@ export default class Version {
     // Search level-0 in order from newest to oldest.
     const tmp = [] as FileMetaData[]
     // console.log(`forEachOverlapping current.files=`, this.files)
+
+    // console.log(this.files)
 
     for (let i = 0; i < this.files[0].length; i++) {
       const f = this.files[0][i]
@@ -252,7 +255,7 @@ export default class Version {
     }
   }
 
-  someFileOverlapsRange(
+  private someFileOverlapsRange(
     icmp: InternalKeyComparator,
     disjointSortedFile: boolean,
     files: FileMetaData[],
@@ -295,7 +298,7 @@ export default class Version {
   }
 
   // binary search
-  findFile(
+  private findFile(
     icmp: InternalKeyComparator,
     files: FileMetaData[],
     key: Slice
@@ -315,7 +318,7 @@ export default class Version {
     return right
   }
 
-  overlapInLevel(
+  public overlapInLevel(
     level: number,
     smallestUserKey: Slice,
     largestUserKey: Slice
@@ -330,7 +333,7 @@ export default class Version {
   }
 
   // Store in "*inputs" all files in "level" that overlap [begin,end]
-  getOverlappingInputs(
+  public getOverlappingInputs(
     level: number,
     begin: InternalKey,
     end: InternalKey,

@@ -11,15 +11,23 @@ import Slice from './Slice'
 import Footer from './SSTableFooter'
 import DataBlock from './SSTableBlock'
 import FilterBlock from './SSTableFilterBlock'
-import { BlockContents, kBlockTrailerSize, BlockHandle } from './SSTableFormat'
-import { CompressionTypes, Entry } from './Format'
+import {
+  BlockContents,
+  BlockHandle,
+  CompressionTypes,
+  kBlockTrailerSize,
+  InternalKey,
+  Entry,
+  ValueType,
+} from './Format'
 import Status from './Status'
-import { Options } from './Options'
+import { Options, ReadOptions } from './Options'
 
 // Reader
 export default class SSTable {
   static async readBlock(
     buf: Buffer,
+    options: ReadOptions,
     handle: BlockHandle
   ): Promise<BlockContents> {
     const result = {
@@ -53,7 +61,7 @@ export default class SSTable {
     return result
   }
 
-  static async open(fileHandle: FileHandle, options: Options) {
+  static async open(options: Options, fileHandle: FileHandle) {
     const buf = await fileHandle.readFile()
     if (buf.length < Footer.kEncodedLength) {
       throw new Error('file is too short to be an sstable')
@@ -61,7 +69,11 @@ export default class SSTable {
     const footer = new Footer(buf.slice(buf.length - Footer.kEncodedLength))
 
     // console.log(`footer.indexHandle=${JSON.stringify(footer.indexHandle)}`)
-    const indexBlockContents = await this.readBlock(buf, footer.indexHandle)
+    const indexBlockContents = await this.readBlock(
+      buf,
+      new ReadOptions(),
+      footer.indexHandle
+    )
     const indexBlock = new DataBlock(indexBlockContents)
     indexBlock.blockType = 'indexblock'
     const table = new SSTable({
@@ -100,6 +112,7 @@ export default class SSTable {
     }
     const contents = await SSTable.readBlock(
       this._buffer,
+      new ReadOptions(),
       footer.metaIndexHandle
     )
     const meta = new DataBlock(contents)
@@ -114,17 +127,21 @@ export default class SSTable {
 
   private async readFilter(filterHandleBuffer: Buffer) {
     const filterHandle = BlockHandle.from(filterHandleBuffer)
-    // console.log(`filterHandle=${JSON.stringify(filterHandle)}`)
 
-    const readOptions = {} // TODO
-    const block = await SSTable.readBlock(this._buffer, filterHandle)
+    const readOptions = new ReadOptions() // TODO
+    const block = await SSTable.readBlock(
+      this._buffer,
+      readOptions,
+      filterHandle
+    )
     this._filterBuffer = block.data.buffer
     this._filterReader = new FilterBlock(this._options.filterPolicy, block.data)
-    // console.log(`table filterReader: `, this._filterReader)
   }
 
   // key: internalkey
-  public async get(key: Slice): Promise<Status> {
+  public async get(target: Slice): Promise<Status> {
+    const targetInternalKey = InternalKey.from(target)
+
     for (let handleValue of this._indexBlock.iterator(
       this._options.comparator
     )) {
@@ -135,7 +152,7 @@ export default class SSTable {
 
       if (
         !!this._filterReader &&
-        !this._filterReader.keyMayMatch(handle.offset, key)
+        !this._filterReader.keyMayMatch(handle.offset, target)
       ) {
         // Not found
         console.log(
@@ -150,9 +167,16 @@ export default class SSTable {
           handle,
           'datablock'
         )) {
-          // console.log(key.buffer, entry.key.buffer)
-          if (entry.key.isEqual(key)) {
-            return new Status(Promise.resolve(entry))
+          const entryInternalKey = InternalKey.from(entry.key)
+
+          if (
+            entryInternalKey.userKey.isEqual(targetInternalKey.userKey) &&
+            entryInternalKey.sequence <= targetInternalKey.sequence
+          ) {
+            if (entryInternalKey.type === ValueType.kTypeValue) {
+              return new Status(Promise.resolve(entry))
+            }
+            break
           }
         }
         break
