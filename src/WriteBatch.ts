@@ -38,14 +38,22 @@ export default class WriteBatch {
     batch.buffer.fill(encodeFixed32(count), 8, 11)
   }
   static getCount(batch: WriteBatch): number {
-    return decodeFixed32(batch.buffer)
+    return decodeFixed32(batch.buffer.slice(8, 12))
   }
 
-  buffer: Buffer
+  get buffer(): Buffer {
+    return this._buffer
+  }
+
+  set buffer(value: Buffer) {
+    this._buffer = value
+  }
 
   constructor() {
-    this.buffer = Buffer.alloc(WriteBatch.kHeader)
+    this._buffer = Buffer.alloc(WriteBatch.kHeader)
   }
+
+  private _buffer!: Buffer
 
   put(key: Slice, value: Slice) {
     const slice = LogRecord.add(key, value)
