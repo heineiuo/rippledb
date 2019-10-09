@@ -23,7 +23,13 @@ import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
 import VersionEdit from './VersionEdit'
-import { Config, InternalKeyComparator, InternalKey, Entry } from './Format'
+import {
+  Config,
+  InternalKeyComparator,
+  InternalKey,
+  Entry,
+  SequenceNumber,
+} from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
@@ -44,7 +50,7 @@ export default class VersionSet {
 
   // if prevLogNumber is 0, then no log file is being compacted
   prevLogNumber!: number
-  lastSequence!: number
+  private _lastSequence!: number
   hasLastSequence?: boolean
   manifestFileNumber!: number
   nextFileNumber!: number
@@ -71,8 +77,20 @@ export default class VersionSet {
     this.compactPointers = []
   }
 
+  get lastSequence(): number {
+    return this._lastSequence
+  }
+
+  set lastSequence(value: number) {
+    this._lastSequence = value
+  }
+
   get current(): Version {
     return this._current
+  }
+
+  public getLevelSummary() {
+    return JSON.stringify(this._current.files)
   }
 
   public compactRange(
@@ -672,6 +690,8 @@ export default class VersionSet {
   // The caller should delete the iterator when no longer needed.
   public async *makeInputIterator(c: Compaction) {
     let num = 0
+    let space = c.level === 0 ? c.inputs[0].length + 1 : 2
+    const results: Entry[] = Array.from({ length: space })
     for (let which = 0; which < 2; which++) {
       if (c.inputs[which].length > 0) {
         if (c.level + which === 0) {
@@ -679,11 +699,11 @@ export default class VersionSet {
           for (let i = 0; i < files.length; i++) {
             const file = files[i]
             const sstable = await SSTable.open(
+              this._options,
               await this._options.env.open(
                 getTableFilename(this._dbpath, file.number),
                 'r+'
-              ),
-              this._options
+              )
             )
             num++
           }
@@ -692,8 +712,10 @@ export default class VersionSet {
           // Create concatenating iterator for the files from this level
         }
       }
-      // NOT Implemented
-      yield {} as Entry
+    }
+
+    for (let entry of results) {
+      if (!!entry) yield entry
     }
   }
 }

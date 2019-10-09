@@ -101,7 +101,7 @@ export default class VersionBuilder {
   }
 
   private maybeAddFile(ver: Version, level: number, file: FileMetaData) {
-    console.log(`VersionBuilder maybyAddFile level=${level}`)
+    // console.log(`VersionBuilder maybyAddFile level=${level}`)
     if (this._levels[level].deletedFiles.has(file.number)) {
       // File is deleted: do nothing
     } else {

@@ -260,21 +260,13 @@ export default class Database {
   public async write(batch: WriteBatch | null, options?: EncodingOptions) {
     await this.ok()
     await this.makeRoomForWrite(!batch)
-    // console.log('makeRoomForWrite end...')
 
     if (!!batch) {
       let lastSequence = this._versionSet.lastSequence
-      // console.log(`VersionSet last sequence is ${lastSequence}`)
-
-      // await this._log.addRecord(LogRecord.add(sliceKey, sliceValue))
-      // await this._log.addRecord(LogRecord.del(sliceKey))
       WriteBatch.insert(batch, this._memtable)
-      // console.log('insert to memtable success')
       WriteBatch.setSequence(batch, lastSequence + 1)
       lastSequence += WriteBatch.getCount(batch)
-      // await this._log.addRecord(batch.contents())
-
-      // console.log('memtable size is: ', this._memtable.size)
+      this._versionSet.lastSequence = lastSequence
     }
   }
 
@@ -380,40 +372,47 @@ export default class Database {
       return
     }
 
-    let c: Compaction | void
+    let compaction: Compaction | void
     let manualEnd = new InternalKey()
 
     if (!!this._manualCompaction) {
       let m = this._manualCompaction
-      c = this._versionSet.compactRange(m.level, m.begin, m.end)
-      m.done = !c
-      if (!!c) {
-        manualEnd = c.inputs[0][c.numInputFiles(0) - 1].largest
+      compaction = this._versionSet.compactRange(m.level, m.begin, m.end)
+      m.done = !compaction
+      if (!!compaction) {
+        manualEnd =
+          compaction.inputs[0][compaction.numInputFiles(0) - 1].largest
       }
       // Manual compaction ...
     } else {
-      c = this._versionSet.pickCompaction()
+      compaction = this._versionSet.pickCompaction()
     }
 
     let status = new Status()
 
-    if (!c) {
+    if (!compaction) {
       // console.log('Nothing to do')
-    } else if (!this._manualCompaction && c.isTrivialMode()) {
+    } else if (!this._manualCompaction && compaction.isTrivialMode()) {
       // console.log('Move file to next level')
-      assert(c.numInputFiles(0) === 1)
-      const f = c.inputs[0][0]
-      c.edit.deleteFile(c.level, f.number)
-      c.edit.addFile(c.level + 1, f.number, f.fileSize, f.smallest, f.largest)
-      status = await this._versionSet.logAndApply(c.edit)
+      assert(compaction.numInputFiles(0) === 1)
+      const f = compaction.inputs[0][0]
+      compaction.edit.deleteFile(compaction.level, f.number)
+      compaction.edit.addFile(
+        compaction.level + 1,
+        f.number,
+        f.fileSize,
+        f.smallest,
+        f.largest
+      )
+      status = await this._versionSet.logAndApply(compaction.edit)
     } else {
-      const compact = new CompactionState(c)
+      const compact = new CompactionState(compaction)
       const status = await this.doCompactionWork(compact)
       if (!(await status.ok())) {
         await this.recordBackgroundError(status)
       }
       await this.cleanupCompaction(compact)
-      c.releaseInputs()
+      compaction.releaseInputs()
       await this.deleteObsoleteFiles()
     }
 
@@ -457,6 +456,7 @@ export default class Database {
     let currentUserKey = new Slice()
     let hasCurrentUserKey: boolean = false
     let lastSequenceForKey = InternalKey.kMaxSequenceNumber
+    console.log(`doCompactionWork before make input iterator`)
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
     )) {
@@ -556,6 +556,7 @@ export default class Database {
     }
 
     // TODO log level summary
+    console.log(`compacted to: ${this._versionSet.getLevelSummary()}`)
 
     return status
   }

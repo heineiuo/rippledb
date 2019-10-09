@@ -14,6 +14,7 @@ import {
   InternalKeyComparator,
   LookupKey,
   Entry,
+  InternalKey,
 } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'

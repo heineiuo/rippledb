@@ -34,7 +34,7 @@ export class TableCache {
     options: ReadOptions,
     fileNumber: number,
     fileSize: number,
-    k: Slice,
+    key: Slice,
     arg: any,
     handleResult: (arg: any, key: Slice, value: Slice) => void
   ): Promise<Status> {
@@ -42,7 +42,8 @@ export class TableCache {
     if (await status.ok()) {
       const tf = (await status.promise) as TableAndFile
       const table = tf.table
-      status = await table.get(k)
+      // get value from table file
+      status = await table.get(key)
     }
 
     if (await status.ok()) {
@@ -58,7 +59,7 @@ export class TableCache {
     const tf = {} as TableAndFile
     if (await status.ok()) {
       tf.file = await status.promise
-      status = new Status(Table.open(await status.promise, this._options))
+      status = new Status(Table.open(this._options, await status.promise))
     }
     if (await status.ok()) {
       tf.table = await status.promise
@@ -70,4 +71,6 @@ export class TableCache {
 
     return status
   }
+
+  *iterator(): IterableIterator<TableAndFile> {}
 }

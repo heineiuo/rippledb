@@ -9,7 +9,7 @@ import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
 import { Comparator } from './Comparator'
-import { decodeFixed64, encodeFixed64 } from './Coding'
+import { decodeFixed64, encodeFixed64, decodeFixed32 } from './Coding'
 import BloomFilter from './BloomFilter'
 
 export enum FileType {
@@ -98,6 +98,12 @@ export class InternalKey extends Slice {
   // so , use 72057594037927935 directly
   static kMaxSequenceNumber = new SequenceNumber(72057594037927935)
 
+  static from(slice: Slice): InternalKey {
+    const internalKey = new InternalKey()
+    assert(internalKey.decodeFrom(slice))
+    return internalKey
+  }
+
   constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
     super()
     if (
@@ -114,6 +120,16 @@ export class InternalKey extends Slice {
 
   get userKey() {
     return extractUserKey(this)
+  }
+
+  get type(): ValueType {
+    return this.buffer[this.buffer.length - 1]
+  }
+
+  get sequence(): number {
+    const sequenceBuf = Buffer.alloc(8)
+    sequenceBuf.fill(this.buffer.slice(this.buffer.length - 8), 0, 7)
+    return decodeFixed32(sequenceBuf)
   }
 
   public decodeFrom(slice: Slice) {
@@ -273,7 +289,6 @@ export function parseInternalKey(
   snBuf.fill(internalKey.buffer.slice(internalKey.length - 8), 0, 7)
   ikey.sn = new SequenceNumber(decodeFixed64(snBuf))
   ikey.valueType = internalKey.buffer[internalKey.length - 1]
-  console.log(ikey)
   return true
 }
 
@@ -296,6 +311,14 @@ export class LookupKey {
     const sequenceBuf = sequence.toFixed64Buffer()
     sequenceBuf.fill(Buffer.from(varint.encode(kValueTypeForSeek)), 7)
     const buf = Buffer.concat([internalKeySizeBuf, userKey.buffer, sequenceBuf])
+    // console.log(
+    //   `buf used to create internalKey`,
+    //   buf,
+    //   'userKey',
+    //   userKey,
+    //   'sequenceBuf',
+    //   sequenceBuf
+    // )
     this._internalKeyBuf = buf.slice(internalKeySizeBuf.length)
     this._userKeyBuf = userKey.buffer
     this._buffer = buf
@@ -317,7 +340,7 @@ export class LookupKey {
 export interface Entry {
   sequence?: SequenceNumber
   type?: ValueType
-  key: Slice
+  key: Slice // this is internal key in most situation, except filter key
   value: Slice
 }
 

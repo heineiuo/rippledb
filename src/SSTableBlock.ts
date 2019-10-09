@@ -7,7 +7,7 @@
 
 import { Comparator } from './Comparator'
 import { decodeFixed32 } from './Coding'
-import { BlockContents, kSizeOfUint32, Entry } from './Format'
+import { BlockContents, kSizeOfUint32, Entry, InternalKey } from './Format'
 import Slice from './Slice'
 
 interface RestartedEntry {

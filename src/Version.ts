@@ -70,7 +70,7 @@ class State {
       f.fileSize,
       state.ikey,
       state.saver,
-      Version.saveValue
+      Version.saveValue // handleResult
     )
 
     if (!(await state.s.ok())) return false
@@ -102,7 +102,6 @@ export default class Version {
       saver.state = SaverState.kCorrupt
     } else {
       if (saver.ucmp.compare(parsedKey.userKey, saver.userKey) == 0) {
-        console.log(parsedKey.valueType)
         saver.state =
           parsedKey.valueType == ValueType.kTypeValue
             ? SaverState.kFound
@@ -211,7 +210,7 @@ export default class Version {
     const tmp = [] as FileMetaData[]
     // console.log(`forEachOverlapping current.files=`, this.files)
 
-    console.log(this.files)
+    // console.log(this.files)
 
     for (let i = 0; i < this.files[0].length; i++) {
       const f = this.files[0][i]
