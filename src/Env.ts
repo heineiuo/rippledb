@@ -6,6 +6,7 @@
  */
 
 import fs from 'fs'
+import { getInfoLogFilename } from './Filename'
 
 export interface FileHandle extends fs.promises.FileHandle {}
 export interface Direct extends fs.Dirent {}
@@ -15,6 +16,7 @@ export interface Env {
   now(): number
   access(dbpath: string): Promise<void>
   mkdir(dbpath: string): Promise<void>
+  rename(oldpath: string, newpath: string): Promise<void>
   readFile(dbpath: string): Promise<Buffer>
   readFile(
     dbpath: string,
@@ -25,6 +27,26 @@ export interface Env {
   open(dbpath: string, flag: string): Promise<FileHandle>
   unlink(dbpath: string): Promise<void>
   readdir(dbpath: string): Promise<Direct[]>
+  openInfoLog(dbpath: string): Promise<FileHandle>
+}
+
+export class InfoLog {
+  constructor(fd: FileHandle) {
+    this._fd = fd
+  }
+
+  private _fd: FileHandle
+
+  async log(message: string) {
+    let finalMessage = `${new Date()} ${message}\n`
+    await this._fd.appendFile(finalMessage)
+  }
+}
+
+export function Log(infoLog: InfoLog, message: string) {
+  if (infoLog) {
+    return infoLog.log(message)
+  }
 }
 
 export class NodeEnv implements Env {
@@ -46,9 +68,15 @@ export class NodeEnv implements Env {
   writeFile = fs.promises.writeFile
   readFile = fs.promises.readFile
   open = fs.promises.open
+  rename = fs.promises.rename
   unlink = fs.promises.unlink
 
   readdir(dbpath: string) {
     return fs.promises.readdir(dbpath, { withFileTypes: true })
+  }
+
+  openInfoLog(dbpath: string) {
+    const filename = getInfoLogFilename(dbpath)
+    return fs.promises.open(filename, 'a+')
   }
 }

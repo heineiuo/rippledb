@@ -40,12 +40,14 @@ import {
   getLogFilename,
   getManifestFilename,
   getTableFilename,
+  getOldInfoLogFilename,
+  getInfoLogFilename,
 } from './Filename'
 import WriteBatch from './WriteBatch'
 import Status from './Status'
 import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator } from './Comparator'
-import { Direct } from './Env'
+import { Direct, InfoLog, Log } from './Env'
 import { TableCache } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 
@@ -172,9 +174,18 @@ export default class Database {
 
   private async recover(): Promise<void> {
     if (!(await this.existCurrent())) {
+      try {
+        await this._options.env.rename(
+          getInfoLogFilename(this._dbpath),
+          getOldInfoLogFilename(this._dbpath)
+        )
+      } catch (e) {}
       await this.initVersionEdit()
     }
 
+    this._options.infoLog = new InfoLog(
+      await this._options.env.openInfoLog(this._dbpath)
+    )
     await this._versionSet.recover()
     this._ok = true
   }
@@ -601,7 +612,7 @@ export default class Database {
     meta.number = this._versionSet.getNextFileNumber()
     meta.largest = new InternalKey()
     this.pendingOutputs.push(meta.number)
-    console.log(`Level-0 table #${meta.number}: started`)
+    Log(this._options.infoLog, `Level-0 table #${meta.number}: started`)
     const fileHandler = getTableFilename(this._dbpath, meta.number)
     let status = new Status(this._options.env.open(fileHandler, 'a+'))
     if (!(await status.ok())) {
@@ -625,7 +636,8 @@ export default class Database {
     }
     meta.fileSize = tableBuilder.fileSize
 
-    console.log(
+    Log(
+      this._options.infoLog,
       `Level-0 table #${meta.number}: ${
         meta.fileSize
       } bytes ${await status.ok()}`
