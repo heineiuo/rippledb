@@ -12,7 +12,6 @@ import Slice from './Slice'
 import { Env, NodeEnv } from './Env'
 import { Snapshot } from './Snapshot'
 import { SequenceNumber } from './Format'
-import InfoLog from './InfoLog'
 
 export type Encodings = 'string' | 'buffer' | 'json'
 
