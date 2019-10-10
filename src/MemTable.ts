@@ -18,7 +18,7 @@ import {
 } from './Format'
 import Skiplist from './Skiplist'
 import Slice from './Slice'
-import { decodeFixed64, getLengthPrefixedSlice } from './Coding'
+import { getLengthPrefixedSlice } from './Coding'
 
 export default class MemTable {
   static getValueSlice(key: Slice): Slice | null {
@@ -36,7 +36,7 @@ export default class MemTable {
     return new Slice(value)
   }
 
-  // key: <Buffer internalkeyzise><Buffer internalkey><Buffer valuesize><Buffer value>
+  // memkey: <Buffer internalkeyzise><Buffer internalkey><Buffer valuesize><Buffer value>
   static getEntryFromMemTableKey(key: Slice): Entry {
     let index = 0
 
@@ -66,10 +66,11 @@ export default class MemTable {
     this.refs = 0
   }
 
+  // a and b is memtable key
   keyComparator = (a: Slice, b: Slice): number => {
-    const a1 = getLengthPrefixedSlice(a)
-    const b1 = getLengthPrefixedSlice(b)
-    return this.internalKeyComparator.compare(a1, b1)
+    const internalKeyBufA = getLengthPrefixedSlice(a)
+    const internalKeyBufB = getLengthPrefixedSlice(b)
+    return this.internalKeyComparator.compare(internalKeyBufA, internalKeyBufB)
   }
 
   ref() {
@@ -142,9 +143,22 @@ export default class MemTable {
   // this key is lookup key
   get(key: LookupKey): any {
     const memkey = key.memKey
-    const result = this._list.get(memkey)
-    if (!result) return result
-    return MemTable.getValueSlice(result)
+    const node = this._list.seek(memkey)
+    if (!!node) {
+      const entry = MemTable.getEntryFromMemTableKey(node.key)
+      const internalKey = InternalKey.from(entry.key)
+      if (
+        this.internalKeyComparator.userComparator.compare(
+          internalKey.userKey,
+          key.userKey
+        ) === 0
+      ) {
+        const valueType = internalKey.type
+        if (valueType === ValueType.kTypeValue) {
+          return entry.value
+        }
+      }
+    }
   }
 
   *iterator(): IterableIterator<Entry> {

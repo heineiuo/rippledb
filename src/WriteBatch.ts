@@ -31,6 +31,10 @@ export default class WriteBatch {
     }
   }
 
+  static getContents(batch: WriteBatch): Buffer {
+    return batch.buffer.slice(WriteBatch.kHeader)
+  }
+
   static setSequence(batch: WriteBatch, sequence: number) {
     batch.buffer.fill(new SequenceNumber(sequence).toFixed64Buffer(), 0, 7)
   }

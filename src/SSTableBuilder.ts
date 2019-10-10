@@ -22,12 +22,13 @@ import {
 } from './Format'
 
 export default class SSTableBuilder {
-  constructor(file: FileHandle, options: Options = new Options()) {
+  constructor(file: FileHandle, options: Options) {
+    assert(!!options)
     this._file = file
     this._fileSize = 0
     this._metaBlock = new FilterBlockBuilder()
     this._footer = new Footer(Buffer.alloc(48))
-    this._numEntries = 0
+    this._numberOfEntries = 0
     this._offset = 0
     this._pendingIndexEntry = false
     this._closed = false
@@ -40,7 +41,7 @@ export default class SSTableBuilder {
   }
 
   private _closed: boolean
-  private _numEntries: number
+  private _numberOfEntries: number
   private _options: Options
   private _file: FileHandle
   private _fileSize: number
@@ -55,7 +56,7 @@ export default class SSTableBuilder {
 
   async add(key: Slice, value: Slice) {
     assert(!this._closed)
-    if (this._numEntries > 0) {
+    if (this._numberOfEntries > 0) {
       assert(
         this._options.comparator.compare(key, this._lastKey) > 0,
         `new key must bigger then last key`
@@ -75,7 +76,7 @@ export default class SSTableBuilder {
     }
 
     this._lastKey = new Slice(key)
-    this._numEntries++
+    this._numberOfEntries++
     this._dataBlock.add(key, value)
 
     if (this._dataBlock.currentSizeEstimate() > this._options.blockSize) {
@@ -84,7 +85,7 @@ export default class SSTableBuilder {
   }
 
   get numEntries() {
-    return this._numEntries
+    return this._numberOfEntries
   }
 
   get fileSize() {

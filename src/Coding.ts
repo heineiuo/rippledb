@@ -49,6 +49,9 @@ export function decodeFixed32(buf: Buffer): number {
 
 export function getLengthPrefixedSlice(key: Slice): Slice {
   const internalKeySize = varint.decode(key.buffer)
-  const internalKeyBuffer = key.buffer.slice(0, internalKeySize)
+  const internalKeyBuffer = key.buffer.slice(
+    varint.decode.bytes,
+    varint.decode.bytes + internalKeySize
+  )
   return new Slice(internalKeyBuffer)
 }
