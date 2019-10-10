@@ -177,7 +177,6 @@ export default class VersionSet {
     // Use version builder to create a new version
     for await (let slice of reader.iterator()) {
       const edit = VersionEditRecord.decode(slice)
-      // console.log(edit)
       builder.apply(edit)
 
       // Update manifest_file_number_， next_file_number_， last_sequence_， log_number_， prev_log_number_

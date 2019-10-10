@@ -66,9 +66,6 @@ export default class SSTableBuilder {
       assert(this._dataBlock.isEmpty())
       this._options.comparator.findShortestSeparator(this._lastKey, key)
       let handleEncoding = this._pendingHandle.buffer
-      // console.log(
-      //   `table indexblock handle = ${this._pendingHandle.offset}, ${this._pendingHandle.size}`
-      // )
       this._indexBlock.add(this._lastKey, new Slice(handleEncoding))
       this._pendingIndexEntry = false
     }
@@ -178,14 +175,10 @@ export default class SSTableBuilder {
     if (this._pendingIndexEntry) {
       this._options.comparator.findShortSuccessor(this._lastKey)
       const handleEncoding = this._pendingHandle.buffer
-      // console.log(
-      //   `table indexblock handle = ${this._pendingHandle.offset}, ${this._pendingHandle.size} finish...`
-      // )
       this._indexBlock.add(this._lastKey, new Slice(handleEncoding))
       this._pendingIndexEntry = false
     }
     await this.writeBlock(this._indexBlock, indexBlockHandle)
-    // console.log(`indexBlockHandle=${JSON.stringify(indexBlockHandle)}`)
 
     // Write footer
     this._footer.put({

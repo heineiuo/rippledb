@@ -75,8 +75,6 @@ export default class Skiplist {
       level--
     }
 
-    // console.log(`${key} find times: ${times}`)
-
     return prevNode
   }
 

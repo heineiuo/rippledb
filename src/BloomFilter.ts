@@ -96,8 +96,6 @@ export default class BloomFilter implements FilterPolicy {
     this._bitBuffer.resizeBits(bits)
     bits = this._bitBuffer.bits
 
-    // console.log('putKeys bits', bits)
-
     for (let i = 0; i < n; i++) {
       // Use double-hashing to generate a sequence of hash values.
       // See analysis in [Kirsch,Mitzenmacher 2006].
@@ -105,7 +103,6 @@ export default class BloomFilter implements FilterPolicy {
       let delta = (h >> 17) | (h << 15)
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits
-        // console.log(`putkeys bitPosition`, bitPosition)
         this._bitBuffer.set(bitPosition, true)
         h += delta
       }

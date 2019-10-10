@@ -159,7 +159,6 @@ export default class Database {
     edit.logNumber = 0
     edit.nextFileNumber = 2
     edit.lastSequence = 0
-    // console.log('initVersionEdit', edit)
     const writer = new LogWriter(
       this._options,
       getManifestFilename(this._dbpath, 1)
@@ -310,14 +309,14 @@ export default class Database {
         // We have filled up the current memtable, but the previous
         // one is still being compacted, so we wait.
         // TODO wait
-        console.log('Current memtable full; waiting...\n')
+        Log(this._options.infoLog, 'Current memtable full; waiting...\n')
         // await this._backgroundWorkingPromise
       } else if (
         this._versionSet.getNumLevelFiles(0) >= Config.kL0StopWritesTrigger
       ) {
         // There are too many level-0 files.
         // TODO wait
-        console.log('Too many L0 files; waiting...\n')
+        Log(this._options.infoLog, 'Too many L0 files; waiting...\n')
         // await this._backgroundWorkingPromise
       } else {
         // Attempt to switch to a new memtable and trigger compaction of old
@@ -350,17 +349,6 @@ export default class Database {
     ) {
       // No work to be done
     } else {
-      // console.log(
-      //   `this._backgroundCompactionScheduled=${this._backgroundCompactionScheduled} so passed`
-      // )
-      // console.log(
-      //   `this._bgError && !(await this._bgError.ok())=${this._bgError &&
-      //     !(await this._bgError.ok())} so passed`
-      // )
-      // console.log(
-      //   `!this._immtable=${!this._immtable} !this._manualCompaction=${!this
-      //     ._manualCompaction} !this._versionSet.needsCompaction()=${!this._versionSet.needsCompaction()} so passed`
-      // )
       this._backgroundCompactionScheduled = true
       // ignore: Env.Schedule, BGWork
       await this.backgroundCall()
@@ -402,9 +390,7 @@ export default class Database {
     let status = new Status()
 
     if (!compaction) {
-      // console.log('Nothing to do')
     } else if (!this._manualCompaction && compaction.isTrivialMode()) {
-      // console.log('Move file to next level')
       assert(compaction.numInputFiles(0) === 1)
       const f = compaction.inputs[0][0]
       compaction.edit.deleteFile(compaction.level, f.number)
@@ -428,9 +414,8 @@ export default class Database {
     }
 
     if (await status.ok()) {
-      // console.log('Done')
     } else {
-      console.log(`Compaction error...`)
+      Log(this._options.infoLog, `Compaction error...`)
     }
 
     if (!!this._manualCompaction) {
@@ -452,7 +437,7 @@ export default class Database {
   private async doCompactionWork(compact: CompactionState): Promise<Status> {
     const startTime: number = this._options.env.now()
     let immTime = 0 // Time spent doing imm_ compactions
-    console.log('Compacting files...')
+    Log(this._options.infoLog, 'Compacting files...')
     assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0)
     assert(!compact.builder)
     assert(!compact.outfile)
@@ -467,7 +452,7 @@ export default class Database {
     let currentUserKey = new Slice()
     let hasCurrentUserKey: boolean = false
     let lastSequenceForKey = InternalKey.kMaxSequenceNumber
-    console.log(`doCompactionWork before make input iterator`)
+    Log(this._options.infoLog, `doCompactionWork before make input iterator`)
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
     )) {
@@ -567,13 +552,15 @@ export default class Database {
     }
 
     // TODO log level summary
-    console.log(`compacted to: ${this._versionSet.getLevelSummary()}`)
+    Log(
+      this._options.infoLog,
+      `compacted to: ${this._versionSet.getLevelSummary()}`
+    )
 
     return status
   }
 
   private async compactMemTable() {
-    // console.log(`compactMemTable start`)
     assert(!!this._immtable)
 
     // Save the contents of the memtable as a new Table
@@ -616,7 +603,6 @@ export default class Database {
     const fileHandler = getTableFilename(this._dbpath, meta.number)
     let status = new Status(this._options.env.open(fileHandler, 'a+'))
     if (!(await status.ok())) {
-      console.log(status.message())
       return status
     }
     const tableBuilder = new SSTableBuilder(await status.promise)
@@ -631,7 +617,6 @@ export default class Database {
 
     status = new Status(tableBuilder.finish())
     if (!(await status.ok())) {
-      console.log(status.message())
       return status
     }
     meta.fileSize = tableBuilder.fileSize
@@ -692,7 +677,8 @@ export default class Database {
   private async installCompactionResults(
     compact: CompactionState
   ): Promise<Status> {
-    console.log(
+    Log(
+      this._options.infoLog,
       `Compacted ${compact.compaction.numInputFiles(0)}@${
         compact.compaction.level
       } + ${compact.compaction.numInputFiles(1)}@${compact.compaction.level +
@@ -741,9 +727,6 @@ export default class Database {
     begin: Slice,
     end: Slice
   ) {
-    // console.log(
-    //   `manualCompactRangeWithLevel level:${level} begin:${begin.toString()} end:${end.toString()}`
-    // )
     assert(level >= 0)
     assert(level + 1 < Config.kNumLevels)
     let beginStorage = new InternalKey()
@@ -795,7 +778,6 @@ export default class Database {
 
   private async recordBackgroundError(status: Status) {
     await status.ok()
-    console.log(status.message())
   }
 
   private async cleanupCompaction(compact: CompactionState) {
@@ -862,7 +844,7 @@ export default class Database {
           if (type == FileType.kTableFile) {
             // TODO this.tableCache.Evict(number)
           }
-          console.log(`Delete type=${type} #${number}`)
+          Log(this._options.infoLog, `Delete type=${type} #${number}`)
         }
       }
     }
@@ -904,7 +886,8 @@ export default class Database {
         this._options.env.access(getTableFilename(this._dbpath, outputNumber))
       )
       if (await status.ok()) {
-        console.log(
+        Log(
+          this._options.infoLog,
           `Generated table #${outputNumber}@${compact.compaction.level}: ${currentEntries} keys, ${currentBytes} bytes`
         )
       }

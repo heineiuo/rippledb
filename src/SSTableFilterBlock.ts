@@ -70,15 +70,11 @@ export default class SSTableFilterBlock {
       const limit = decodeFixed32(
         this._buffer.slice(this._offset + index * 4 + 4)
       )
-      console.log(
-        `keyMayMatch index=${index} this._num=${this._num} start=${start} limit=${limit}`
-      )
 
       if (start <= limit && limit <= this._offset - this._data) {
         const filter = new Slice(
           this._buffer.slice(this._data + start, limit - start)
         )
-        console.log(`filter buffer `, filter.buffer)
         return this._policy.keyMayMatch(key, filter)
       } else if (start == limit) {
         // Empty filters do not match any keys

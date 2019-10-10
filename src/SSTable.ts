@@ -68,7 +68,6 @@ export default class SSTable {
     }
     const footer = new Footer(buf.slice(buf.length - Footer.kEncodedLength))
 
-    // console.log(`footer.indexHandle=${JSON.stringify(footer.indexHandle)}`)
     const indexBlockContents = await this.readBlock(
       buf,
       new ReadOptions(),
@@ -145,21 +144,13 @@ export default class SSTable {
     for (let handleValue of this._indexBlock.iterator(
       this._options.comparator
     )) {
-      // console.log(`sstable.get start`)
       const handle = BlockHandle.from(handleValue.value.buffer)
-      // console.log(`sstable.get handleValue=`, handleValue.value)
-      // console.log(`sstable.get indexBlock handle=${JSON.stringify(handle)}`)
 
       if (
         !!this._filterReader &&
         !this._filterReader.keyMayMatch(handle.offset, target)
       ) {
         // Not found
-        console.log(
-          `not found... because ${
-            !this._filterReader ? 'no filter reader' : 'keyNotMatch'
-          }`
-        )
       } else {
         for (let entry of this.blockIterator(
           this,
