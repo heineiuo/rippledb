@@ -5,6 +5,7 @@ import SSTable from '../SSTable'
 import SSTableBuilder from '../SSTableBuilder'
 import { getTableFilename } from '../Filename'
 import { createDir, cleanup } from '../../fixtures/dbpath'
+import { Options } from '../Options'
 
 const dbpath = createDir()
 afterAll(() => cleanup(dbpath))
@@ -27,7 +28,7 @@ function sortedValue(index) {
 test('sstable', async () => {
   await fs.promises.mkdir(dbpath, { recursive: true })
   const file = await fs.promises.open(getTableFilename(dbpath, 1), 'w')
-  const builder = new SSTableBuilder(file)
+  const builder = new SSTableBuilder(file, new Options())
 
   let i = 0
   while (i < 5000) {
