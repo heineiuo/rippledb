@@ -40,7 +40,7 @@ export default class SkiplistNode {
     }
   }
 
-  next(): SkiplistNode {
-    return this.levels[0]
+  next(level: number): SkiplistNode {
+    return this.levels[level]
   }
 }
