@@ -273,9 +273,12 @@ export default class Database {
 
     if (!!batch) {
       let lastSequence = this._versionSet.lastSequence
-      WriteBatch.insert(batch, this._memtable)
       WriteBatch.setSequence(batch, lastSequence + 1)
       lastSequence += WriteBatch.getCount(batch)
+      // TODO add to log
+      await this._log.addRecord(new Slice(WriteBatch.getContents(batch)))
+
+      WriteBatch.insert(batch, this._memtable)
       this._versionSet.lastSequence = lastSequence
     }
   }
@@ -605,21 +608,21 @@ export default class Database {
     if (!(await status.ok())) {
       return status
     }
-    const tableBuilder = new SSTableBuilder(await status.promise)
+    const builder = new SSTableBuilder(await status.promise, this._options)
     for (let entry of mem.iterator()) {
       if (!meta.smallest) {
         meta.smallest = new InternalKey()
         meta.smallest.decodeFrom(entry.key)
       }
       meta.largest.decodeFrom(entry.key)
-      await tableBuilder.add(entry.key, entry.value)
+      await builder.add(entry.key, entry.value)
     }
 
-    status = new Status(tableBuilder.finish())
+    status = new Status(builder.finish())
     if (!(await status.ok())) {
       return status
     }
-    meta.fileSize = tableBuilder.fileSize
+    meta.fileSize = builder.fileSize
 
     Log(
       this._options.infoLog,
@@ -669,7 +672,7 @@ export default class Database {
     const fname = getTableFilename(this._dbpath, fileNumber)
     const s = new Status(this._options.env.open(fname, 'a+'))
     if (await s.ok()) {
-      compact.builder = new SSTableBuilder(await s.promise)
+      compact.builder = new SSTableBuilder(await s.promise, this._options)
     }
     return s
   }
