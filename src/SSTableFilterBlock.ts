@@ -5,12 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from 'buffer'
-import assert from 'assert'
 import varint from 'varint'
 import Slice from './Slice'
-import BloomFilter from './BloomFilter'
-import { Filter } from './Format'
 import { FilterPolicy } from './Options'
 import { decodeFixed32 } from './Coding'
 
@@ -62,8 +58,6 @@ export default class SSTableFilterBlock {
   }
 
   public keyMayMatch(blockOffset: number, key: Slice): boolean {
-    // TODO
-    return true
     let index = blockOffset >> this._baseLg
     if (index < this._num) {
       const start = decodeFixed32(this._buffer.slice(this._offset + index * 4))
@@ -71,9 +65,9 @@ export default class SSTableFilterBlock {
         this._buffer.slice(this._offset + index * 4 + 4)
       )
 
-      if (start <= limit && limit <= this._offset - this._data) {
+      if (start <= limit && limit <= this._offset + this._size) {
         const filter = new Slice(
-          this._buffer.slice(this._data + start, limit - start)
+          this._buffer.slice(this._offset + start, this._offset + limit - start)
         )
         return this._policy.keyMayMatch(key, filter)
       } else if (start == limit) {
@@ -82,27 +76,5 @@ export default class SSTableFilterBlock {
       }
     }
     return true // Errors are treated as potential matches
-  }
-
-  public *filterIterator(): IterableIterator<Filter> {
-    let filterStart = this._offset
-    let filterEnd = 0
-    for (let offsetResult of this.offsetIterator()) {
-      filterEnd = offsetResult
-      const filter = new BloomFilter(this.buffer.slice(filterStart, filterEnd))
-      filterStart += offsetResult
-      yield filter
-    }
-  }
-
-  private *offsetIterator() {
-    const start = this.beginningOfOffset
-    const offsetTotalCount = this._size - 2 - start
-    let count = 0
-    while (count < offsetTotalCount) {
-      const offset = varint.decode(this._buffer.slice(start + count))
-      count += 1
-      yield offset
-    }
   }
 }
