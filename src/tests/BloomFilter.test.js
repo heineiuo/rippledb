@@ -15,7 +15,7 @@ test('bloom filter', () => {
 
   const filter2 = new BloomFilter(filter.buffer)
 
-  expect(filter2.keyMayMatch('a')).toBe(true)
-  expect(filter2.keyMayMatch('a1')).toBe(true)
-  expect(filter2.keyMayMatch('xxx')).toBe(false)
+  expect(filter2.keyMayMatch('a', filter2)).toBe(true)
+  expect(filter2.keyMayMatch('a1', filter2)).toBe(true)
+  expect(filter2.keyMayMatch('xxx', filter2)).toBe(false)
 })

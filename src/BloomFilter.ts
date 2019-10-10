@@ -117,13 +117,15 @@ export default class BloomFilter implements FilterPolicy {
     this._size = this._buffer.length
   }
 
-  public keyMayMatch(key: Slice): boolean {
-    if (this.kNumber > 30) return true
+  public keyMayMatch(key: Slice, bloomFilter: Slice): boolean {
+    const filter = new BloomFilter(bloomFilter.buffer)
+
+    if (filter.kNumber > 30) return true
     let h = BloomHash(key.toString())
     let delta = (h >> 17) | (h << 15)
-    for (let j = 0; j < this.kNumber; j++) {
-      const bitPosition = h % this._bitBuffer.bits
-      if (!this._bitBuffer.get(bitPosition)) return false
+    for (let j = 0; j < filter.kNumber; j++) {
+      const bitPosition = h % filter._bitBuffer.bits
+      if (!filter._bitBuffer.get(bitPosition)) return false
       h += delta
     }
     return true

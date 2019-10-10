@@ -11,7 +11,7 @@ import { Comparator } from './Comparator'
 import Slice from './Slice'
 import { Env, NodeEnv, InfoLog } from './Env'
 import { Snapshot } from './Snapshot'
-import { SequenceNumber } from './Format'
+import { SequenceNumber, Filter } from './Format'
 
 export type Encodings = 'string' | 'buffer' | 'json'
 
