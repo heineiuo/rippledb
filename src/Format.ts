@@ -245,15 +245,23 @@ export class InternalKeyComparator implements Comparator {
     }
   }
 
-  compare(key1: Slice, key2: Slice) {
-    // first compare user key
+  // key1 and key2 is internal key buffer
+  compare(key1: Slice, key2: Slice): number {
+    // Order by:
+    //    increasing user key (according to user-supplied comparator)
+    //    decreasing sequence number
+    //    decreasing type (though sequence# should be enough to disambiguate)
     const userKey1 = extractUserKey(key1)
     const userKey2 = extractUserKey(key2)
     const r = this.userComparator.compare(userKey1, userKey2)
     if (r !== 0) return r
-    // then compare sequence number
-    const sn1 = varint.decode(key1.buffer, key1.size - 8)
-    const sn2 = varint.decode(key2.buffer, key2.size - 8)
+    const sn1Buf = Buffer.alloc(8)
+    const sn2Buf = Buffer.alloc(8)
+    sn1Buf.fill(key1.buffer.slice(key1.size - 8), 0, 7)
+    sn2Buf.fill(key2.buffer.slice(key2.size - 8), 0, 7)
+
+    const sn1 = decodeFixed64(sn1Buf)
+    const sn2 = decodeFixed64(sn2Buf)
     if (sn1 === sn2) return 0
     return sn1 > sn2 ? -1 : 1
   }
