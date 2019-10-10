@@ -311,14 +311,6 @@ export class LookupKey {
     const sequenceBuf = sequence.toFixed64Buffer()
     sequenceBuf.fill(Buffer.from(varint.encode(kValueTypeForSeek)), 7)
     const buf = Buffer.concat([internalKeySizeBuf, userKey.buffer, sequenceBuf])
-    // console.log(
-    //   `buf used to create internalKey`,
-    //   buf,
-    //   'userKey',
-    //   userKey,
-    //   'sequenceBuf',
-    //   sequenceBuf
-    // )
     this._internalKeyBuf = buf.slice(internalKeySizeBuf.length)
     this._userKeyBuf = userKey.buffer
     this._buffer = buf

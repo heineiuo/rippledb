@@ -75,7 +75,6 @@ class State {
 
     if (!(await state.s.ok())) return false
 
-    // console.log(`before switch state.saver.state=${state.saver.state}`)
     switch (state.saver.state) {
       case SaverState.kNotFound:
         return true // Keep searching in other files
@@ -185,8 +184,6 @@ export default class Version {
       State.match
     )
 
-    // console.log(`after version gett, state is `, state)
-
     if (!state.found) {
       return Status.createNotFound()
     }
@@ -208,9 +205,6 @@ export default class Version {
     const ucmp = this.versionSet.internalKeyComparator.userComparator
     // Search level-0 in order from newest to oldest.
     const tmp = [] as FileMetaData[]
-    // console.log(`forEachOverlapping current.files=`, this.files)
-
-    // console.log(this.files)
 
     for (let i = 0; i < this.files[0].length; i++) {
       const f = this.files[0][i]
@@ -308,7 +302,6 @@ export default class Version {
     while (left < right) {
       let mid = Math.floor((left + right) / 2)
       let file = files[mid]
-      // console.log(`mid=${mid}`, `file=`, file)
       if (icmp.compare(file.largest, key) < 0) {
         left = mid + 1
       } else {

@@ -64,9 +64,6 @@ export default class VersionBuilder {
   }
 
   public saveTo(ver: Version) {
-    // console.log(`VersionBuilder.saveTo`, ver)
-    // console.log(`VersionBuilder._levels`, this._levels)
-    // console.log(`VersionBuilder._base.files`, this._base.files)
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
     // traverse every level and put added files in right
     // position [ baseFiles_A, addedFiles, baseFiels_B ) ]
@@ -83,7 +80,6 @@ export default class VersionBuilder {
       } else {
         for (let i = 0; i < this._base.files[level].length; ) {
           let baseFile = this._base.files[level][i++]
-          console.log('addedFile=', addedFile, 'baseFile=', baseFile)
           if (!addedFile.done) {
             if (cmp.operator(baseFile, addedFile.value)) {
               this.maybeAddFile(ver, level, baseFile)
@@ -101,7 +97,6 @@ export default class VersionBuilder {
   }
 
   private maybeAddFile(ver: Version, level: number, file: FileMetaData) {
-    // console.log(`VersionBuilder maybyAddFile level=${level}`)
     if (this._levels[level].deletedFiles.has(file.number)) {
       // File is deleted: do nothing
     } else {
