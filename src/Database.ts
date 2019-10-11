@@ -51,41 +51,23 @@ import { Direct, InfoLog, Log } from './Env'
 import { TableCache } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 
+// Information for a manual compaction
 interface ManualCompaction {
   level: number
   done: boolean
   begin: InternalKey // null means beginning of key range
   end: InternalKey // null means end of key range
-  tmpStorage: InternalKey
+  tmpStorage: InternalKey // Used to keep track of compaction progress
 }
 
 const kNumNonTableCacheFiles = 10
 
+function getTableCacheSize(sanitizedOptions: Options) {
+  // Reserve ten files or so for other uses and give the rest to TableCache.
+  return sanitizedOptions.maxOpenFiles - kNumNonTableCacheFiles
+}
+
 export default class Database {
-  static getTableCacheSize(sanitizedOptions: Options) {
-    // Reserve ten files or so for other uses and give the rest to TableCache.
-    return sanitizedOptions.maxOpenFiles - kNumNonTableCacheFiles
-  }
-
-  private _internalKeyComparator: InternalKeyComparator
-  private _backgroundCompactionScheduled: boolean
-  private _dbpath: string
-  private _sn: SequenceNumber
-  // _cache: LRU
-  private _log: LogWriter
-  private _logFileNumber!: number
-  private _memtable: MemTable
-  private _immtable!: MemTable
-  private _versionSet: VersionSet
-  private _ok: boolean
-  private _manualCompaction!: ManualCompaction | null
-  private _bgError!: Status
-  private pendingOutputs!: number[]
-  private snapshots!: SnapshotList
-  private _stats: CompactionStats[]
-  private _options: Options
-  private _tableCache: TableCache
-
   constructor(dbpath: string) {
     this._backgroundCompactionScheduled = false
     this._internalKeyComparator = new InternalKeyComparator(
@@ -109,7 +91,7 @@ export default class Database {
     this._tableCache = new TableCache(
       dbpath,
       options,
-      Database.getTableCacheSize(options)
+      getTableCacheSize(options)
     )
 
     this._versionSet = new VersionSet(
@@ -132,6 +114,25 @@ export default class Database {
 
     this.recover()
   }
+
+  private _internalKeyComparator: InternalKeyComparator
+  private _backgroundCompactionScheduled: boolean
+  private _dbpath: string
+  private _sn: SequenceNumber
+  // _cache: LRU
+  private _log: LogWriter
+  private _logFileNumber!: number
+  private _memtable: MemTable
+  private _immtable!: MemTable
+  private _versionSet: VersionSet
+  private _ok: boolean
+  private _manualCompaction!: ManualCompaction | null
+  private _bgError!: Status
+  private pendingOutputs!: number[]
+  private snapshots!: SnapshotList
+  private _stats: CompactionStats[]
+  private _options: Options
+  private _tableCache: TableCache
 
   private get userComparator() {
     return this._internalKeyComparator.userComparator
@@ -224,7 +225,10 @@ export default class Database {
    * versionCurrent.forEachOverlapping -> tableCache.get -> tableCache.findTable ->
    * table.get
    */
-  public async get(options: ReadOptions, userKey: Slice): Promise<any> {
+  public async get(
+    options: ReadOptions,
+    userKey: Slice
+  ): Promise<Slice | string | null | void> {
     await this.ok()
     const slicedUserKey = new Slice(userKey)
     const sequence = options.snapshot
@@ -393,7 +397,7 @@ export default class Database {
     let status = new Status()
 
     if (!compaction) {
-    } else if (!this._manualCompaction && compaction.isTrivialMode()) {
+    } else if (!this._manualCompaction && compaction.isTrivialMove()) {
       assert(compaction.numInputFiles(0) === 1)
       const f = compaction.inputs[0][0]
       compaction.edit.deleteFile(compaction.level, f.number)
@@ -438,6 +442,7 @@ export default class Database {
   }
 
   private async doCompactionWork(compact: CompactionState): Promise<Status> {
+    console.log('doCompactionWork')
     const startTime: number = this._options.env.now()
     let immTime = 0 // Time spent doing imm_ compactions
     Log(this._options.infoLog, 'Compacting files...')

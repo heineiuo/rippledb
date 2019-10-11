@@ -141,7 +141,7 @@ export default class MemTable {
   // all entries with overly large sequence numbers.
   //
   // this key is lookup key
-  get(key: LookupKey): any {
+  get(key: LookupKey): Slice | void {
     const memkey = key.memKey
     const node = this._list.seek(memkey)
     if (!!node) {

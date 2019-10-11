@@ -10,10 +10,10 @@ import assert from 'assert'
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
-import { RecordType, InternalKey, VersionEditTag } from './Format'
+import { InternalKey, VersionEditTag } from './Format'
 import VersionEdit from './VersionEdit'
 import { FileMetaData, NewFile } from './VersionFormat'
-import { createHexStringFromDecimal } from './LogFormat'
+import { createHexStringFromDecimal, kHeaderSize } from './LogFormat'
 
 export default class VersionEditRecord {
   static from(buf: Buffer): VersionEditRecord {
@@ -82,14 +82,15 @@ export default class VersionEditRecord {
   static decode(op: Slice): VersionEdit {
     let index = 0
     const edit = new VersionEdit()
+    const opBuffer = op.buffer
     while (index < op.length) {
-      const type = op.buffer.readUInt8(index)
+      const type = opBuffer.readUInt8(index)
       index += 1
 
       if (type === VersionEditTag.kComparator) {
-        const comparatorNameLength = varint.decode(op.buffer.slice(index))
+        const comparatorNameLength = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const comparatorName = op.buffer.slice(
+        const comparatorName = opBuffer.slice(
           index,
           index + comparatorNameLength
         )
@@ -97,33 +98,33 @@ export default class VersionEditRecord {
         edit.comparator = comparatorName.toString()
         continue
       } else if (type === VersionEditTag.kLogNumber) {
-        const logNumber = varint.decode(op.buffer.slice(index))
+        const logNumber = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
         edit.logNumber = logNumber
         continue
       } else if (type === VersionEditTag.kPrevLogNumber) {
-        const prevLogNumber = varint.decode(op.buffer.slice(index))
+        const prevLogNumber = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
         edit.prevLogNumber = prevLogNumber
         continue
       } else if (type === VersionEditTag.kNextFileNumber) {
-        const nextFileNumber = varint.decode(op.buffer.slice(index))
+        const nextFileNumber = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
         edit.nextFileNumber = nextFileNumber
         continue
       } else if (type === VersionEditTag.kLastSequence) {
-        const lastSequence = varint.decode(op.buffer.slice(index))
+        const lastSequence = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
         edit.lastSequence = lastSequence
         continue
       } else if (type === VersionEditTag.kCompactPointer) {
-        const level = varint.decode(op.buffer.slice(index))
+        const level = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const internalKeyLength = varint.decode(op.buffer.slice(index))
+        const internalKeyLength = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        assert(op.buffer.length >= index + internalKeyLength)
+        assert(opBuffer.length >= index + internalKeyLength)
         const internalKey = new Slice(
-          op.buffer.slice(index, index + internalKeyLength)
+          opBuffer.slice(index, index + internalKeyLength)
         )
         index += internalKeyLength
         edit.compactPointers.push({
@@ -132,9 +133,9 @@ export default class VersionEditRecord {
         })
         continue
       } else if (type === VersionEditTag.kDeletedFile) {
-        const level = varint.decode(op.buffer.slice(index))
+        const level = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const fileNum = varint.decode(op.buffer.slice(index))
+        const fileNum = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
         edit.deletedFiles.push({
           level,
@@ -142,19 +143,19 @@ export default class VersionEditRecord {
         })
         continue
       } else if (type === VersionEditTag.kNewFile) {
-        const level = varint.decode(op.buffer.slice(index))
+        const level = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const fileNum = varint.decode(op.buffer.slice(index))
+        const fileNum = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const fileSize = varint.decode(op.buffer.slice(index))
+        const fileSize = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const smallestKeyLength = varint.decode(op.buffer.slice(index))
+        const smallestKeyLength = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const smallestKey = op.buffer.slice(index, index + smallestKeyLength)
+        const smallestKey = opBuffer.slice(index, index + smallestKeyLength)
         index += smallestKeyLength
-        const largestKeyLength = varint.decode(op.buffer.slice(index))
+        const largestKeyLength = varint.decode(opBuffer.slice(index))
         index += varint.decode.bytes
-        const largestKey = op.buffer.slice(index, index + largestKeyLength)
+        const largestKey = opBuffer.slice(index, index + largestKeyLength)
         index += largestKeyLength
         let fileMetaData = new FileMetaData()
         fileMetaData.number = fileNum

@@ -35,6 +35,7 @@ import Compaction from './Compaction'
 import { Options } from './Options'
 import SSTable from './SSTable'
 import { TableCache } from './SSTableCache'
+import Merger from './Merger'
 
 export default class VersionSet {
   // Per-level key at which the next compaction at that level should start.
@@ -424,7 +425,7 @@ export default class VersionSet {
       level = this._current.compactionLevel
       assert(level >= 0)
       assert(level + 1 < Config.kNumLevels)
-      c = new Compaction({}, level)
+      c = new Compaction(this._options, level)
 
       for (let f of this._current.files[level]) {
         if (
@@ -443,7 +444,7 @@ export default class VersionSet {
       }
     } else if (shouldSeekCompaction) {
       level = this._current.fileToCompactLevel
-      c = new Compaction({}, level)
+      c = new Compaction(this._options, level)
       c.inputs[0].push(this._current.fileToCompact)
     } else {
       return
@@ -685,16 +686,23 @@ export default class VersionSet {
   }
 
   // TODO
-  // Create an iterator that reads over the compaction inputs for "*c".
-  // The caller should delete the iterator when no longer needed.
-  public async *makeInputIterator(c: Compaction) {
+  // Create an iterator that reads over the compaction inputs for "currentCompaction".
+  public async *makeInputIterator(
+    currentCompaction: Compaction
+  ): AsyncIterableIterator<Entry> {
     let num = 0
-    let space = c.level === 0 ? c.inputs[0].length + 1 : 2
+
+    // Level-0 files have to be merged together.  For other levels,
+    // we will make a concatenating iterator per level.
+    // TODO(opt): use concatenating iterator for level-0 if there is no overlap
+    let space =
+      currentCompaction.level === 0 ? currentCompaction.inputs[0].length + 1 : 2
     const results: Entry[] = Array.from({ length: space })
     for (let which = 0; which < 2; which++) {
-      if (c.inputs[which].length > 0) {
-        if (c.level + which === 0) {
-          const files = c.inputs[which]
+      console.log(currentCompaction.inputs)
+      if (currentCompaction.inputs[which].length > 0) {
+        if (currentCompaction.level + which === 0) {
+          const files = currentCompaction.inputs[which]
           for (let i = 0; i < files.length; i++) {
             const file = files[i]
             const sstable = await SSTable.open(
@@ -704,6 +712,7 @@ export default class VersionSet {
                 'r+'
               )
             )
+            // sstable.blockIterator()
             num++
           }
         } else {
@@ -713,8 +722,8 @@ export default class VersionSet {
       }
     }
 
-    for (let entry of results) {
-      if (!!entry) yield entry
-    }
+    const merger = new Merger(results)
+
+    yield* merger.iterator()
   }
 }

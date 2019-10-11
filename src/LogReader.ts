@@ -7,9 +7,8 @@
 
 import assert from 'assert'
 import { Buffer } from 'buffer'
-import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
-import { Record } from './LogFormat'
+import { Record, kBlockSize, RecordType, kHeaderSize } from './LogFormat'
 import { FileHandle } from './Env'
 import { Options } from './Options'
 
@@ -65,6 +64,7 @@ export default class LogReader {
       } else if (record.type === RecordType.kLastType) {
         assert(latestType !== RecordType.kLastType)
         latestOpBuf = Buffer.concat([latestOpBuf, record.data.buffer])
+        assert(record.length === latestOpBuf.length)
         const op = new Slice(latestOpBuf)
         latestOpBuf = Buffer.alloc(0)
         yield op
@@ -82,13 +82,17 @@ export default class LogReader {
   }
 
   decode(buf: Buffer): Record {
-    const length = buf.readUInt16BE(4)
-    const type = buf.readUInt8(6)
-    const data = new Slice(buf.slice(7, 7 + length))
-    assert(length === data.length)
+    const head = buf.slice(0, kHeaderSize)
+    const recordType = head[6]
+    const head4 = head[4] & 0xff
+    const head5 = head[5] & 0xff
+    const length = head4 | (head5 << 8)
+
+    const data = new Slice(buf.slice(kHeaderSize, kHeaderSize + length))
     return {
+      length,
       data,
-      type,
+      type: recordType,
     }
   }
 }

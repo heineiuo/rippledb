@@ -19,6 +19,16 @@ import {
 import { decodeFixed64, encodeFixed32, decodeFixed32 } from './Coding'
 
 // Simplified WriteBatch
+// WriteBatch::rep_ :=
+//    sequence: fixed64
+//    count: fixed32
+//    data: record[count]
+// record :=
+//    kTypeValue varstring varstring         |
+//    kTypeDeletion varstring
+// varstring :=
+//    len: varint32
+//    data: uint8[len]
 export default class WriteBatch {
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
   static kHeader = 12

@@ -6,94 +6,108 @@
  */
 
 import assert from 'assert'
+import crc32 from 'buffer-crc32'
 import { Buffer } from 'buffer'
-import { kBlockSize, RecordType } from './Format'
+import { kBlockSize, kHeaderSize, RecordType } from './LogFormat'
 import Slice from './Slice'
 import LogRecord from './LogRecord'
 import { FileHandle } from './Env'
 import { Options } from './Options'
+import { encodeFixed32 } from './Coding'
 
 export default class LogWriter {
   constructor(options: Options, filename: string) {
     this._filename = filename
-    this._currentBlockSize = 0
+    this._blockOffset = 0
     this._options = options
   }
 
-  _options: Options
-  _file!: FileHandle
-  _filename: string
-  _currentBlockSize: number
+  private _options: Options
+  private _file!: FileHandle
+  private _filename: string
+  private _blockOffset: number
 
-  async appendFile(buf: Buffer) {
+  private async appendFile(buf: Buffer) {
     if (!this._file) {
       this._file = await this._options.env.open(this._filename, 'a+')
     }
     await this._file.appendFile(buf, {})
   }
 
-  async close() {
+  public async close() {
     await this._file.close()
   }
 
+  private async emitPhysicalRecord(record: LogRecord): Promise<void> {
+    const head = Buffer.alloc(kHeaderSize)
+    const length = record.length
+    head[4] = length & 0xff
+    head[5] = length >> 8
+    head[6] = record.recordType
+    const crc = crc32(
+      Buffer.concat([
+        Buffer.from([record.recordType]),
+        record.buffer,
+        Buffer.from([record.length]),
+      ])
+    )
+    head.fill(crc, 0, 4)
+
+    this._blockOffset += record.length
+    await this.appendFile(Buffer.concat([head, record.buffer]))
+  }
+
   /**
-   * record op: type(ValueType, 1B) | key_length (varint32) | key | value_length(varint32) | value
+   * Not care about record format
    */
-  async addRecord(recordOp: Slice) {
-    if (this._currentBlockSize + 7 + recordOp.length <= kBlockSize) {
-      // do not need to spilt
-      const record = new LogRecord(RecordType.kFullType, recordOp)
-      this._currentBlockSize += record.length
-      await this.appendFile(record.buffer)
-    } else {
-      let currentRecordOpPosition = 0
-      let hasFirstRecordCreated = false
-      while (true) {
-        const currentFreeSpace = kBlockSize - this._currentBlockSize
-        if (currentFreeSpace <= 7) {
-          const padBuf = Buffer.alloc(currentFreeSpace)
-          assert(padBuf.length <= 7)
-          await this.appendFile(padBuf)
-          this._currentBlockSize = 0
-          continue
+  public async addRecord(recordOp: Slice) {
+    let hasFirstRecordCreated = false
+    let left = recordOp.size
+    let startPosition = 0
+    while (left > 0) {
+      let leftover = kBlockSize - this._blockOffset
+      assert(leftover >= 0)
+      if (leftover < kHeaderSize) {
+        // Switch to a new block
+        if (leftover > 0) {
+          // Fill the trailer (literal below relies on kHeaderSize being 7)
+          assert(kHeaderSize == 7)
+          await this.appendFile(Buffer.alloc(leftover))
         }
-
-        const startPosition = currentRecordOpPosition
-        const remainOp = recordOp.size - currentRecordOpPosition
-        const currentRecordSize =
-          Math.min(
-            currentFreeSpace - 7,
-            recordOp.size - currentRecordOpPosition
-          ) + 7
-        currentRecordOpPosition += currentRecordSize - 7
-
-        let recordType: RecordType
-        if (!hasFirstRecordCreated) {
-          recordType = RecordType.kFirstType
-          hasFirstRecordCreated = true
-          assert(this._currentBlockSize + currentRecordSize === kBlockSize)
-          this._currentBlockSize = 0
-        } else if (remainOp + 7 <= currentFreeSpace) {
-          recordType = RecordType.kLastType
-          this._currentBlockSize += currentRecordSize
-        } else {
-          assert(this._currentBlockSize + currentRecordSize === kBlockSize)
-          this._currentBlockSize = 0
-          recordType = RecordType.kMiddleType
-        }
-
-        const record = new LogRecord(
-          recordType,
-          new Slice(
-            recordOp.buffer.slice(startPosition, currentRecordOpPosition)
-          )
-        )
-        assert(record.length === currentRecordSize)
-        await this.appendFile(record.buffer)
-        if (recordType === RecordType.kLastType) {
-          break
-        }
+        this._blockOffset = 0
       }
+
+      // Invariant: we never leave < kHeaderSize bytes in a block.
+      assert(kBlockSize - this._blockOffset - kHeaderSize >= 0)
+
+      const avail = kBlockSize - this._blockOffset - kHeaderSize
+      const fragmentLength = left < avail ? left : avail
+
+      let recordType: RecordType
+      const end = left === fragmentLength
+
+      if (!hasFirstRecordCreated && end) {
+        recordType = RecordType.kFullType
+      } else if (!hasFirstRecordCreated) {
+        recordType = RecordType.kFirstType
+      } else if (end) {
+        recordType = RecordType.kLastType
+      } else {
+        recordType = RecordType.kMiddleType
+      }
+
+      const record = new LogRecord(
+        recordType,
+        new Slice(
+          recordOp.buffer.slice(startPosition, startPosition + fragmentLength)
+        )
+      )
+
+      await this.emitPhysicalRecord(record)
+
+      hasFirstRecordCreated = true
+      startPosition += fragmentLength
+      left -= fragmentLength
     }
   }
 }

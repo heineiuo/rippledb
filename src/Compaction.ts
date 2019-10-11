@@ -36,25 +36,7 @@ export default class Compaction {
     return Compaction.targetFileSize(options)
   }
 
-  level: number
-  inputVersion!: Version
-  grandparents!: FileMetaData[]
-  grandparentIndex: number // Index in grandparent_starts_
-  seenKey: boolean
-  overlappedBytes: number
-  edit!: VersionEdit
-  _maxOutputFilesize: number
-
-  // level_ptrs_ holds indices into input_version_->levels_: our state
-  // is that we are positioned at one of the file ranges for each
-  // higher level than the ones involved in this compaction (i.e. for
-  // all L >= level_ + 2).
-  private levelPtrs: number[]
-
-  // Each compaction reads inputs from "level_" and "level_+1"
-  inputs!: [FileMetaData[], FileMetaData[]]
-
-  constructor(options: any, level: number) {
+  constructor(options: Options, level: number) {
     this.level = level
     this.grandparentIndex = 0
     this.overlappedBytes = 0
@@ -64,21 +46,36 @@ export default class Compaction {
     this.levelPtrs = Array.from({ length: Config.kNumLevels }, () => 0)
   }
 
+  public level: number
+  public inputVersion!: Version
+  public grandparents!: FileMetaData[]
+  public edit!: VersionEdit
+
+  // Each compaction reads inputs from "level_" and "level_+1"
+  public inputs: [FileMetaData[], FileMetaData[]]
+
+  private grandparentIndex: number // Index in grandparent_starts_
+  private seenKey: boolean
+  private overlappedBytes: number
+  private _maxOutputFilesize: number
+
+  // level_ptrs_ holds indices into input_version_->levels_: our state
+  // is that we are positioned at one of the file ranges for each
+  // higher level than the ones involved in this compaction (i.e. for
+  // all L >= level_ + 2).
+  private levelPtrs: number[]
+
   get maxOutputFilesize() {
     return this._maxOutputFilesize
   }
 
-  ssTrivialMove(): boolean {
-    return false
-  }
-
-  numInputFiles(which: 0 | 1): number {
+  public numInputFiles(which: 0 | 1): number {
     return this.inputs[which].length
   }
 
   // Is this a trivial compaction that can be implemented by just
   // moving a single input file to the next level (no merging or splitting)
-  public isTrivialMode(): boolean {
+  public isTrivialMove(): boolean {
     const versionSet = this.inputVersion.versionSet
     // Avoid a move if there is lots of overlapping grandparent data.
     // Otherwise, the move could create a parent file that will require
