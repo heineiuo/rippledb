@@ -7,9 +7,8 @@
 
 import assert from 'assert'
 import { Buffer } from 'buffer'
-import { kBlockSize, RecordType } from './Format'
 import Slice from './Slice'
-import { Record } from './LogFormat'
+import { Record, kBlockSize, RecordType, kHeaderSize } from './LogFormat'
 import { FileHandle } from './Env'
 import { Options } from './Options'
 
@@ -82,13 +81,21 @@ export default class LogReader {
   }
 
   decode(buf: Buffer): Record {
-    const length = buf.readUInt16BE(4)
-    const type = buf.readUInt8(6)
-    const data = new Slice(buf.slice(7, 7 + length))
+    const head = buf.slice(0, kHeaderSize)
+    const recordType = head[6]
+    const head4 = head[4] & 0xff
+    const head5 = head[5] & 0xff
+    const length = head4 | (head5 << 8)
+    // console.log(head)
+    // console.log(
+    //   `head[4]=${head[4]} head4=${head4} head[5]=${head[5]} head5=${head5} type=${recordType} length=${length} `
+    // )
+
+    const data = new Slice(buf.slice(kHeaderSize, kHeaderSize + length))
     assert(length === data.length)
     return {
       data,
-      type,
+      type: recordType,
     }
   }
 }

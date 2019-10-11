@@ -29,18 +29,6 @@ export enum ValueType {
 
 export const kValueTypeForSeek = ValueType.kTypeValue
 
-export enum RecordType {
-  // Zero is reserved for preallocated files
-  kZeroType = 0,
-
-  kFullType = 1,
-
-  // For fragments
-  kFirstType = 2,
-  kMiddleType = 3,
-  kLastType = 4,
-}
-
 export enum VersionEditTag {
   kComparator = 1,
   kLogNumber = 2,
@@ -57,7 +45,6 @@ export enum CompressionTypes {
   none = 0x00,
 }
 
-export const kBlockSize = 32768 // 32KB
 export const kMemTableDumpSize = 4194304 // 4MB
 
 export class SequenceNumber {
