@@ -64,6 +64,7 @@ export default class LogReader {
       } else if (record.type === RecordType.kLastType) {
         assert(latestType !== RecordType.kLastType)
         latestOpBuf = Buffer.concat([latestOpBuf, record.data.buffer])
+        assert(record.length === latestOpBuf.length)
         const op = new Slice(latestOpBuf)
         latestOpBuf = Buffer.alloc(0)
         yield op
@@ -86,14 +87,10 @@ export default class LogReader {
     const head4 = head[4] & 0xff
     const head5 = head[5] & 0xff
     const length = head4 | (head5 << 8)
-    // console.log(head)
-    // console.log(
-    //   `head[4]=${head[4]} head4=${head4} head[5]=${head[5]} head5=${head5} type=${recordType} length=${length} `
-    // )
 
     const data = new Slice(buf.slice(kHeaderSize, kHeaderSize + length))
-    assert(length === data.length)
     return {
+      length,
       data,
       type: recordType,
     }

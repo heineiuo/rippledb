@@ -28,6 +28,7 @@ export function createHexStringFromDecimal(decimal: number): string {
 }
 
 export interface Record {
+  length: number
   type: number
   data: Slice
 }
