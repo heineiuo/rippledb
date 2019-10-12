@@ -29,6 +29,22 @@ export enum ValueType {
 
 export const kValueTypeForSeek = ValueType.kTypeValue
 
+export const kMaxSequenceNumber: bigint = (1n << 56n) - 1n
+
+function packSequenceAndType(seq: number | bigint, t: ValueType): bigint {
+  let bSeq = BigInt(seq)
+  assert(bSeq <= kMaxSequenceNumber)
+  assert(t <= kValueTypeForSeek)
+  return (bSeq << 8n) | BigInt(t)
+}
+
+// Append the serialization of "key" to *result.
+function appendInternalKey(buf: Buffer, key: ParsedInternalKey): Buffer {
+  const sequenceBuf = key.sn.toFixed64Buffer()
+  sequenceBuf.fill(key.valueType, 7, 8)
+  return Buffer.concat([buf, key.userKey.buffer, sequenceBuf])
+}
+
 export enum VersionEditTag {
   kComparator = 1,
   kLogNumber = 2,
@@ -47,7 +63,14 @@ export enum CompressionTypes {
 
 export const kMemTableDumpSize = 4194304 // 4MB
 
+// TODO maybe SequenceNumber should use bigint all time?
+// bigint to buffer:
+//   let bnum = (1n << 56n) - 1n
+//   Buffer.from(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
+//  buf to bigint:
+//   let bnum = BigInt(`0x${buf.toString('hex')}`)
 export class SequenceNumber {
+  // bigint?
   constructor(initial: number = 0) {
     this._value = initial
   }
@@ -98,8 +121,8 @@ export class InternalKey extends Slice {
       typeof sn !== 'undefined' &&
       typeof valueType !== 'undefined'
     ) {
-      this.appendInternalKey(
-        userKey.buffer,
+      this.buffer = appendInternalKey(
+        this.buffer,
         new ParsedInternalKey(userKey, sn, valueType)
       )
     }
@@ -122,13 +145,6 @@ export class InternalKey extends Slice {
   public decodeFrom(slice: Slice) {
     this.buffer = slice.buffer
     return this.buffer.length > 0
-  }
-
-  // Append the serialization of "key" to *result.
-  appendInternalKey(buf: Buffer, key: ParsedInternalKey) {
-    const sequenceBuf = key.sn.toFixed64Buffer()
-    sequenceBuf.fill(key.valueType, 7, 8)
-    this.buffer = Buffer.concat([this.buffer, key.userKey.buffer, sequenceBuf])
   }
 }
 
@@ -196,25 +212,27 @@ export class InternalKeyComparator implements Comparator {
   }
 
   findShortestSeparator(start: Slice, limit: Slice) {
-    // Find length of common prefix
-    let minLength = Math.min(start.length, limit.length)
-    let diffIndex = 0
-    while (
-      diffIndex < minLength &&
-      start.buffer[diffIndex] == limit.buffer[diffIndex]
-    ) {
-      diffIndex++
-    }
+    // Attempt to shorten the user portion of the key
+    const userStart = extractUserKey(start)
+    const userLimit = extractUserKey(limit)
+    const tmp = new Slice(Buffer.from(userStart.buffer))
+    this.userComparator.findShortestSeparator(tmp, userLimit)
 
-    if (diffIndex >= minLength) {
-      // Do not shorten if one string is a prefix of the other
-    } else {
-      let diffByte = start.buffer[diffIndex]
-      if (diffByte < 0xff && diffByte + 1 < limit.buffer[diffIndex]) {
-        start.buffer[diffIndex]++
-        start.buffer = start.buffer.slice(0, diffIndex + 1)
-        assert(this.compare(start, limit) < 0)
-      }
+    if (
+      tmp.size < userStart.size &&
+      this.userComparator.compare(userStart, tmp) < 0
+    ) {
+      // User key has become shorter physically, but larger logically.
+      // Tack on the earliest possible number to the shortened user key.
+      tmp.buffer = Buffer.concat([
+        tmp.buffer,
+        encodeFixed64(
+          packSequenceAndType(kMaxSequenceNumber, kValueTypeForSeek)
+        ),
+      ])
+      assert(this.compare(start, tmp) < 0)
+      assert(this.compare(tmp, limit) < 0)
+      start.buffer = tmp.buffer
     }
   }
 
