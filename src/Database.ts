@@ -193,7 +193,7 @@ export default class Database {
   private async recoverLogFile() {}
 
   // wait for db.recover
-  private async ok() {
+  private async ok(): Promise<boolean> {
     if (this._ok) return true
     let limit = 5
     let i = 0
@@ -205,7 +205,9 @@ export default class Database {
     throw new Error('Database is busy.')
   }
 
-  public async *iterator(options?: EncodingOptions) {
+  public async *iterator(
+    options?: ReadOptions
+  ): AsyncIterableIterator<Slice | string> {
     await this.ok()
     for (let key in this._memtable.iterator()) {
       yield key
@@ -259,19 +261,19 @@ export default class Database {
    * 1. check if memtable bigger then 4mb
    * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
-  public async put(options: WriteOptions, key: any, value: any) {
+  public async put(options: WriteOptions, key: any, value: any): Promise<void> {
     const batch = new WriteBatch()
     batch.put(new Slice(key), new Slice(value))
     await this.write(options, batch)
   }
 
-  public async del(options: WriteOptions, key: any) {
+  public async del(options: WriteOptions, key: any): Promise<void> {
     const batch = new WriteBatch()
     batch.del(new Slice(key))
     await this.write(options, batch)
   }
 
-  public async write(options: WriteOptions, batch?: WriteBatch) {
+  public async write(options: WriteOptions, batch?: WriteBatch): Promise<void> {
     await this.ok()
     await this.makeRoomForWrite(!batch)
 
@@ -290,7 +292,7 @@ export default class Database {
   /**
    * if force is true, force compact
    */
-  private async makeRoomForWrite(force: boolean) {
+  private async makeRoomForWrite(force: boolean): Promise<Status> {
     let allowDelay = !force
     let status = new Status()
     while (true) {
@@ -352,7 +354,7 @@ export default class Database {
     return status
   }
 
-  private async maybeScheduleCompaction() {
+  private async maybeScheduleCompaction(): Promise<void> {
     Log(this._options.infoLog, 'maybeScheduleCompaction')
     if (this._backgroundCompactionScheduled) {
       // Already scheduled
@@ -374,7 +376,7 @@ export default class Database {
     }
   }
 
-  private async backgroundCall() {
+  private async backgroundCall(): Promise<void> {
     Log(this._options.infoLog, 'backgroundCall')
     assert(this._backgroundCompactionScheduled)
     await this.backgroundCompaction()
@@ -387,6 +389,10 @@ export default class Database {
 
   private async backgroundCompaction(): Promise<void> {
     if (!!this._immtable) {
+      Log(
+        this._options.infoLog,
+        `backgroundCompaction Compact MemTable and return`
+      )
       await this.compactMemTable()
       return
     }
@@ -395,14 +401,19 @@ export default class Database {
     let manualEnd = new InternalKey()
 
     if (!!this._manualCompaction) {
-      let m = this._manualCompaction
-      compaction = this._versionSet.compactRange(m.level, m.begin, m.end)
-      m.done = !compaction
+      let manual = this._manualCompaction
+      compaction = this._versionSet.compactRange(
+        manual.level,
+        manual.begin,
+        manual.end
+      )
+      manual.done = !compaction
       if (!!compaction) {
         manualEnd =
           compaction.inputs[0][compaction.numInputFiles(0) - 1].largest
       }
       // Manual compaction ...
+      Log(this._options.infoLog, 'DEBUG Manual compaction ...')
     } else {
       compaction = this._versionSet.pickCompaction()
     }
@@ -410,7 +421,10 @@ export default class Database {
     let status = new Status()
 
     if (!compaction) {
+      Log(this._options.infoLog, `backgroundCompaction no compaction`)
     } else if (!this._manualCompaction && compaction.isTrivialMove()) {
+      Log(this._options.infoLog, `backgroundCompaction isTrivialMove`)
+
       assert(compaction.numInputFiles(0) === 1)
       const f = compaction.inputs[0][0]
       compaction.edit.deleteFile(compaction.level, f.number)
@@ -423,6 +437,8 @@ export default class Database {
       )
       status = await this._versionSet.logAndApply(compaction.edit)
     } else {
+      Log(this._options.infoLog, `backgroundCompaction doCompactionWork`)
+
       const compact = new CompactionState(compaction)
       const status = await this.doCompactionWork(compact)
       if (!(await status.ok())) {
@@ -434,6 +450,7 @@ export default class Database {
     }
 
     if (await status.ok()) {
+      Log(this._options.infoLog, `Compaction success...`)
     } else {
       Log(this._options.infoLog, `Compaction error...`)
     }
@@ -454,6 +471,7 @@ export default class Database {
     }
   }
 
+  // major compaction
   private async doCompactionWork(compact: CompactionState): Promise<Status> {
     const startTime: number = this._options.env.now()
     let immTime = 0 // Time spent doing imm_ compactions
@@ -580,7 +598,7 @@ export default class Database {
     return status
   }
 
-  private async compactMemTable() {
+  private async compactMemTable(): Promise<void> {
     assert(!!this._immtable)
 
     // Save the contents of the memtable as a new Table
@@ -746,7 +764,8 @@ export default class Database {
     level: number,
     begin: Slice,
     end: Slice
-  ) {
+  ): Promise<void> {
+    Log(this._options.infoLog, 'DEBUG manualCompactRangeWithLevel...')
     assert(level >= 0)
     assert(level + 1 < Config.kNumLevels)
     let beginStorage = new InternalKey()
@@ -782,6 +801,10 @@ export default class Database {
         this._manualCompaction = manual
         await this.maybeScheduleCompaction()
       } else {
+        Log(
+          this._options.infoLog,
+          'DEBUG Running either my compaction or another compaction.'
+        )
         // Running either my compaction or another compaction.
         // TODO background_work_finished_signal_.Wait();
       }
@@ -792,16 +815,16 @@ export default class Database {
     }
   }
 
-  private async manualCompactMemTable() {
+  private async manualCompactMemTable(): Promise<void> {
     await this.write(new WriteOptions())
   }
 
-  private async recordBackgroundError(status: Status) {
+  private async recordBackgroundError(status: Status): Promise<void> {
     Log(this._options.infoLog, status.message() || 'recordBackgroundError')
     this._bgError = status
   }
 
-  private async cleanupCompaction(compact: CompactionState) {
+  private async cleanupCompaction(compact: CompactionState): Promise<void> {
     if (!!compact.builder) {
       await compact.builder.abandon()
       delete compact.builder
@@ -817,7 +840,7 @@ export default class Database {
     }
   }
 
-  private async deleteObsoleteFiles() {
+  private async deleteObsoleteFiles(): Promise<void> {
     const live = this.pendingOutputs || []
     this._versionSet.addLiveFiles(live)
     const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
