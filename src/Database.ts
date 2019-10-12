@@ -9,7 +9,7 @@ import path from 'path'
 import assert from 'assert'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
-import { EncodingOptions, Options, ReadOptions } from './Options'
+import { EncodingOptions, Options, ReadOptions, WriteOptions } from './Options'
 import {
   ValueType,
   kMemTableDumpSize,
@@ -259,19 +259,19 @@ export default class Database {
    * 1. check if memtable bigger then 4mb
    * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
-  public async put(key: any, value: any, options?: EncodingOptions) {
+  public async put(options: WriteOptions, key: any, value: any) {
     const batch = new WriteBatch()
     batch.put(new Slice(key), new Slice(value))
-    await this.write(batch, options)
+    await this.write(options, batch)
   }
 
-  public async del(key: any, options?: EncodingOptions) {
+  public async del(options: WriteOptions, key: any) {
     const batch = new WriteBatch()
     batch.del(new Slice(key))
-    await this.write(batch, options)
+    await this.write(options, batch)
   }
 
-  public async write(batch: WriteBatch | null, options?: EncodingOptions) {
+  public async write(options: WriteOptions, batch?: WriteBatch) {
     await this.ok()
     await this.makeRoomForWrite(!batch)
 
@@ -288,7 +288,7 @@ export default class Database {
   }
 
   /**
-   * force: force compact
+   * if force is true, force compact
    */
   private async makeRoomForWrite(force: boolean) {
     let allowDelay = !force
@@ -326,8 +326,16 @@ export default class Database {
         Log(this._options.infoLog, 'Too many L0 files; waiting...\n')
         // await this._backgroundWorkingPromise
       } else {
+        // 1. level0number < 12 and no immtable
+        // 2. if (not force) level0number < 8 and memtable > 4MB
+        // 3. if (force)
+
         // Attempt to switch to a new memtable and trigger compaction of old
-        assert(this._versionSet.logNumber === 0) // no logfile is compaction
+        Log(
+          this._options.infoLog,
+          'Attempt to switch to a new memtable and trigger compaction of old'
+        )
+        assert(this._versionSet.prevLogNumber === 0) // no logfile is compaction
         const newLogNumber = this._versionSet.getNextFileNumber()
         this._log = new LogWriter(
           this._options,
@@ -345,16 +353,20 @@ export default class Database {
   }
 
   private async maybeScheduleCompaction() {
+    Log(this._options.infoLog, 'maybeScheduleCompaction')
     if (this._backgroundCompactionScheduled) {
       // Already scheduled
+      Log(this._options.infoLog, 'Already scheduled')
     } else if (this._bgError && !(await this._bgError.ok())) {
       // Already got an error; no more changes
+      Log(this._options.infoLog, 'Already got an error; no more changes')
     } else if (
       !this._immtable &&
       !this._manualCompaction &&
       !this._versionSet.needsCompaction()
     ) {
       // No work to be done
+      Log(this._options.infoLog, 'No work to be done')
     } else {
       this._backgroundCompactionScheduled = true
       // ignore: Env.Schedule, BGWork
@@ -363,6 +375,7 @@ export default class Database {
   }
 
   private async backgroundCall() {
+    Log(this._options.infoLog, 'backgroundCall')
     assert(this._backgroundCompactionScheduled)
     await this.backgroundCompaction()
     this._backgroundCompactionScheduled = false
@@ -442,7 +455,6 @@ export default class Database {
   }
 
   private async doCompactionWork(compact: CompactionState): Promise<Status> {
-    console.log('doCompactionWork')
     const startTime: number = this._options.env.now()
     let immTime = 0 // Time spent doing imm_ compactions
     Log(this._options.infoLog, 'Compacting files...')
@@ -631,9 +643,9 @@ export default class Database {
 
     Log(
       this._options.infoLog,
-      `Level-0 table #${meta.number}: ${
-        meta.fileSize
-      } bytes ${await status.ok()}`
+      `Level-0 table #${meta.number}: ${meta.fileSize} bytes ${
+        (await status.ok()) ? 'status ok' : 'status error'
+      }`
     )
     this.pendingOutputs = this.pendingOutputs.filter(num => num !== meta.number)
 
@@ -781,11 +793,12 @@ export default class Database {
   }
 
   private async manualCompactMemTable() {
-    await this.write(null, {})
+    await this.write(new WriteOptions())
   }
 
   private async recordBackgroundError(status: Status) {
-    await status.ok()
+    Log(this._options.infoLog, status.message() || 'recordBackgroundError')
+    this._bgError = status
   }
 
   private async cleanupCompaction(compact: CompactionState) {

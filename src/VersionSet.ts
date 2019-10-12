@@ -47,10 +47,14 @@ export default class VersionSet {
   hasLogNumber?: boolean
   hasNextFileNumber?: boolean
   hasPrevLogNumber?: boolean
+
   logNumber!: number
 
+  // Return the log file number for the log file that is currently
+  // being compacted, or zero if there is no such log file.
   // if prevLogNumber is 0, then no log file is being compacted
   prevLogNumber!: number
+
   private _lastSequence!: number
   hasLastSequence?: boolean
   manifestFileNumber!: number
@@ -699,7 +703,6 @@ export default class VersionSet {
       currentCompaction.level === 0 ? currentCompaction.inputs[0].length + 1 : 2
     const results: Entry[] = Array.from({ length: space })
     for (let which = 0; which < 2; which++) {
-      console.log(currentCompaction.inputs)
       if (currentCompaction.inputs[which].length > 0) {
         if (currentCompaction.level + which === 0) {
           const files = currentCompaction.inputs[which]
