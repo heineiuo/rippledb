@@ -317,7 +317,7 @@ class FilterBlockBuilder {
   private _filterOffsets: number[] // Offset in _result of each filter
 
   public startBlock(blockOffset: number) {
-    const filterIndex = blockOffset / FilterBlockBuilder.kFilterBase
+    const filterIndex = Math.floor(blockOffset / FilterBlockBuilder.kFilterBase)
     assert(filterIndex >= this._filterOffsets.length)
     while (filterIndex > this._filterOffsets.length) {
       this.generateFilter()
