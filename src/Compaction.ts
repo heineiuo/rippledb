@@ -44,12 +44,13 @@ export default class Compaction {
     this.inputs = [[], []]
     this._maxOutputFilesize = Compaction.maxFileSizeForLevel(options, level)
     this.levelPtrs = Array.from({ length: Config.kNumLevels }, () => 0)
+    this.edit = new VersionEdit()
   }
 
   public level: number
   public inputVersion!: Version
   public grandparents!: FileMetaData[]
-  public edit!: VersionEdit
+  public edit: VersionEdit
 
   // Each compaction reads inputs from "level_" and "level_+1"
   public inputs: [FileMetaData[], FileMetaData[]]
@@ -164,13 +165,6 @@ export default class Compaction {
   }
 }
 
-export interface CompactionStateOutput {
-  number: number
-  fileSize: number
-  smallest: InternalKey
-  largest: InternalKey
-}
-
 export class CompactionStats {
   times: number
   bytesRead: number
@@ -188,12 +182,19 @@ export class CompactionStats {
   }
 }
 
+export interface CompactionStateOutput {
+  number: number
+  fileSize: number
+  smallest: InternalKey
+  largest: InternalKey
+}
+
 export class CompactionState {
-  outputs!: CompactionStateOutput[]
-  smallestSnapshot: number
-  compaction: Compaction
-  outfile!: FileHandle
-  builder!: SSTableBuilder
+  public outputs: CompactionStateOutput[] = []
+  public smallestSnapshot: number
+  public compaction: Compaction
+  public outfile!: FileHandle
+  public builder!: SSTableBuilder
   public totalBytes: number
 
   constructor(c: Compaction) {
@@ -202,7 +203,7 @@ export class CompactionState {
     this.totalBytes = 0
   }
 
-  currentOutput(): CompactionStateOutput {
+  public currentOutput(): CompactionStateOutput {
     return this.outputs[this.outputs.length - 1]
   }
 }
