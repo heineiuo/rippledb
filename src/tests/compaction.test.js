@@ -19,6 +19,11 @@ describe('Compaction', () => {
     for (let i = 0; i < 50000; i++) {
       await db.put({}, ...random())
     }
+    await db.compactRange(
+      new Slice(Buffer.alloc(16).fill(0x00)),
+      new Slice(Buffer.alloc(16).fill(0xff))
+    )
+
     done()
   })
 })

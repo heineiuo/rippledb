@@ -329,15 +329,13 @@ export default class Version {
   public getOverlappingInputs(
     level: number,
     begin: InternalKey,
-    end: InternalKey,
-    inputs: FileMetaData[]
-  ): void {
+    end: InternalKey
+  ): FileMetaData[] {
     assert(level >= 0)
     assert(level < Config.kNumLevels)
-    // todo clear inputs
-    inputs = []
-    let userBegin = begin ? begin : new Slice()
-    let userEnd = end ? end : new Slice()
+    let inputs = []
+    let userBegin = begin ? begin.userKey : new Slice()
+    let userEnd = end ? end.userKey : new Slice()
 
     const userComparator = this.versionSet.internalKeyComparator.userComparator
     for (let i = 0; i < this.files[level].length; ) {
@@ -363,6 +361,7 @@ export default class Version {
         }
       }
     }
+    return inputs
   }
 
   public pickLevelForMemTableOutput(
@@ -383,14 +382,14 @@ export default class Version {
         new SequenceNumber(0),
         ValueType.kTypeValue
       )
-      const overlaps = [] as FileMetaData[]
+      let overlaps = [] as FileMetaData[]
       while (level < Config.kMaxMemCompactLevel) {
         if (this.overlapInLevel(level + 1, minUserKey, maxUserKey)) {
           break
         }
         if (level + 2 < Config.kNumLevels) {
           // Check that file does not overlap too many grandparent bytes.
-          this.getOverlappingInputs(level + 2, start, limit, overlaps)
+          overlaps = this.getOverlappingInputs(level + 2, start, limit)
           const sum = Compaction.totalFileSize(overlaps)
           if (
             sum >
