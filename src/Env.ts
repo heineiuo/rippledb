@@ -38,7 +38,7 @@ export class InfoLog {
   private _fd: FileHandle
 
   async log(message: string) {
-    let finalMessage = `${new Date()} ${message}\n`
+    let finalMessage = `${new Date().toISOString()} ${message}\n`
     await this._fd.appendFile(finalMessage)
   }
 }
