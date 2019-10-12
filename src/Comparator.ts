@@ -34,7 +34,7 @@ export interface Comparator {
   // If *start < limit, changes *start to a short string in [start,limit).
   // Simple comparator implementations may return with *start unchanged,
   // i.e., an implementation of this method that does nothing is correct.
-  findShortestSeparator(start: Slice, limti: Slice): void
+  findShortestSeparator(start: Slice, limit: Slice): void
 
   // Changes *key to a short string >= *key.
   // Simple comparator implementations may return with *key unchanged,
