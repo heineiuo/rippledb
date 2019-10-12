@@ -103,8 +103,7 @@ export default class VersionSet {
     begin: InternalKey,
     end: InternalKey
   ): Compaction | void {
-    let inputs: FileMetaData[] = []
-    this._current.getOverlappingInputs(level, begin, end, inputs)
+    let inputs = this._current.getOverlappingInputs(level, begin, end)
     if (inputs.length === 0) return
 
     // Avoid compacting too much in one shot in case the range is large.
@@ -123,12 +122,12 @@ export default class VersionSet {
       }
     }
 
-    const c = new Compaction(this._options, level)
-    c.inputVersion = this._current
-    c.inputVersion.ref()
-    c.inputs[0] = inputs
-    this.setupOtherInputs(c)
-    return c
+    const compaction = new Compaction(this._options, level)
+    compaction.inputVersion = this._current
+    compaction.inputVersion.ref()
+    compaction.inputs[0] = inputs
+    this.setupOtherInputs(compaction)
+    return compaction
   }
 
   private maxFileSizeForLevel(options: any, level: number): number {
@@ -464,8 +463,7 @@ export default class VersionSet {
       // Note that the next call will discard the file we placed in
       // c->inputs_[0] earlier and replace it with an overlapping set
       // which will include the picked file.
-      this._current.getOverlappingInputs(0, smallest, largest, c.inputs[0])
-      // this.getOverlappingInputs(0, )
+      c.inputs[0] = this._current.getOverlappingInputs(0, smallest, largest)
       assert(c.inputs[0].length > 0)
     }
     this.setupOtherInputs(c)
@@ -532,7 +530,7 @@ export default class VersionSet {
     largestKey: InternalKey
   ): boolean {
     if (files.length === 0) return false
-    largestKey = files[0].largest
+    largestKey.buffer = files[0].largest.buffer
     for (let i = 0; i < files.length; i++) {
       const f: FileMetaData = files[i]
       if (icmp.compare(f.largest, largestKey) > 0) {
@@ -614,13 +612,16 @@ export default class VersionSet {
       c.inputs[0]
     )
     this.getRange(c.inputs[0], smallest, largest)
-    this.current.getOverlappingInputs(level + 1, smallest, largest, c.inputs[1])
+    c.inputs[1] = this.current.getOverlappingInputs(
+      level + 1,
+      smallest,
+      largest
+    )
     let allStart = new InternalKey()
     let allLimit = new InternalKey()
     this.getRange2(c.inputs[0], c.inputs[1], allStart, allLimit)
     if (c.inputs.length > 0) {
-      let expand0: FileMetaData[] = []
-      this.current.getOverlappingInputs(level, allStart, allLimit, expand0)
+      let expand0 = this.current.getOverlappingInputs(level, allStart, allLimit)
       this.addBoundryInputs(
         this.internalKeyComparator,
         this._current.files[level],
@@ -637,12 +638,10 @@ export default class VersionSet {
         let newStart = new InternalKey()
         let newLimit = new InternalKey()
         this.getRange(expand0, newStart, newLimit)
-        let expand1: FileMetaData[] = []
-        this._current.getOverlappingInputs(
+        let expand1 = this._current.getOverlappingInputs(
           level + 1,
           newStart,
-          newLimit,
-          expand1
+          newLimit
         )
         if (expand1.length === c.inputs[1].length) {
           // todo log expanding size
@@ -658,11 +657,10 @@ export default class VersionSet {
     // Compute the set of grandparent files that overlap this compaction
     // (parent == level+1; grandparent == level+2)
     if (level + 2 < Config.kNumLevels) {
-      this._current.getOverlappingInputs(
+      c.grandparents = this._current.getOverlappingInputs(
         level + 2,
         allStart,
-        allLimit,
-        c.grandparents
+        allLimit
       )
     }
 
