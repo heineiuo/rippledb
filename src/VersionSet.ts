@@ -501,7 +501,7 @@ export default class VersionSet {
     smallest.clear()
     largest.clear()
     for (let i = 0; i < inputs.length; i++) {
-      let fileMetaData = inputs[i]
+      const fileMetaData = inputs[i]
       if (i === 0) {
         smallest.buffer = fileMetaData.smallest.buffer
         largest.buffer = fileMetaData.largest.buffer
@@ -513,10 +513,7 @@ export default class VersionSet {
           smallest.buffer = fileMetaData.smallest.buffer
         }
         if (
-          this.internalKeyComparator.compare(
-            new Slice(fileMetaData.largest.buffer),
-            new Slice(largest)
-          ) > 0
+          this.internalKeyComparator.compare(fileMetaData.largest, largest) > 0
         ) {
           largest.buffer = fileMetaData.largest.buffer
         }
@@ -689,7 +686,7 @@ export default class VersionSet {
     c.edit.compactPointers.push({ level, internalKey: largest })
   }
 
-  public addLiveFiles(live: number[]) {
+  public addLiveFiles(live: Set<number>) {
     for (
       let ver = this._dummyVersions.next;
       ver != this._dummyVersions;
@@ -698,7 +695,7 @@ export default class VersionSet {
       for (let level = 0; level < Config.kNumLevels; level++) {
         const files = ver.files[level]
         for (let i = 0; i < files.length; i++) {
-          live.push(files[i].number)
+          live.add(files[i].number)
         }
       }
     }

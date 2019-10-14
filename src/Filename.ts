@@ -50,42 +50,51 @@ export function getOldInfoLogFilename(dbpath: string): string {
   return path.resolve(dbpath, `LOG.old`)
 }
 
-export function parseFilename(
-  filename: string,
-  number: number,
-  type: FileType
-): boolean {
+export class InternalFile {
+  isInternalFile: boolean = true
+  filename!: string
+  number!: number
+  type!: FileType
+}
+
+export function parseFilename(filename: string): InternalFile {
+  const internalFile = new InternalFile()
   if (filename === 'CURRENT') {
-    number = 0
-    type = FileType.kCurrentFile
+    internalFile.number = 0
+    internalFile.type = FileType.kCurrentFile
   } else if (filename === 'LOCK') {
-    number = 0
-    type = FileType.kLogFile
+    internalFile.number = 0
+    internalFile.type = FileType.kLogFile
   } else if (filename === 'LOG' || filename === 'LOG.old') {
-    number = 0
-    type = FileType.kInfoLogFile
+    internalFile.number = 0
+    internalFile.type = FileType.kInfoLogFile
   } else if (filename.startsWith('MANIFEST-')) {
     let num = Number(filename.substr('MANIFEST-'.length))
     if (isNaN(num)) {
-      return false
+      internalFile.isInternalFile = false
+      return internalFile
     }
-    number = num
-    type = FileType.kDescriptorFile
+    internalFile.number = num
+    internalFile.type = FileType.kDescriptorFile
   } else {
     let num = Number(filename.split('.')[0])
-    if (isNaN(num)) return false
+    if (isNaN(num)) {
+      internalFile.isInternalFile = false
+      return internalFile
+    }
     let suffix = filename.substr(filename.split('.')[0].length)
     if (suffix === '.log') {
-      type = FileType.kLogFile
+      internalFile.type = FileType.kLogFile
     } else if (suffix === '.ldb') {
-      type = FileType.kTableFile
+      internalFile.type = FileType.kTableFile
     } else if (suffix === '.dbtmp') {
-      type = FileType.kTempFile
+      internalFile.type = FileType.kTempFile
     } else {
-      return false
+      internalFile.isInternalFile = false
+      return internalFile
     }
-    number = num
+    internalFile.number = num
   }
 
-  return true
+  return internalFile
 }
