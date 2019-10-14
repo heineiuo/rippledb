@@ -22,8 +22,7 @@ import {
 } from './Format'
 
 export default class SSTableBuilder {
-  constructor(file: FileHandle, options: Options) {
-    assert(!!options)
+  constructor(options: Options, file: FileHandle) {
     this._file = file
     this._fileSize = 0
     this._metaBlock = new FilterBlockBuilder()
@@ -54,6 +53,7 @@ export default class SSTableBuilder {
   private _pendingIndexEntry: boolean
   private _pendingHandle: BlockHandle
 
+  // key is internal key
   async add(key: Slice, value: Slice) {
     assert(!this._closed)
     if (this._numberOfEntries > 0) {

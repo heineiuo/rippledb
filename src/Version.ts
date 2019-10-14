@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert, { strictEqual } from 'assert'
+import assert from 'assert'
 import Slice from './Slice'
 import { FileMetaData, BySmallestKey, GetStats } from './VersionFormat'
 import VersionSet from './VersionSet'
@@ -19,11 +19,14 @@ import {
   ParsedInternalKey,
   kValueTypeForSeek,
   LookupKey,
+  Entry,
+  BlockHandle,
 } from './Format'
 import Compaction from './Compaction'
 import Status from './Status'
 import { Comparator } from './Comparator'
 import { ReadOptions } from './Options'
+import { encodeFixed64 } from './Coding'
 
 enum SaverState {
   kNotFound,
@@ -94,6 +97,11 @@ class State {
   }
 }
 
+interface FileEntry {
+  key: InternalKey
+  value: Slice
+}
+
 export default class Version {
   static saveValue(saver: Saver, ikey: Slice, v: Slice) {
     const parsedKey = new ParsedInternalKey()
@@ -109,6 +117,27 @@ export default class Version {
           saver.value = Buffer.concat([v.buffer])
         }
       }
+    }
+  }
+
+  // An internal iterator.  For a given version/level pair, yields
+  // information about the files in the level.  For a given entry, key()
+  // is the largest key that occurs in the file, and value() is an
+  // 16-byte value containing the file number and file size, both
+  // encoded using EncodeFixed64.
+  static *levelFileNumIterator(
+    icmp: InternalKeyComparator, // TODO used for seek
+    files: FileMetaData[]
+  ): IterableIterator<FileEntry> {
+    for (let file of files) {
+      const valueBuf = Buffer.alloc(16)
+      valueBuf.fill(encodeFixed64(file.number), 0, 8)
+      valueBuf.fill(encodeFixed64(file.fileSize), 8, 16)
+
+      yield {
+        key: file.largest,
+        value: new Slice(valueBuf),
+      } as FileEntry
     }
   }
 

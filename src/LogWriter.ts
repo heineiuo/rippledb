@@ -60,7 +60,7 @@ export default class LogWriter {
   /**
    * Not care about record format
    */
-  public async addRecord(recordOp: Slice) {
+  public async addRecord(recordOp: Slice): Promise<void> {
     let hasFirstRecordCreated = false
     let left = recordOp.size
     let startPosition = 0

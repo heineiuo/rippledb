@@ -36,6 +36,8 @@ import { Options } from './Options'
 import SSTable from './SSTable'
 import { TableCache } from './SSTableCache'
 import Merger from './Merger'
+import { decodeFixed64 } from './Coding'
+import { Log } from './Env'
 
 export default class VersionSet {
   // Per-level key at which the next compaction at that level should start.
@@ -297,8 +299,13 @@ export default class VersionSet {
     const ver = new Version(this)
     const builder = new VersionBuilder(this, this._current)
     builder.apply(edit)
+    Log(this._options.infoLog, 'DEBUG builder apply success')
+
     builder.saveTo(ver)
+    Log(this._options.infoLog, 'DEBUG builder saveTo success')
+
     this.finalize(ver)
+    Log(this._options.infoLog, 'DEBUG builder finalize success')
 
     // Initialize new descriptor log file if necessary by creating
     // a temporary file that contains a snapshot of the current version.
@@ -313,12 +320,16 @@ export default class VersionSet {
       )
       edit.nextFileNumber = this.nextFileNumber
       this.manifestWritter = new LogWriter(this._options, manifestFilename)
+      Log(this._options.infoLog, 'DEBUG writeSnapshot starting...')
+
       status = this.writeSnapshot(this.manifestWritter)
     }
 
     if (await status.ok()) {
       const record = VersionEditRecord.add(edit)
       status = new Status(this.manifestWritter.addRecord(record))
+    } else {
+      Log(this._options.infoLog, 'DEBUG writeSnapshot fail')
     }
 
     // If we just created a new descriptor file, install it by writing a
@@ -331,10 +342,16 @@ export default class VersionSet {
 
     // Install the new version
     if (await status.ok()) {
+      Log(
+        this._options.infoLog,
+        'DEBUG LogAndApply success, Install the new version'
+      )
+
       this.appendVersion(ver)
       this.logNumber = edit.logNumber
       this.prevLogNumber = edit.prevLogNumber
     } else {
+      Log(this._options.infoLog, 'DEBUG LogAndApply fail, Delete ver')
       // delete ver
       if (!!manifestFilename) {
         delete this.manifestWritter
@@ -687,8 +704,8 @@ export default class VersionSet {
     }
   }
 
-  // TODO
-  // Create an iterator that reads over the compaction inputs for "currentCompaction".
+  // Create an iterator that reads over the compaction
+  // inputs(which includes 2 levels) for "currentCompaction".
   public async *makeInputIterator(
     currentCompaction: Compaction
   ): AsyncIterableIterator<Entry> {
@@ -699,32 +716,42 @@ export default class VersionSet {
     // TODO(opt): use concatenating iterator for level-0 if there is no overlap
     let space =
       currentCompaction.level === 0 ? currentCompaction.inputs[0].length + 1 : 2
-    const results: Entry[] = Array.from({ length: space })
+    const list: AsyncIterableIterator<Entry>[] = Array.from({ length: space })
     for (let which = 0; which < 2; which++) {
       if (currentCompaction.inputs[which].length > 0) {
         if (currentCompaction.level + which === 0) {
+          // currentCompaction.level === 0 && which === 0
           const files = currentCompaction.inputs[which]
           for (let i = 0; i < files.length; i++) {
-            const file = files[i]
-            const sstable = await SSTable.open(
+            list[num++] = this.tableCache.entryIterator(
               this._options,
-              await this._options.env.open(
-                getTableFilename(this._dbpath, file.number),
-                'r+'
-              )
+              files[i].number,
+              files[i].fileSize
             )
-            // sstable.blockIterator()
-            num++
           }
         } else {
-          num++
           // Create concatenating iterator for the files from this level
+          const files = currentCompaction.inputs[which]
+          list[num++] = this.levelFileEntryIterator(files)
         }
       }
     }
 
-    const merger = new Merger(results)
+    const merger = new Merger(this.internalKeyComparator, list, num)
 
     yield* merger.iterator()
+  }
+
+  private async *levelFileEntryIterator(
+    files: FileMetaData[]
+  ): AsyncIterableIterator<Entry> {
+    for (let fileEntry of Version.levelFileNumIterator(
+      this.internalKeyComparator,
+      files
+    )) {
+      const number = decodeFixed64(fileEntry.value.buffer.slice(0, 8))
+      const fileSize = decodeFixed64(fileEntry.value.buffer.slice(8))
+      yield* this.tableCache.entryIterator(this._options, number, fileSize)
+    }
   }
 }

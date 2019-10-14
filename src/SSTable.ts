@@ -176,6 +176,15 @@ export default class SSTable {
     return Status.createNotFound()
   }
 
+  *entryIterator(): IterableIterator<Entry> {
+    for (let handleValue of this._indexBlock.iterator(
+      this._options.comparator
+    )) {
+      const handle = BlockHandle.from(handleValue.value.buffer)
+      yield* this.blockIterator(this, this._options, handle, 'datablock')
+    }
+  }
+
   // Convert an index iterator value (i.e., an encoded BlockHandle)
   // into an iterator over the contents of the corresponding block.
   *blockIterator(
