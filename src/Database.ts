@@ -9,7 +9,7 @@ import path from 'path'
 import assert from 'assert'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
-import { EncodingOptions, Options, ReadOptions, WriteOptions } from './Options'
+import { Options, ReadOptions, WriteOptions } from './Options'
 import {
   ValueType,
   kMemTableDumpSize,
@@ -77,7 +77,7 @@ export default class Database {
     this._dbpath = dbpath
     this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
-    this.pendingOutputs = []
+    this.pendingOutputs = new Set()
     this._stats = Array.from(
       { length: Config.kNumLevels },
       () => new CompactionStats()
@@ -128,7 +128,7 @@ export default class Database {
   private _ok: boolean
   private _manualCompaction!: ManualCompaction | null
   private _bgError!: Status
-  private pendingOutputs!: number[]
+  private pendingOutputs: Set<number>
   private snapshots!: SnapshotList
   private _stats: CompactionStats[]
   private _options: Options
@@ -415,6 +415,7 @@ export default class Database {
       // Manual compaction ...
       Log(this._options.infoLog, 'DEBUG Manual compaction ...')
     } else {
+      // is not manual compaction
       compaction = this._versionSet.pickCompaction()
     }
 
@@ -639,7 +640,7 @@ export default class Database {
     meta.fileSize = 0
     meta.number = this._versionSet.getNextFileNumber()
     meta.largest = new InternalKey()
-    this.pendingOutputs.push(meta.number)
+    this.pendingOutputs.add(meta.number)
     Log(this._options.infoLog, `Level-0 table #${meta.number}: started`)
     const fileHandler = getTableFilename(this._dbpath, meta.number)
     let status = new Status(this._options.env.open(fileHandler, 'a+'))
@@ -668,7 +669,7 @@ export default class Database {
         (await status.ok()) ? 'status ok' : 'status error'
       }`
     )
-    this.pendingOutputs = this.pendingOutputs.filter(num => num !== meta.number)
+    this.pendingOutputs.delete(meta.number)
 
     // Note that if file_size is zero, the file has been deleted and
     // should not be added to the manifest.
@@ -701,13 +702,14 @@ export default class Database {
     assert(!!compact)
     assert(!compact.builder)
     let fileNumber = this._versionSet.getNextFileNumber()
-    this.pendingOutputs.push(fileNumber)
+    this.pendingOutputs.add(fileNumber)
     const out = {} as CompactionStateOutput
     out.number = fileNumber
     out.smallest = new InternalKey()
     out.largest = new InternalKey()
     compact.outputs.push(out)
     const fname = getTableFilename(this._dbpath, fileNumber)
+    Log(this._options.infoLog, `Compaction output file number is ${fileNumber}`)
     const s = new Status(this._options.env.open(fname, 'a+'))
     if (await s.ok()) {
       compact.outfile = await s.promise
@@ -781,7 +783,7 @@ export default class Database {
     begin: Slice,
     end: Slice
   ): Promise<void> {
-    Log(this._options.infoLog, 'DEBUG manualCompactRangeWithLevel...')
+    Log(this._options.infoLog, `DEBUG manualCompactRangeWithLevel ${level}...`)
     assert(level >= 0)
     assert(level + 1 < Config.kNumLevels)
     let beginStorage = new InternalKey()
@@ -850,14 +852,12 @@ export default class Database {
     delete compact.outfile
     for (let i = 0; i < compact.outputs.length; i++) {
       const out = compact.outputs[i]
-      this.pendingOutputs = this.pendingOutputs.filter(
-        num => num !== out.number
-      )
+      this.pendingOutputs.delete(out.number)
     }
   }
 
   private async deleteObsoleteFiles(): Promise<void> {
-    const live = this.pendingOutputs || []
+    const live = this.pendingOutputs
     this._versionSet.addLiveFiles(live)
     const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
       (filenames: string[], direct: Direct) => {
@@ -868,11 +868,13 @@ export default class Database {
       },
       []
     )
-    let number = 0
-    let type: FileType = -1
     let filesToDelete: string[] = []
     for (let filename of filenames) {
-      if (parseFilename(filename, number, type)) {
+      const internalFile = parseFilename(filename)
+      let number = internalFile.number
+      let type = internalFile.type
+
+      if (internalFile.isInternalFile) {
         let keep = true
         switch (type) {
           case FileType.kLogFile:
@@ -886,12 +888,12 @@ export default class Database {
             keep = number >= this._versionSet.manifestFileNumber
             break
           case FileType.kTableFile:
-            keep = live.indexOf(number) !== live[live.length - 1]
+            keep = live.has(number)
             break
           case FileType.kTempFile:
             // Any temp files that are currently being written to must
             // be recorded in pending_outputs_, which is inserted into "live"
-            keep = live.indexOf(number) !== live[live.length - 1]
+            keep = live.has(number)
             break
           case FileType.kCurrentFile:
           case FileType.kDBLockFile:
