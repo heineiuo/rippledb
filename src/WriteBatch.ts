@@ -56,6 +56,7 @@ export default class WriteBatch {
   static setCount(batch: WriteBatch, count: number) {
     batch.buffer.fill(encodeFixed32(count), 8, 11)
   }
+
   static getCount(batch: WriteBatch): number {
     return decodeFixed32(batch.buffer.slice(8, 12))
   }

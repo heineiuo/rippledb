@@ -28,7 +28,7 @@ function sortedValue(index) {
 test('sstable', async () => {
   await fs.promises.mkdir(dbpath, { recursive: true })
   const file = await fs.promises.open(getTableFilename(dbpath, 1), 'w')
-  const builder = new SSTableBuilder(file, new Options())
+  const builder = new SSTableBuilder(new Options(), file)
 
   let i = 0
   while (i < 5000) {

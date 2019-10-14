@@ -8,7 +8,7 @@ jest.setTimeout(1000 * 3600)
 
 const dbpath2 = createDir()
 afterAll(() => {
-  cleanup(dbpath2)
+  // cleanup(dbpath2)
 })
 
 cleanup(dbpath2)

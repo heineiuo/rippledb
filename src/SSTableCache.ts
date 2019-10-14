@@ -11,6 +11,7 @@ import Table from './SSTable'
 import { getTableFilename } from './Filename'
 import { Options, ReadOptions } from './Options'
 import Slice from './Slice'
+import { Entry } from './Format'
 
 // TODO
 
@@ -20,6 +21,7 @@ interface TableAndFile {
 }
 
 export class TableCache {
+  // TODO entries: LRUCache capacity
   constructor(dbpath: string, options: Options, entries: number) {
     this._env = options.env
     this._dbpath = dbpath
@@ -72,5 +74,15 @@ export class TableCache {
     return status
   }
 
-  *iterator(): IterableIterator<TableAndFile> {}
+  async *entryIterator(
+    options: Options,
+    fileNumber: number,
+    fileSize: number
+  ): AsyncIterableIterator<Entry> {
+    const status = await this.findTable(fileNumber, fileSize)
+    if (await status.ok()) {
+      const tf: TableAndFile = await status.promise
+      yield* tf.table.entryIterator()
+    }
+  }
 }

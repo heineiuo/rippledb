@@ -490,7 +490,10 @@ export default class Database {
     let currentUserKey = new Slice()
     let hasCurrentUserKey: boolean = false
     let lastSequenceForKey = InternalKey.kMaxSequenceNumber
-    Log(this._options.infoLog, `doCompactionWork before make input iterator`)
+    Log(
+      this._options.infoLog,
+      `DEBUG doCompactionWork before make input iterator`
+    )
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
     )) {
@@ -643,7 +646,7 @@ export default class Database {
     if (!(await status.ok())) {
       return status
     }
-    const builder = new SSTableBuilder(await status.promise, this._options)
+    const builder = new SSTableBuilder(this._options, await status.promise)
     for (let entry of mem.iterator()) {
       if (!meta.smallest) {
         meta.smallest = new InternalKey()
@@ -707,7 +710,8 @@ export default class Database {
     const fname = getTableFilename(this._dbpath, fileNumber)
     const s = new Status(this._options.env.open(fname, 'a+'))
     if (await s.ok()) {
-      compact.builder = new SSTableBuilder(await s.promise, this._options)
+      compact.outfile = await s.promise
+      compact.builder = new SSTableBuilder(this._options, compact.outfile)
     }
     return s
   }
@@ -725,6 +729,10 @@ export default class Database {
     // Add compaction outputs
     compact.compaction.addInputDeletions(compact.compaction.edit)
     const level = compact.compaction.level
+    Log(
+      this._options.infoLog,
+      `DEBUG compact.outputs.length=${compact.outputs.length}`
+    )
     for (let i = 0; i < compact.outputs.length; i++) {
       const out = compact.outputs[i]
       compact.compaction.edit.addFile(
@@ -735,10 +743,18 @@ export default class Database {
         out.largest
       )
     }
-    const status = new Status(
-      this._versionSet.logAndApply(compact.compaction.edit)
+
+    Log(
+      this._options.infoLog,
+      `DEBUG installCompactionResults logAndApply starting...`
     )
-    await status.promise
+
+    const status = await this._versionSet.logAndApply(compact.compaction.edit)
+    if (!(await status.ok())) {
+      Log(this._options.infoLog, `DEBUG installCompactionResults fail`)
+    } else {
+      Log(this._options.infoLog, `DEBUG installCompactionResults success`)
+    }
     return status
   }
 

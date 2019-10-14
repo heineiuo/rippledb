@@ -63,6 +63,7 @@ export default class VersionBuilder {
     }
   }
 
+  // Save the current state in `ver`.
   public saveTo(ver: Version) {
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
     // traverse every level and put added files in right
@@ -82,9 +83,10 @@ export default class VersionBuilder {
           let baseFile = this._base.files[level][i++]
           if (!addedFile.done) {
             if (cmp.operator(baseFile, addedFile.value)) {
+              // Add all smaller files listed in base_
               this.maybeAddFile(ver, level, baseFile)
-              i--
             } else {
+              i--
               this.maybeAddFile(ver, level, addedFile.value)
               addedFile = addedFileIterator.next()
             }
