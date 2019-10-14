@@ -10,3 +10,6 @@
 module.exports.Database = require('./build/Database').default
 module.exports.WriteBatch = require('./build/WriteBatch').default
 module.exports.Slice = require('./build/Slice').default
+module.exports.Options = require('./build/Options').Options
+module.exports.ReadOptions = require('./build/Options').ReadOptions
+module.exports.WriteOptions = require('./build/Options').WriteOptions

@@ -114,7 +114,7 @@ export class FileSet {
     return this._set
   }
 
-  *iterator() {
+  *iterator(): IterableIterator<FileMetaData> {
     const setLength = this._set.length
     for (let i = 0; i < setLength; i++) {
       yield this._set[i]
