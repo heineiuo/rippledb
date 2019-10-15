@@ -1,5 +1,7 @@
 # node-level
 
+[![Join the chat at https://gitter.im/heineiuo/node-level](https://badges.gitter.im/heineiuo/node-level.svg)](https://gitter.im/heineiuo/node-level?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 
 <p>
   <a href="https://github.com/heineiuo/node-level/actions"><img style="max-width:100%" alt="GitHub Actions status" src="https://github.com/heineiuo/node-level/workflows/Node%20CI/badge.svg"></a>
