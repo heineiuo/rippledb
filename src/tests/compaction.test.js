@@ -29,17 +29,15 @@ describe('Compaction', () => {
     expect(!!result).toBe(true)
     expect(result.toString()).toBe(checkRecord[1])
 
-    done()
+    await db.compactRange(
+      new Slice(Buffer.alloc(16).fill(0x00)),
+      new Slice(Buffer.alloc(16).fill(0xff))
+    )
 
-    // await db.compactRange(
-    //   new Slice(Buffer.alloc(16).fill(0x00)),
-    //   new Slice(Buffer.alloc(16).fill(0xff))
-    // )
+    done()
 
     // const result2 = await db.get({}, checkRecord[0])
     // expect(!!result2).toBe(true)
     // expect(result2.toString()).toBe(checkRecord[1])
-
-    // done()
   })
 })
