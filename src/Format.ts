@@ -194,7 +194,7 @@ export class Config {
   static kReadBytesPeriod = 1048576
 }
 
-export const kSizeOfUint32 = 4
+export const kSizeOfUInt32 = 4
 
 export class InternalKeyComparator implements Comparator {
   constructor(userComparator: Comparator) {
@@ -237,16 +237,23 @@ export class InternalKeyComparator implements Comparator {
   }
 
   findShortSuccessor(key: Slice) {
-    return
-    // Find first character that can be incremented
-    let n = key.length
-    for (let i = 0; i < n; i++) {
-      const byte = key.buffer[i]
-      if (byte !== 0xff) {
-        key.buffer[i] = byte + 1
-        key.buffer = key.buffer.slice(0, i + 1)
-        return
-      }
+    const userKey = extractUserKey(key)
+    const tmp = new Slice(Buffer.from(userKey.buffer))
+    this._userComparator.findShortSuccessor(tmp)
+    if (
+      tmp.size < userKey.size &&
+      this._userComparator.compare(userKey, tmp) < 0
+    ) {
+      // User key has become shorter physically, but larger logically.
+      // Tack on the earliest possible number to the shortened user key.
+      tmp.buffer = Buffer.concat([
+        tmp.buffer,
+        encodeFixed64(
+          packSequenceAndType(kMaxSequenceNumber, kValueTypeForSeek)
+        ),
+      ])
+      assert(this.compare(key, tmp) < 0)
+      key.buffer = tmp.buffer
     }
   }
 

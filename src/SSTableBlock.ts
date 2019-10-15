@@ -7,8 +7,9 @@
 
 import { Comparator } from './Comparator'
 import { decodeFixed32 } from './Coding'
-import { BlockContents, kSizeOfUint32, Entry, InternalKey } from './Format'
+import { BlockContents, kSizeOfUInt32, Entry, InternalKey } from './Format'
 import Slice from './Slice'
+import assert from 'assert'
 
 interface RestartedEntry {
   entry: Entry
@@ -21,21 +22,21 @@ export default class SSTableBlock {
   constructor(contents: BlockContents) {
     this._buffer = contents.data.buffer
     this._size = contents.data.size
-    const maxRestartsAllowed = (this._size - kSizeOfUint32) / kSizeOfUint32
+    const maxRestartsAllowed = (this._size - kSizeOfUInt32) / kSizeOfUInt32
     if (this.getNumRestarts() > maxRestartsAllowed) {
+      // The size is too small for NumRestarts()
       this._size = 0
     } else {
-      this._restartOffset =
-        this._size - (1 + this.getNumRestarts()) * kSizeOfUint32
+      this._restartPoint =
+        this._size - (1 + this.getNumRestarts()) * kSizeOfUInt32
     }
   }
 
   public blockType!: string
-  _restartOffset!: number
-  _size: number
-  _buffer: Buffer
 
-  _restarts!: number[] // Restart points
+  private _restartPoint!: number
+  private _size: number
+  private _buffer: Buffer
 
   get buffer(): Buffer {
     return this._buffer
@@ -52,19 +53,23 @@ export default class SSTableBlock {
   decodeEntry(offset: number, lastKey: Slice): RestartedEntry {
     const shared = decodeFixed32(this._buffer.slice(offset, offset + 4))
     const nonShared = decodeFixed32(this._buffer.slice(offset + 4, offset + 8))
+    const valueLength = decodeFixed32(
+      this._buffer.slice(offset + 8, offset + 12)
+    )
     const keyLength = shared + nonShared
-    const valueLength = decodeFixed32(this._buffer.slice(offset + 8))
-    const sharedKey = lastKey.buffer.slice(0, shared)
     const nonSharedKey = this._buffer.slice(
       offset + 12,
       offset + 12 + nonShared
     )
+    const sharedKey = lastKey.buffer.slice(0, shared)
+    const key = new Slice(Buffer.concat([sharedKey, nonSharedKey]))
+    assert(key.length === keyLength)
     return {
       rawSize: 12 + nonShared + valueLength,
       shared,
       nonShared,
       entry: {
-        key: new Slice(Buffer.concat([sharedKey, nonSharedKey])),
+        key,
         value: new Slice(
           this._buffer.slice(
             offset + 12 + nonShared,
@@ -75,96 +80,43 @@ export default class SSTableBlock {
     } as RestartedEntry
   }
 
-  *restartOffsetIterator(): IterableIterator<number> {
-    // const numRestarts = this.getNumRestarts()
-    let currentOffset = 0
+  *restartPointIterator(): IterableIterator<number> {
+    let currentOffset = this._restartPoint
     while (true) {
-      yield currentOffset
-      if (currentOffset >= this._size - 8) {
+      if (currentOffset >= this._size - 4) {
         break
       }
+      yield decodeFixed32(this._buffer.slice(currentOffset, currentOffset + 4))
       currentOffset += 4
     }
   }
 
   *iterator(comparator: Comparator): IterableIterator<Entry> {
     const numRestarts = this.getNumRestarts()
-
     if (numRestarts === 0) {
       return
     }
 
-    const lastRestartOffset = this._buffer.length - 8
-    const restartOffsetIterator = this.restartOffsetIterator()
-    let restartOffsetResult = restartOffsetIterator.next()
+    const restartPointIterator = this.restartPointIterator()
+
     let offset = 0
     let lastKey = new Slice()
-    let currentRestartOffset = restartOffsetResult.value
-    if (!restartOffsetResult.done)
-      restartOffsetResult = restartOffsetIterator.next()
-    while (offset < lastRestartOffset) {
-      if (offset === currentRestartOffset) {
-        lastKey = new Slice()
-      }
-      const currentRestartedEntry = this.decodeEntry(offset, lastKey)
+    let currentRestartPointResult = restartPointIterator.next()
+    let currentRestartPoint = currentRestartPointResult.value
 
+    while (true) {
+      if (offset >= this._restartPoint) break
+
+      const currentRestartedEntry = this.decodeEntry(offset, lastKey)
       yield currentRestartedEntry.entry
       lastKey = new Slice(currentRestartedEntry.entry.key)
       offset += currentRestartedEntry.rawSize
-      if (offset === restartOffsetResult.value) {
-        currentRestartOffset = restartOffsetResult.value
-        restartOffsetResult = restartOffsetIterator.next()
+
+      if (offset === currentRestartPoint) {
+        lastKey = new Slice()
+        currentRestartPointResult = restartPointIterator.next()
+        currentRestartPoint = currentRestartPointResult.value
       }
     }
-
-    // let prevRestartOffset: number = -1
-    // let currentRestartOffset: number = -1
-    // let lastKey = new Slice()
-    // for (let restartOffset of this.restartOffsetIterator()) {
-    //   if (prevRestartOffset === -1) {
-    //     prevRestartOffset = restartOffset
-    //     continue
-    //   }
-    //   assert(restartOffset > 0)
-    //   prevRestartOffset = restartOffset
-    //   while (offset < restartOffset) {
-    //     const currentRestartedEntry = this.decodeEntry(offset, lastKey)
-    //     yield currentRestartedEntry
-    //     lastKey = new Slice(currentRestartedEntry.key)
-    //     offset += currentRestartedEntry.rawSize
-    //   }
-    // }
-
-    // let index = 0
-    // let restartOffsetIterator = this.restartOffsetIterator()
-    // let currentRestartResult = restartOffsetIterator.next()
-    // let prevRestartOffset = currentRestartResult.value
-    // while (!currentRestartResult.done) {
-
-    //   while(index < )
-    // }
-    // while (true) {}
-    // let lastKey = this.decodeEntry(index)
-    // index += lastKey.key.size + lastKey.value.size
-    // const value = new Slice()
-
-    // if (numRestarts === 0) {
-    //   return
-    // } else {
-    //   let current: number = 0
-    //   let recordSizeSummary: number = 0
-    //   while (true) {
-    //     if (this.size - 5 <= recordSizeSummary) {
-    //       return
-    //     }
-    //     const record = new SSTableRecord(
-    //       this.buffer.slice(this.offset + recordSizeSummary)
-    //     )
-    //     if (record.isEmpty()) return
-    //     const data = record.get()
-    //     yield data
-    //     recordSizeSummary += record.size
-    //   }
-    // }
   }
 }

@@ -6,50 +6,55 @@ import SSTableBuilder from '../SSTableBuilder'
 import { getTableFilename } from '../Filename'
 import { createDir, cleanup } from '../../fixtures/dbpath'
 import { Options } from '../Options'
+import { random } from '../../fixtures/random'
+import { InternalKey, SequenceNumber, ValueType } from '../Format'
 
 const dbpath = createDir()
 afterAll(() => cleanup(dbpath))
 
-function padLeft(str, total = 10) {
-  if (str.length < total) {
-    return padLeft(`0${str}`, total)
-  }
-  return str
-}
-
-function sortedKey(index) {
-  return new Slice(`key${padLeft(String(index))}`)
-}
-
-function sortedValue(index) {
-  return new Slice(`value${padLeft(String(index))}`)
-}
+cleanup(dbpath)
 
 test('sstable', async () => {
   await fs.promises.mkdir(dbpath, { recursive: true })
-  const file = await fs.promises.open(getTableFilename(dbpath, 1), 'w')
-  const builder = new SSTableBuilder(new Options(), file)
+  const fd1 = await fs.promises.open(getTableFilename(dbpath, 1), 'w')
+  const builder = new SSTableBuilder(new Options(), fd1)
 
+  let count = 1000
   let i = 0
-  while (i < 5000) {
-    await builder.add(sortedKey(i), sortedKey(i))
+  let list = []
+  while (i < count) {
+    list.push(random())
+    i++
+  }
+  i = 0
+  list.sort((a, b) =>
+    Buffer.from(a[0]).compare(Buffer.from(b[0])) < 0 ? -1 : 1
+  )
+
+  while (i < count) {
+    const [key, value] = list[i]
+    const ikey = new InternalKey(
+      new Slice(key),
+      new SequenceNumber(i),
+      ValueType.kTypeValue
+    )
+    await builder.add(ikey, new Slice(value))
     i++
   }
 
   await builder.finish()
-  return
-  console.log(builder._footer.get())
 
-  const buf = await fs.promises.readFile(getTableFilename(dbpath, 1))
-  const table = new SSTable(buf)
-  // console.log(table._footer.get())
+  const fd = await fs.promises.open(getTableFilename(dbpath, 1), 'r+')
+  const table = await SSTable.open(new Options(), fd)
 
-  let count = 0
-  for (let result of table.entryIterator()) {
-    count++
+  const listKeys = []
+  const listValues = []
+  for (let entry of table.entryIterator()) {
+    const ikey = InternalKey.from(entry.key)
+    listKeys.push(ikey.userKey.toString())
+    listValues.push(entry.value.toString())
   }
-  console.log(table.footer)
-  // check this later
-  expect(count).toBe(5000)
-  expect(table.get(sortedKey(1))).toBe(sortedValue(1))
+
+  expect(list.map(pair => pair[0]).join('|')).toEqual(listKeys.join('|'))
+  expect(list.map(pair => pair[1]).join('|')).toEqual(listValues.join('|'))
 })

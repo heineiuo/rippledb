@@ -10,12 +10,7 @@ import { Buffer } from 'buffer'
 import Slice from './Slice'
 import MemTable from './MemTable'
 import LogRecord from './LogRecord'
-import {
-  SequenceNumber,
-  EntryRequireType,
-  ValueType,
-  InternalKey,
-} from './Format'
+import { SequenceNumber, EntryRequireType, ValueType } from './Format'
 import { decodeFixed64, encodeFixed32, decodeFixed32 } from './Coding'
 
 // Simplified WriteBatch
@@ -87,7 +82,7 @@ export default class WriteBatch {
     WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
   }
 
-  *iterator() {
+  *iterator(): IterableIterator<EntryRequireType> {
     let index = WriteBatch.kHeader
     while (index < this.buffer.length) {
       const valueType = this.buffer.readUInt8(index)
@@ -102,7 +97,7 @@ export default class WriteBatch {
           type: valueType,
           key: new Slice(keyBuffer),
           value: new Slice(),
-        } as EntryRequireType
+        }
         continue
       }
 
@@ -114,7 +109,7 @@ export default class WriteBatch {
         type: valueType,
         key: new Slice(keyBuffer),
         value: new Slice(valueBuffer),
-      } as EntryRequireType
+      }
     }
   }
 }

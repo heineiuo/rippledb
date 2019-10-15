@@ -18,7 +18,7 @@ import {
   BlockHandle,
   CompressionTypes,
   kBlockTrailerSize,
-  kSizeOfUint32,
+  kSizeOfUInt32,
 } from './Format'
 
 export default class SSTableBuilder {
@@ -44,7 +44,7 @@ export default class SSTableBuilder {
   private _options: Options
   private _file: FileHandle
   private _fileSize: number
-  private _lastKey!: Slice
+  private _lastKey!: Slice // internalkey
   private _dataBlock: BlockBuilder
   private _metaBlock: FilterBlockBuilder
   private _indexBlock: BlockBuilder
@@ -54,7 +54,7 @@ export default class SSTableBuilder {
   private _pendingHandle: BlockHandle
 
   // key is internal key
-  async add(key: Slice, value: Slice) {
+  async add(key: Slice, value: Slice): Promise<void> {
     assert(!this._closed)
     if (this._numberOfEntries > 0) {
       assert(
@@ -292,8 +292,8 @@ class BlockBuilder {
   public currentSizeEstimate(): number {
     return (
       this._buffer.length + // Raw data buffer
-      this._restarts.length * kSizeOfUint32 + // sizeof(uint32_t), Restart array
-      kSizeOfUint32 // sizeof(uint32_t)  // Restart array length
+      this._restarts.length * kSizeOfUInt32 + // sizeof(uint32_t), Restart array
+      kSizeOfUInt32 // sizeof(uint32_t)  // Restart array length
     )
   }
 }

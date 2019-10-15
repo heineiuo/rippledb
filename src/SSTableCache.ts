@@ -6,14 +6,14 @@
  */
 
 import Status from './Status'
-import { FileHandle, Env } from './Env'
+import { FileHandle, Env, Log } from './Env'
 import Table from './SSTable'
 import { getTableFilename } from './Filename'
 import { Options, ReadOptions } from './Options'
 import Slice from './Slice'
 import { Entry } from './Format'
 
-// TODO
+// TODO use LRUCache
 
 interface TableAndFile {
   file: FileHandle
@@ -37,8 +37,8 @@ export class TableCache {
     fileNumber: number,
     fileSize: number,
     key: Slice,
-    arg: any,
-    handleResult: (arg: any, key: Slice, value: Slice) => void
+    arg: any, // state.saver, set kNotFound if not found
+    saveValue: (arg: any, key: Slice, value: Slice) => void
   ): Promise<Status> {
     let status = await this.findTable(fileNumber, fileSize)
     if (await status.ok()) {
@@ -50,7 +50,7 @@ export class TableCache {
 
     if (await status.ok()) {
       const { key, value } = await status.promise
-      handleResult(arg, key, value)
+      saveValue(arg, key, value)
     }
     return status
   }
@@ -83,6 +83,9 @@ export class TableCache {
     if (await status.ok()) {
       const tf: TableAndFile = await status.promise
       yield* tf.table.entryIterator()
+    } else {
+      Log(this._options.infoLog, `Open Table file(${fileNumber}) fail.`)
+      throw new Error(`Open Table file(${fileNumber}) fail.`)
     }
   }
 }
