@@ -56,7 +56,7 @@ export default class VersionBuilder {
     for (let file of edit.newFiles) {
       const { level, fileMetaData } = file
       fileMetaData.refs = 1
-      fileMetaData.allowedSeeks = file.fileMetaData.fileSize / 16384 // 16kb, experience value
+      fileMetaData.allowedSeeks = Math.floor(file.fileMetaData.fileSize / 16384) // 16kb, experience value
       if (fileMetaData.allowedSeeks < 100) fileMetaData.allowedSeeks = 100
       this._levels[level].deletedFiles.delete(fileMetaData.number)
       this._levels[level].addedFiles.add(fileMetaData)
@@ -68,12 +68,43 @@ export default class VersionBuilder {
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
     // traverse every level and put added files in right
     // position [ baseFiles_A, addedFiles, baseFiels_B ) ]
+
+    // const debuglist: number[][][] = [
+    //   [[], [], []],
+    //   [[], [], []],
+    //   [[], [], []],
+    //   [[], [], []],
+    //   [[], [], []],
+    //   [[], [], []],
+    // ]
+
+    // for (let level = 0; level < Config.kNumLevels; level++) {
+    //   for (let file of this._levels[level].addedFiles.iterator()) {
+    //     debuglist[level][0].push(file.number)
+    //   }
+
+    //   for (let file of this._base.files[level]) {
+    //     debuglist[level][1].push(file.number)
+    //   }
+
+    //   for (let file of this._levels[level].deletedFiles) {
+    //     debuglist[level][2].push(file)
+    //   }
+    // }
+
+    // console.log(
+    //   '------------------------------------\n',
+    //   debuglist,
+    //   '\n------------------------------------'
+    // )
+
     for (let level = 0; level < Config.kNumLevels; level++) {
       // Merge the set of added files with the set of pre-existing files.
       // Drop any deleted files.  Store the result in ver.
       const addedFileIterator = this._levels[level].addedFiles.iterator()
       let addedFile = addedFileIterator.next()
       if (this._base.files[level].length === 0) {
+        // empty level, just push addedFile
         while (!addedFile.done) {
           this.maybeAddFile(ver, level, addedFile.value)
           addedFile = addedFileIterator.next()

@@ -8,6 +8,7 @@
 import { Buffer } from 'buffer'
 import varint from 'varint'
 import Slice from './Slice'
+import assert from 'assert'
 
 const kFixed64MaxValue = (1n << 56n) - 1n
 
@@ -35,6 +36,7 @@ export function encodeFixed32(value: number): Buffer {
 }
 
 export function decodeFixed32(buf: Buffer): number {
+  assert(buf.length >= 4)
   return buf.readUInt32LE(0)
 }
 

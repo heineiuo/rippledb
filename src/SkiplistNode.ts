@@ -34,7 +34,7 @@ export default class SkiplistNode {
     }
   }
 
-  *iterator() {
+  *iterator(): IterableIterator<SkiplistNode> {
     for (let i = 0; i <= this.maxlevel; i++) {
       yield this.levels[i]
     }

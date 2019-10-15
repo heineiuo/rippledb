@@ -118,7 +118,7 @@ export default class VersionSet {
       for (let i = 0; i < inputs.length; i++) {
         total += inputs[i].fileSize
         if (total >= limit) {
-          inputs.push(new FileMetaData())
+          inputs = inputs.slice(0, i + 1)
           break
         }
       }
@@ -548,7 +548,7 @@ export default class VersionSet {
     for (let i = 0; i < files.length; i++) {
       const f: FileMetaData = files[i]
       if (icmp.compare(f.largest, largestKey) > 0) {
-        largestKey = f.largest
+        largestKey.buffer = f.largest.buffer
       }
     }
     return true
@@ -658,7 +658,13 @@ export default class VersionSet {
           newLimit
         )
         if (expand1.length === c.inputs[1].length) {
-          // todo log expanding size
+          Log(
+            this._options.infoLog,
+            `Expanding@${level} ${c.inputs[0].length}+${c.inputs[1].length}` +
+              ` (${input0Size}+${input1Size} bytes) to ${expand0Size}` +
+              `+${expand1.length} (${expand0Size}+${input1Size} bytes)`
+          )
+
           smallest = newStart
           largest = newLimit
           c.inputs[0] = expand0
@@ -734,8 +740,8 @@ export default class VersionSet {
       }
     }
 
+    assert(num <= space)
     const merger = new Merger(this.internalKeyComparator, list, num)
-
     yield* merger.iterator()
   }
 

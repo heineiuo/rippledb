@@ -19,8 +19,6 @@ import {
   ParsedInternalKey,
   kValueTypeForSeek,
   LookupKey,
-  Entry,
-  BlockHandle,
 } from './Format'
 import Compaction from './Compaction'
 import Status from './Status'
@@ -73,10 +71,17 @@ class State {
       f.fileSize,
       state.ikey,
       state.saver,
-      Version.saveValue // handleResult
+      Version.saveValue
     )
 
-    if (!(await state.s.ok())) return false
+    if (!(await state.s.ok())) {
+      if (!state.s.isNotFound()) {
+        // table.get return Status.createNotFound
+        return false
+      } else {
+        state.s = new Status()
+      }
+    }
 
     switch (state.saver.state) {
       case SaverState.kNotFound:
@@ -105,6 +110,7 @@ interface FileEntry {
 export default class Version {
   static saveValue(saver: Saver, ikey: Slice, v: Slice) {
     const parsedKey = new ParsedInternalKey()
+    // saver.state default value is kNotFound
     if (!parseInternalKey(ikey, parsedKey)) {
       saver.state = SaverState.kCorrupt
     } else {
@@ -225,6 +231,7 @@ export default class Version {
   // false, makes no more calls.
   //
   // REQUIRES: user portion of internal_key == user_key.
+  // match means 'continue searching'
   public async forEachOverlapping(
     userKey: Slice,
     internalKey: Slice,
@@ -248,7 +255,6 @@ export default class Version {
     if (tmp.length > 0) {
       // NewestFirst
       tmp.sort((a, b) => (a.number > b.number ? -1 : 1))
-
       for (let i = 0; i < tmp.length; i++) {
         if (!(await match(arg, 0, tmp[i]))) {
           return
@@ -431,5 +437,10 @@ export default class Version {
       }
     }
     return level
+  }
+
+  public updateStats(stats: GetStats): boolean {
+    // TODO
+    return false
   }
 }

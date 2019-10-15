@@ -232,6 +232,15 @@ export default class Database {
     userKey: Slice
   ): Promise<Slice | string | null | void> {
     await this.ok()
+    // process.nextTick(() => {
+    //   console.log(
+    //     this._versionSet._current.files.map((levelfiles, level) => {
+    //       return levelfiles.map(file => {
+    //         return [`level=${level}`, file.smallest.buffer, file.largest.buffer]
+    //       })
+    //     })
+    //   )
+    // })
     const slicedUserKey = new Slice(userKey)
     const sequence = options.snapshot
       ? new Snapshot(options.snapshot).sequenceNumber
@@ -243,16 +252,27 @@ export default class Database {
     if (!!this._immtable) this._immtable.ref()
     current.ref()
 
+    let hasStatUpdate = false
+    let stats = {} as GetStats
     let result = this._memtable.get(lookupKey)
     if (!result && !!this._immtable) {
       result = this._immtable.get(lookupKey)
     }
     if (!result) {
-      const s = await current.get(lookupKey, {} as GetStats)
+      const s = await current.get(lookupKey, stats)
+      hasStatUpdate = true
       if (await s.ok()) {
         result = await s.promise
       }
     }
+
+    if (hasStatUpdate && current.updateStats(stats)) {
+      await this.maybeScheduleCompaction()
+    }
+
+    this._memtable.unref()
+    if (!!this._immtable) this._immtable.unref()
+    current.unref()
     return result
   }
 
@@ -281,7 +301,6 @@ export default class Database {
       let lastSequence = this._versionSet.lastSequence
       WriteBatch.setSequence(batch, lastSequence + 1)
       lastSequence += WriteBatch.getCount(batch)
-      // TODO add to log
       await this._log.addRecord(new Slice(WriteBatch.getContents(batch)))
 
       WriteBatch.insert(batch, this._memtable)
@@ -495,9 +514,11 @@ export default class Database {
       this._options.infoLog,
       `DEBUG doCompactionWork before make input iterator`
     )
+    let count = 0
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
     )) {
+      count++
       // Prioritize immutable compaction work
       if (!!this._immtable) {
         const immStartTime = this._options.env.now()
@@ -506,10 +527,20 @@ export default class Database {
       }
 
       const key = input.key
+      await Log(
+        this._options.infoLog,
+        `make iterator key ${key.buffer.toString()}`
+      )
 
-      if (compact.compaction.shouldStopBefore(key) && !!compact.builder) {
+      const shouldStopBefore = compact.compaction.shouldStopBefore(key)
+      if (shouldStopBefore && !!compact.builder) {
         status = await this.finishCompactionOutputFile(compact, status)
         if (!(await status.ok())) {
+          Log(
+            this._options.infoLog,
+            `Break because finishCompactionOutputFile fail ${status.message() ||
+              '-'}`
+          )
           break
         }
       }
@@ -553,6 +584,11 @@ export default class Database {
         if (!compact.builder) {
           status = await this.openCompactionOutputFile(compact)
           if (!(await status.ok())) {
+            Log(
+              this._options.infoLog,
+              `Break because openCompactionOutputFile fail ${status.message() ||
+                '-'}`
+            )
             break
           }
         }
@@ -560,17 +596,26 @@ export default class Database {
           compact.currentOutput().smallest.decodeFrom(key)
         }
         compact.currentOutput().largest.decodeFrom(key)
-        compact.builder.add(key, input.value)
+        await compact.builder.add(key, input.value)
 
         // Close output file if it is big enough
         if (compact.builder.fileSize >= compact.compaction.maxOutputFilesize) {
           status = await this.finishCompactionOutputFile(compact, new Status())
           if (!(await status.ok())) {
+            Log(
+              this._options.infoLog,
+              `Break because finishCompactionOutputFile2 fail ${status.message() ||
+                '-'}`
+            )
             break
           }
         }
       }
     }
+    Log(
+      this._options.infoLog,
+      `DEBUG doCompactionWork after makeInputIterator count=${count}`
+    )
 
     if ((await status.ok()) && !!compact.builder) {
       status = await this.finishCompactionOutputFile(compact, status)
@@ -650,8 +695,7 @@ export default class Database {
     const builder = new SSTableBuilder(this._options, await status.promise)
     for (let entry of mem.iterator()) {
       if (!meta.smallest) {
-        meta.smallest = new InternalKey()
-        meta.smallest.decodeFrom(entry.key)
+        meta.smallest = InternalKey.from(entry.key)
       }
       meta.largest.decodeFrom(entry.key)
       await builder.add(entry.key, entry.value)
@@ -662,7 +706,7 @@ export default class Database {
       return status
     }
     meta.fileSize = builder.fileSize
-
+    assert(meta.fileSize > 0)
     Log(
       this._options.infoLog,
       `Level-0 table #${meta.number}: ${meta.fileSize} bytes ${
@@ -679,6 +723,7 @@ export default class Database {
       const maxUserKey = meta.largest.userKey
       if (!!base) {
         level = base.pickLevelForMemTableOutput(minUserKey, maxUserKey)
+        Log(this._options.infoLog, `Pick level=${level} for imm output`)
       }
       edit.addFile(
         level,
@@ -714,6 +759,9 @@ export default class Database {
     if (await s.ok()) {
       compact.outfile = await s.promise
       compact.builder = new SSTableBuilder(this._options, compact.outfile)
+      Log(this._options.infoLog, 'DEBUG open file success')
+    } else {
+      Log(this._options.infoLog, `DEBUG open file error ${s.message || ''}`)
     }
     return s
   }

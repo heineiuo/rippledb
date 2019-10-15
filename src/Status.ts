@@ -57,7 +57,7 @@ export default class Status {
     try {
       await this._promise
     } catch (e) {
-      if (e.code) this._code = e.code
+      if (e._code) this._code = e._code
       this._error = e
     } finally {
       this._finish = true

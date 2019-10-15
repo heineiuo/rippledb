@@ -75,8 +75,6 @@ export class BytewiseComparator implements Comparator {
   }
 
   findShortSuccessor(key: Slice): void {
-    return
-
     // Find first character that can be incremented
     let n = key.length
     for (let i = 0; i < n; i++) {

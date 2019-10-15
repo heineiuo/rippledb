@@ -30,11 +30,6 @@ export default class SSTableBlock {
       this._restartPoint =
         this._size - (1 + this.getNumRestarts()) * kSizeOfUInt32
     }
-    // console.log(
-    //   `this._size=${
-    //     this._size
-    //   } numRestarts=${this.getNumRestarts()} restartPoint=${this._restartPoint}`
-    // )
   }
 
   public blockType!: string

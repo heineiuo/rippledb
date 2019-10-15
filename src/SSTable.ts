@@ -6,7 +6,7 @@
  */
 
 import { Buffer } from 'buffer'
-import { FileHandle } from './Env'
+import { FileHandle, Log } from './Env'
 import Slice from './Slice'
 import Footer from './SSTableFooter'
 import DataBlock from './SSTableBlock'
@@ -61,7 +61,10 @@ export default class SSTable {
     return result
   }
 
-  static async open(options: Options, fileHandle: FileHandle) {
+  static async open(
+    options: Options,
+    fileHandle: FileHandle
+  ): Promise<SSTable> {
     const buf = await fileHandle.readFile()
     if (buf.length < Footer.kEncodedLength) {
       throw new Error('file is too short to be an sstable')
@@ -76,9 +79,9 @@ export default class SSTable {
     const indexBlock = new DataBlock(indexBlockContents)
     indexBlock.blockType = 'indexblock'
     const table = new SSTable({
+      buf,
       options,
       indexBlock,
-      buf,
       metaIndexHandle: footer.metaIndexHandle,
     })
     await table.readMeta(footer)
@@ -141,15 +144,26 @@ export default class SSTable {
   public async get(target: Slice): Promise<Status> {
     const targetInternalKey = InternalKey.from(target)
 
+    Log(
+      this._options.infoLog,
+      `Searching key=${InternalKey.from(target).userKey.toString()} sequence=${
+        InternalKey.from(target).sequence
+      }`
+    )
+    let count = 0
+    let indexBlockCount = 0
+
     for (let handleValue of this._indexBlock.iterator(
       this._options.comparator
     )) {
+      indexBlockCount++
       const handle = BlockHandle.from(handleValue.value.buffer)
 
       if (
         !!this._filterReader &&
         !this._filterReader.keyMayMatch(handle.offset, target)
       ) {
+        Log(this._options.infoLog, `Not found`)
         // Not found
       } else {
         for (let entry of this.blockIterator(
@@ -158,7 +172,14 @@ export default class SSTable {
           handle,
           'datablock'
         )) {
+          count++
           const entryInternalKey = InternalKey.from(entry.key)
+          if (entryInternalKey.userKey.toString() === 'foo') {
+            Log(
+              this._options.infoLog,
+              `entryInternalKey.userKey.toString() === 'foo'`
+            )
+          }
 
           if (
             entryInternalKey.userKey.isEqual(targetInternalKey.userKey) &&
@@ -170,7 +191,6 @@ export default class SSTable {
             break
           }
         }
-        break
       }
     }
     return Status.createNotFound()

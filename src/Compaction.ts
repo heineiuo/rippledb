@@ -133,7 +133,7 @@ export default class Compaction {
       this.grandparentIndex < this.grandparents.length &&
       icmp.compare(
         internalKey,
-        new Slice(this.grandparents[this.grandparentIndex].largest.buffer)
+        this.grandparents[this.grandparentIndex].largest
       ) > 0
     ) {
       if (this.seenKey) {
