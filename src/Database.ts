@@ -232,15 +232,6 @@ export default class Database {
     userKey: Slice
   ): Promise<Slice | string | null | void> {
     await this.ok()
-    // process.nextTick(() => {
-    //   console.log(
-    //     this._versionSet._current.files.map((levelfiles, level) => {
-    //       return levelfiles.map(file => {
-    //         return [`level=${level}`, file.smallest.buffer, file.largest.buffer]
-    //       })
-    //     })
-    //   )
-    // })
     const slicedUserKey = new Slice(userKey)
     const sequence = options.snapshot
       ? new Snapshot(options.snapshot).sequenceNumber
