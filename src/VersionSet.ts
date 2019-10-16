@@ -96,8 +96,13 @@ export default class VersionSet {
     return this._current
   }
 
-  public getLevelSummary() {
-    return JSON.stringify(this._current.files)
+  public getLevelSummary(): string {
+    let summary = 'files [ '
+    for (let i = 0; i < this._current.files.length; i++) {
+      summary += `${this._current.files[i].length} `
+    }
+    summary += ']'
+    return summary
   }
 
   public compactRange(

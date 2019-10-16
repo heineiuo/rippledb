@@ -518,10 +518,6 @@ export default class Database {
       }
 
       const key = input.key
-      await Log(
-        this._options.infoLog,
-        `make iterator key ${key.buffer.toString()}`
-      )
 
       const shouldStopBefore = compact.compaction.shouldStopBefore(key)
       if (shouldStopBefore && !!compact.builder) {
