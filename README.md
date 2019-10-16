@@ -20,16 +20,18 @@ yarn add node-level
 Use in JavaScript or TypeScript:
 
 ```js
-import path from 'path'
-import { Database } from 'node-level'
+const path = require('path')
+const { Database } = require('node-level')
 
-const db = new Datebase(path.resolve(__dirname, './db'))
+async function main(){
+  const db = new Database(path.resolve(__dirname, './db'))
+  await db.put({}, 'foo', 'bar')
+  console.log(
+    (await db.get({}, 'foo')).toString()
+  ) // 'bar'
+}
 
-await db.put({}, 'foo', 'bar')
-console.log(
-  (await db.get({}, 'foo')).toString()
-) // 'bar'
-
+main()
 ```
 
 
