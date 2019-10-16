@@ -449,7 +449,8 @@ export default class VersionSet {
 
       for (let f of this._current.files[level]) {
         if (
-          !this.compactPointers[level].length ||
+          !this.compactPointers[level] ||
+          this.compactPointers[level].length === 0 ||
           this.internalKeyComparator.compare(
             f.largest,
             this.compactPointers[level]

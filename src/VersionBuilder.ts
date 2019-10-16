@@ -69,64 +69,93 @@ export default class VersionBuilder {
     // traverse every level and put added files in right
     // position [ baseFiles_A, addedFiles, baseFiels_B ) ]
 
-    // const debuglist: number[][][] = [
-    //   [[], [], []],
-    //   [[], [], []],
-    //   [[], [], []],
-    //   [[], [], []],
-    //   [[], [], []],
-    //   [[], [], []],
-    // ]
-
-    // for (let level = 0; level < Config.kNumLevels; level++) {
-    //   for (let file of this._levels[level].addedFiles.iterator()) {
-    //     debuglist[level][0].push(file.number)
-    //   }
-
-    //   for (let file of this._base.files[level]) {
-    //     debuglist[level][1].push(file.number)
-    //   }
-
-    //   for (let file of this._levels[level].deletedFiles) {
-    //     debuglist[level][2].push(file)
-    //   }
-    // }
-
-    // console.log(
-    //   '------------------------------------\n',
-    //   debuglist,
-    //   '\n------------------------------------'
-    // )
-
     for (let level = 0; level < Config.kNumLevels; level++) {
       // Merge the set of added files with the set of pre-existing files.
       // Drop any deleted files.  Store the result in ver.
       const addedFileIterator = this._levels[level].addedFiles.iterator()
+      const baseFilesInThisLevel = this._base.files[level].sort((a, b) =>
+        cmp.operator(a, b) ? -1 : 1
+      )
       let addedFile = addedFileIterator.next()
-      if (this._base.files[level].length === 0) {
-        // empty level, just push addedFile
-        while (!addedFile.done) {
-          this.maybeAddFile(ver, level, addedFile.value)
-          addedFile = addedFileIterator.next()
+
+      let i = 0
+      while (true) {
+        if (baseFilesInThisLevel.length === 0) {
+          // empty level, just push addedFile
+          break
         }
-      } else {
-        for (let i = 0; i < this._base.files[level].length; ) {
-          let baseFile = this._base.files[level][i++]
-          if (!addedFile.done) {
-            if (cmp.operator(baseFile, addedFile.value)) {
-              // Add all smaller files listed in base_
-              this.maybeAddFile(ver, level, baseFile)
-            } else {
-              i--
-              this.maybeAddFile(ver, level, addedFile.value)
-              addedFile = addedFileIterator.next()
-            }
-          } else {
+        let baseFile = baseFilesInThisLevel[i++]
+        if (!addedFile.done) {
+          if (cmp.operator(baseFile, addedFile.value)) {
+            // Add all smaller files listed in base_
             this.maybeAddFile(ver, level, baseFile)
+          } else {
+            i--
+            this.maybeAddFile(ver, level, addedFile.value)
+            addedFile = addedFileIterator.next()
           }
+        } else {
+          this.maybeAddFile(ver, level, baseFile)
         }
+        if (i >= baseFilesInThisLevel.length) break
+      }
+      while (!addedFile.done) {
+        this.maybeAddFile(ver, level, addedFile.value)
+        addedFile = addedFileIterator.next()
       }
     }
+  }
+
+  private debugVersion(ver: Version, key: string): string {
+    const debuglist: number[][][] = [
+      [[], [], []],
+      [[], [], []],
+      [[], [], []],
+      [[], [], []],
+      [[], [], []],
+      [[], [], []],
+    ]
+
+    for (let level = 0; level < Config.kNumLevels; level++) {
+      for (let file of this._base.files[level]) {
+        debuglist[level][0].push(file.number)
+      }
+      for (let file of this._levels[level].addedFiles.iterator()) {
+        debuglist[level][1].push(file.number)
+      }
+
+      for (let file of this._levels[level].deletedFiles) {
+        debuglist[level][2].push(file)
+      }
+    }
+
+    function stringifyBuilderState(): string {
+      let result = ''
+      let level = 0
+      for (let levelFiles of debuglist) {
+        result += `level=${level} baseFiles=${levelFiles[0].join(
+          ','
+        )} addedFiles=${levelFiles[1].join(
+          ','
+        )} deletedFiles=${levelFiles[2].join(',')} \n`
+        level++
+      }
+      return result
+    }
+
+    function stringifyVersion(ver: Version): string {
+      let result = ''
+      let level = 0
+      for (let levelFiles of ver.files) {
+        result += `level=${level} files=${levelFiles
+          .map(file => file.number)
+          .join(',')}\n`
+        level++
+      }
+      return result
+    }
+
+    return key + '\n' + stringifyBuilderState() + '\n' + stringifyVersion(ver)
   }
 
   private maybeAddFile(ver: Version, level: number, file: FileMetaData) {
