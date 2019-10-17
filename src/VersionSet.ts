@@ -331,7 +331,8 @@ export default class VersionSet {
       )
       edit.nextFileNumber = this.nextFileNumber
       this.manifestWritter = new LogWriter(this._options, manifestFilename)
-      Log(this._options.infoLog, 'DEBUG writeSnapshot starting...')
+      if (this._options.debug)
+        Log(this._options.infoLog, 'DEBUG writeSnapshot starting...')
 
       status = this.writeSnapshot(this.manifestWritter)
     }

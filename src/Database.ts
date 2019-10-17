@@ -83,7 +83,6 @@ export default class Database {
     this._internalKeyComparator = new InternalKeyComparator(
       new BytewiseComparator()
     )
-    this._ok = false
     this._dbpath = dbpath
     // this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
@@ -110,7 +109,7 @@ export default class Database {
       this._internalKeyComparator
     )
 
-    this.recoverWrapper()
+    this._status = new Status(this.recoverWrapper())
   }
 
   private _internalKeyComparator: InternalKeyComparator
@@ -118,12 +117,12 @@ export default class Database {
   private _dbpath: string
   private _sn: SequenceNumber
   // _cache: LRU
+  private _status: Status
   private _log!: LogWriter
   private _logFileNumber: number = 0
   private _memtable!: MemTable
   private _immtable!: MemTable
   private _versionSet: VersionSet
-  private _ok: boolean
   private _manualCompaction!: ManualCompaction | null
   private _bgError!: Status
   private pendingOutputs: Set<number>
@@ -208,10 +207,9 @@ export default class Database {
       if (!(await status.ok())) {
         throw status.error
       }
-      this._ok = true
     } catch (e) {
       if (this._options.debug) console.log(e)
-      this._ok = false
+      throw e
     }
   }
 
@@ -372,15 +370,11 @@ export default class Database {
 
   // wait for db.recover
   public async ok(): Promise<boolean> {
-    if (this._ok) return true
-    let limit = 5
-    let i = 0
-    while (i < limit) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-      if (this._ok) return true
-      i++
+    if (await this._status.ok()) {
+      return true
+    } else {
+      throw this._status.error
     }
-    throw new Error('Database is busy.')
   }
 
   public async *iterator(
