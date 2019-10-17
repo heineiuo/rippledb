@@ -11,20 +11,15 @@ A pure node.js implementation of LSM(log structured merge tree) based storage en
 
 ## Get started
 
-Install from npm:
-
-```sh
-yarn add node-level
-```
-
 Use in JavaScript or TypeScript:
 
 ```js
 const path = require('path')
-const { Database } = require('node-level')
+const { Database } = require('node-level') // install from npm
 
 async function main(){
   const db = new Database(path.resolve(__dirname, './db'))
+  await db.ok()
   await db.put({}, 'foo', 'bar')
   console.log(
     (await db.get({}, 'foo')).toString()
