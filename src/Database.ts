@@ -78,14 +78,14 @@ function getTableCacheSize(sanitizedOptions: Options) {
 }
 
 export default class Database {
-  constructor(dbpath: string) {
+  constructor(dbpath: string, options: Options = new Options()) {
     this._backgroundCompactionScheduled = false
     this._internalKeyComparator = new InternalKeyComparator(
       new BytewiseComparator()
     )
     this._ok = false
     this._dbpath = dbpath
-    this._memtable = new MemTable(this._internalKeyComparator)
+    // this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
     this.pendingOutputs = new Set()
     this._stats = Array.from(
@@ -93,11 +93,10 @@ export default class Database {
       () => new CompactionStats()
     )
 
-    const options = new Options()
     options.comparator = this._internalKeyComparator
     this._options = options
 
-    this._log = new LogWriter(this._options, getLogFilename(dbpath, 1))
+    // this._log = new LogWriter(this._options, getLogFilename(dbpath, 1))
     this._tableCache = new TableCache(
       dbpath,
       options,
@@ -119,9 +118,9 @@ export default class Database {
   private _dbpath: string
   private _sn: SequenceNumber
   // _cache: LRU
-  private _log: LogWriter
-  private _logFileNumber!: number
-  private _memtable: MemTable
+  private _log!: LogWriter
+  private _logFileNumber: number = 0
+  private _memtable!: MemTable
   private _immtable!: MemTable
   private _versionSet: VersionSet
   private _ok: boolean
@@ -203,7 +202,7 @@ export default class Database {
 
       if (await status.ok()) {
         await this.deleteObsoleteFiles()
-        await this.maybeScheduleCompaction()
+        // await this.maybeScheduleCompaction()
         assert(!!this._memtable)
       }
       if (!(await status.ok())) {
@@ -211,7 +210,7 @@ export default class Database {
       }
       this._ok = true
     } catch (e) {
-      console.error(e)
+      if (this._options.debug) console.log(e)
       this._ok = false
     }
   }
@@ -407,8 +406,8 @@ export default class Database {
    * table.get
    */
   public async get(
-    options: ReadOptions,
-    userKey: Slice
+    userKey: Slice,
+    options: ReadOptions = new ReadOptions()
   ): Promise<Slice | string | null | void> {
     await this.ok()
     const slicedUserKey = new Slice(userKey)
@@ -451,19 +450,36 @@ export default class Database {
    * 1. check if memtable bigger then 4mb
    * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
-  public async put(options: WriteOptions, key: any, value: any): Promise<void> {
+  public put(
+    key: any,
+    value: any,
+    options: WriteOptions = new WriteOptions()
+  ): Promise<void> {
     const batch = new WriteBatch()
     batch.put(new Slice(key), new Slice(value))
-    await this.write(options, batch)
+    return this.write(options, batch)
   }
 
-  public async del(options: WriteOptions, key: any): Promise<void> {
+  public del(
+    key: any,
+    options: WriteOptions = new WriteOptions()
+  ): Promise<void> {
     const batch = new WriteBatch()
     batch.del(new Slice(key))
-    await this.write(options, batch)
+    return this.write(options, batch)
   }
 
-  public async write(options: WriteOptions, batch?: WriteBatch): Promise<void> {
+  public batch(
+    batch: WriteBatch,
+    options: WriteOptions = new WriteOptions()
+  ): Promise<void> {
+    return this.write(options, batch)
+  }
+
+  private async write(
+    options: WriteOptions,
+    batch?: WriteBatch
+  ): Promise<void> {
     await this.ok()
     await this.makeRoomForWrite(!batch)
 
@@ -602,7 +618,8 @@ export default class Database {
           compaction.inputs[0][compaction.numInputFiles(0) - 1].largest
       }
       // Manual compaction ...
-      Log(this._options.infoLog, 'DEBUG Manual compaction ...')
+      if (this._options.debug)
+        Log(this._options.infoLog, 'DEBUG Manual compaction ...')
     } else {
       // is not manual compaction
       compaction = this._versionSet.pickCompaction()
@@ -680,10 +697,11 @@ export default class Database {
     let currentUserKey = new Slice()
     let hasCurrentUserKey: boolean = false
     let lastSequenceForKey = InternalKey.kMaxSequenceNumber
-    Log(
-      this._options.infoLog,
-      `DEBUG doCompactionWork before make input iterator`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG doCompactionWork before make input iterator`
+      )
     let count = 0
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
@@ -778,10 +796,11 @@ export default class Database {
         }
       }
     }
-    Log(
-      this._options.infoLog,
-      `DEBUG doCompactionWork after makeInputIterator count=${count}`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG doCompactionWork after makeInputIterator count=${count}`
+      )
 
     if ((await status.ok()) && !!compact.builder) {
       status = await this.finishCompactionOutputFile(compact, status)
@@ -925,9 +944,11 @@ export default class Database {
     if (await s.ok()) {
       compact.outfile = await s.promise
       compact.builder = new SSTableBuilder(this._options, compact.outfile)
-      Log(this._options.infoLog, 'DEBUG open file success')
+      if (this._options.debug)
+        Log(this._options.infoLog, 'DEBUG open file success')
     } else {
-      Log(this._options.infoLog, `DEBUG open file error ${s.message || ''}`)
+      if (this._options.debug)
+        Log(this._options.infoLog, `DEBUG open file error ${s.message || ''}`)
     }
     return s
   }
@@ -945,10 +966,11 @@ export default class Database {
     // Add compaction outputs
     compact.compaction.addInputDeletions(compact.compaction.edit)
     const level = compact.compaction.level
-    Log(
-      this._options.infoLog,
-      `DEBUG compact.outputs.length=${compact.outputs.length}`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG compact.outputs.length=${compact.outputs.length}`
+      )
     for (let i = 0; i < compact.outputs.length; i++) {
       const out = compact.outputs[i]
       compact.compaction.edit.addFile(
@@ -960,16 +982,19 @@ export default class Database {
       )
     }
 
-    Log(
-      this._options.infoLog,
-      `DEBUG installCompactionResults logAndApply starting...`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG installCompactionResults logAndApply starting...`
+      )
 
     const status = await this._versionSet.logAndApply(compact.compaction.edit)
     if (!(await status.ok())) {
-      Log(this._options.infoLog, `DEBUG installCompactionResults fail`)
+      if (this._options.debug)
+        Log(this._options.infoLog, `DEBUG installCompactionResults fail`)
     } else {
-      Log(this._options.infoLog, `DEBUG installCompactionResults success`)
+      if (this._options.debug)
+        Log(this._options.infoLog, `DEBUG installCompactionResults success`)
     }
     return status
   }
@@ -997,7 +1022,11 @@ export default class Database {
     begin: Slice,
     end: Slice
   ): Promise<void> {
-    Log(this._options.infoLog, `DEBUG manualCompactRangeWithLevel ${level}...`)
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG manualCompactRangeWithLevel ${level}...`
+      )
     assert(level >= 0)
     assert(level + 1 < Config.kNumLevels)
     let beginStorage = new InternalKey()
@@ -1033,10 +1062,11 @@ export default class Database {
         this._manualCompaction = manual
         await this.maybeScheduleCompaction()
       } else {
-        Log(
-          this._options.infoLog,
-          'DEBUG Running either my compaction or another compaction.'
-        )
+        if (this._options.debug)
+          Log(
+            this._options.infoLog,
+            'DEBUG Running either my compaction or another compaction.'
+          )
         // Running either my compaction or another compaction.
         // TODO background_work_finished_signal_.Wait();
       }
@@ -1100,7 +1130,6 @@ export default class Database {
             // Keep my manifest file, and any newer incarnations'
             // (in case there is a race that allows other incarnations)
             keep = number >= this._versionSet.manifestFileNumber
-            keep = true
             break
           case FileType.kTableFile:
             keep = live.has(number)

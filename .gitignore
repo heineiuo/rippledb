@@ -8,3 +8,4 @@ build
 flow-coverage
 coverage
 .vscode
+report.*.json

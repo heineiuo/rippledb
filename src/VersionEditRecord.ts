@@ -160,8 +160,8 @@ export default class VersionEditRecord {
         let fileMetaData = new FileMetaData()
         fileMetaData.number = fileNum
         fileMetaData.fileSize = fileSize
-        fileMetaData.smallest = new InternalKey(new Slice(smallestKey))
-        fileMetaData.largest = new InternalKey(new Slice(largestKey))
+        fileMetaData.smallest = InternalKey.from(new Slice(smallestKey))
+        fileMetaData.largest = InternalKey.from(new Slice(largestKey))
 
         edit.newFiles.push({
           level,
