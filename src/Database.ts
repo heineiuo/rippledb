@@ -1100,7 +1100,6 @@ export default class Database {
             // Keep my manifest file, and any newer incarnations'
             // (in case there is a race that allows other incarnations)
             keep = number >= this._versionSet.manifestFileNumber
-            keep = true
             break
           case FileType.kTableFile:
             keep = live.has(number)
