@@ -39,28 +39,31 @@ import Merger from './Merger'
 import { decodeFixed64 } from './Coding'
 import { Log } from './Env'
 
+interface RecoverResult {
+  saveManifest?: boolean
+}
+
 export default class VersionSet {
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
   compactPointers: Slice[]
-  _manifestFileNumber?: number
   _current!: Version
   _dummyVersions: Version
   hasLogNumber?: boolean
   hasNextFileNumber?: boolean
   hasPrevLogNumber?: boolean
 
-  logNumber!: number
+  logNumber: number = 0
 
   // Return the log file number for the log file that is currently
   // being compacted, or zero if there is no such log file.
   // if prevLogNumber is 0, then no log file is being compacted
-  prevLogNumber!: number
+  prevLogNumber: number = 0
 
-  private _lastSequence!: number
+  private _lastSequence: number = 0
   hasLastSequence?: boolean
-  manifestFileNumber!: number
-  nextFileNumber!: number
+  manifestFileNumber: number = 0
+  nextFileNumber: number = 2
 
   private _dbpath: string
   _options: Options
@@ -151,7 +154,8 @@ export default class VersionSet {
     return this._current.files[level].length
   }
 
-  public recover = async () => {
+  public recover = async (): Promise<RecoverResult> => {
+    const result: RecoverResult = {}
     // read current， check if end of content is '\n'
     const current = await this._options.env.readFile(
       getCurrentFilename(this._dbpath),
@@ -186,8 +190,8 @@ export default class VersionSet {
     // Update next file
     // Update last sequence
     // Use version builder to create a new version
-    for await (let slice of reader.iterator()) {
-      const edit = VersionEditRecord.decode(slice)
+    for await (let editSlice of reader.iterator()) {
+      const edit = VersionEditRecord.decode(editSlice)
       builder.apply(edit)
 
       // Update manifest_file_number_， next_file_number_， last_sequence_， log_number_， prev_log_number_
@@ -241,9 +245,16 @@ export default class VersionSet {
     this.prevLogNumber = prevLogNumber
 
     // check if we can reuse manifest of need to create a new one
+    // See if we can reuse the existing MANIFEST file.
+    if (this.reuseManifest()) {
+      // No need to save new manifest
+    } else {
+      result.saveManifest = true
+    }
+    return result
   }
 
-  private markFileNumberUsed(num: number) {
+  public markFileNumberUsed(num: number) {
     if (this.nextFileNumber <= num) {
       this.nextFileNumber = num + 1
     }
@@ -304,13 +315,8 @@ export default class VersionSet {
     const ver = new Version(this)
     const builder = new VersionBuilder(this, this._current)
     builder.apply(edit)
-    Log(this._options.infoLog, 'DEBUG builder apply success')
-
     builder.saveTo(ver)
-    Log(this._options.infoLog, 'DEBUG builder saveTo success')
-
     this.finalize(ver)
-    Log(this._options.infoLog, 'DEBUG builder finalize success')
 
     // Initialize new descriptor log file if necessary by creating
     // a temporary file that contains a snapshot of the current version.
@@ -390,6 +396,7 @@ export default class VersionSet {
     ver.next.prev = ver
   }
 
+  // TODO
   private reuseManifest() {
     return false
   }

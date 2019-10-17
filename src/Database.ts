@@ -50,6 +50,7 @@ import { BytewiseComparator } from './Comparator'
 import { Direct, InfoLog, Log } from './Env'
 import { TableCache } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
+import LogReader from './LogReader'
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -58,6 +59,15 @@ interface ManualCompaction {
   begin: InternalKey // null means beginning of key range
   end: InternalKey // null means end of key range
   tmpStorage: InternalKey // Used to keep track of compaction progress
+}
+
+interface RecoverResult {
+  edit: VersionEdit
+  saveManifest: boolean
+}
+
+interface RecoverLogFileResult {
+  saveManifest?: boolean
 }
 
 const kNumNonTableCacheFiles = 10
@@ -101,18 +111,7 @@ export default class Database {
       this._internalKeyComparator
     )
 
-    // this._cache = new LRU({
-    //   max: 500,
-    //   length: function (n:number, key:string) {
-    //     return n * 2 + key.length
-    //   },
-    //   dispose: function (key, n) {
-    //     // n.close()
-    //   },
-    //   maxAge: 1000 * 60 * 60
-    // })
-
-    this.recover()
+    this.recoverWrapper()
   }
 
   private _internalKeyComparator: InternalKeyComparator
@@ -154,9 +153,10 @@ export default class Database {
     }
   }
 
+  // new db
   private async initVersionEdit(): Promise<void> {
     const edit = new VersionEdit()
-    edit.comparator = this._internalKeyComparator.getName()
+    edit.comparator = this._internalKeyComparator.userComparator.getName()
     edit.logNumber = 0
     edit.nextFileNumber = 2
     edit.lastSequence = 0
@@ -172,28 +172,207 @@ export default class Database {
     )
   }
 
-  private async recover(): Promise<void> {
+  private async recoverWrapper() {
+    try {
+      let status = new Status(this.recover())
+      let edit = null
+      let saveManifest = false
+      if (await status.ok()) {
+        const result = await status.promise
+        edit = result.edit
+        saveManifest = result.saveManifest
+      }
+      if ((await status.ok()) && !this._memtable) {
+        // Create new log and a corresponding memtable.
+        const newLogNumber = this._versionSet.getNextFileNumber()
+        edit.logNumber = newLogNumber
+        this._logFileNumber = newLogNumber
+        this._log = new LogWriter(
+          this._options,
+          getLogFilename(this._dbpath, newLogNumber)
+        )
+        this._memtable = new MemTable(this._internalKeyComparator)
+        this._memtable.ref()
+      }
+
+      if ((await status.ok()) && saveManifest) {
+        edit.prevLogNumber = 0 // No older logs needed after recovery.
+        edit.logNumber = this._logFileNumber
+        status = await this._versionSet.logAndApply(edit)
+      }
+
+      if (await status.ok()) {
+        await this.deleteObsoleteFiles()
+        await this.maybeScheduleCompaction()
+        assert(!!this._memtable)
+      }
+      if (!(await status.ok())) {
+        throw status.error
+      }
+      this._ok = true
+    } catch (e) {
+      console.error(e)
+      this._ok = false
+    }
+  }
+
+  private async recover(): Promise<RecoverResult> {
+    const result: RecoverResult = {
+      saveManifest: false,
+      edit: new VersionEdit(),
+    }
     if (!(await this.existCurrent())) {
+      await this.initVersionEdit()
+    } else {
       try {
         await this._options.env.rename(
           getInfoLogFilename(this._dbpath),
           getOldInfoLogFilename(this._dbpath)
         )
       } catch (e) {}
-      await this.initVersionEdit()
     }
 
     this._options.infoLog = new InfoLog(
       await this._options.env.openInfoLog(this._dbpath)
     )
-    await this._versionSet.recover()
-    this._ok = true
+
+    const versionSetRecoverResult = await this._versionSet.recover()
+    if (typeof versionSetRecoverResult.saveManifest === 'boolean') {
+      result.saveManifest = versionSetRecoverResult.saveManifest
+    }
+
+    let maxSequence = new SequenceNumber(0)
+    // Recover from all newer log files than the ones named in the
+    // descriptor (new log files may have been added by the previous
+    // incarnation without registering them in the descriptor).
+    //
+    // Note that PrevLogNumber() is no longer used, but we pay
+    // attention to it in case we are recovering a database
+    // produced by an older version of leveldb.
+    const minLog = this._versionSet.logNumber
+    const prevLog = this._versionSet.prevLogNumber
+    const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
+      (filenames: string[], direct: Direct) => {
+        if (direct.isFile()) {
+          filenames.push(direct.name)
+        }
+        return filenames
+      },
+      []
+    )
+    const expected: Set<number> = new Set()
+    this._versionSet.addLiveFiles(expected)
+    let logs = []
+    for (let filename of filenames) {
+      const internalFile = parseFilename(filename)
+      if (internalFile.isInternalFile) {
+        expected.delete(internalFile.number)
+        if (
+          internalFile.type == FileType.kLogFile &&
+          (internalFile.number >= minLog || internalFile.number === prevLog)
+        )
+          logs.push(internalFile.number)
+      }
+    }
+
+    if (expected.size > 0) {
+      throw new Error(`${expected.size} missing files; e.g.`)
+    }
+
+    let edit = result.edit
+
+    // Recover in the order in which the logs were generated
+    logs = logs.sort()
+    for (let i = 0; i < logs.length; i++) {
+      const result2: RecoverLogFileResult = await this.recoverLogFile(
+        logs[i],
+        i === logs.length - 1,
+        edit,
+        maxSequence
+      )
+      if (typeof result2.saveManifest === 'boolean') {
+        result.saveManifest = result2.saveManifest
+      }
+
+      // The previous incarnation may not have written any MANIFEST
+      // records after allocating this log number.  So we manually
+      // update the file number allocation counter in VersionSet.
+      this._versionSet.markFileNumberUsed(logs[i])
+    }
+
+    if (this._versionSet.lastSequence < maxSequence.value) {
+      this._versionSet.lastSequence = maxSequence.value
+    }
+
+    return result
   }
 
-  private async recoverLogFile() {}
+  private async recoverLogFile(
+    logNumber: number,
+    isLastLog: boolean,
+    edit: VersionEdit,
+    maxSequence: SequenceNumber
+  ): Promise<RecoverLogFileResult> {
+    let result = {} as RecoverLogFileResult
+    let status = new Status()
+    // Open the log file
+    const reader = new LogReader(
+      this._options,
+      getLogFilename(this._dbpath, logNumber)
+    )
+    Log(this._options.infoLog, `Recovering log #${logNumber}`)
+    let compactions = 0
+    let mem = null
+    for await (let record of reader.iterator()) {
+      if (record.size < 12) {
+        console.log('log record too small')
+        continue
+      }
+
+      const batch = new WriteBatch()
+      WriteBatch.setContents(batch, record.buffer)
+      if (!mem) {
+        mem = new MemTable(this._internalKeyComparator)
+        mem.ref()
+      }
+      WriteBatch.insert(batch, mem)
+      const lastSeq =
+        WriteBatch.getSequence(batch).value + WriteBatch.getCount(batch) - 1
+
+      if (lastSeq > maxSequence.value) {
+        maxSequence.value = lastSeq
+      }
+
+      if (mem.size > kMemTableDumpSize) {
+        compactions++
+        result.saveManifest = true
+        status = await this.writeLevel0Table(mem, edit)
+        mem.unref()
+        mem = null
+        if (!(await status.ok())) {
+          break
+        }
+      }
+    }
+
+    if (this._options.reuseLogs && isLastLog && compactions === 0) {
+      // TODO
+    }
+
+    if (!!mem) {
+      // mem did not get reused; compact it.
+      if (await status.ok()) {
+        result.saveManifest = true
+        status = await this.writeLevel0Table(mem, edit)
+      }
+      mem.unref()
+    }
+
+    return result
+  }
 
   // wait for db.recover
-  private async ok(): Promise<boolean> {
+  public async ok(): Promise<boolean> {
     if (this._ok) return true
     let limit = 5
     let i = 0
@@ -665,7 +844,7 @@ export default class Database {
   private async writeLevel0Table(
     mem: MemTable,
     edit: VersionEdit,
-    base: Version
+    base?: Version
   ): Promise<Status> {
     const startTime = this._options.env.now()
     const meta = new FileMetaData()
@@ -921,6 +1100,7 @@ export default class Database {
             // Keep my manifest file, and any newer incarnations'
             // (in case there is a race that allows other incarnations)
             keep = number >= this._versionSet.manifestFileNumber
+            keep = true
             break
           case FileType.kTableFile:
             keep = live.has(number)

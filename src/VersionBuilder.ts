@@ -106,58 +106,6 @@ export default class VersionBuilder {
     }
   }
 
-  private debugVersion(ver: Version, key: string): string {
-    const debuglist: number[][][] = [
-      [[], [], []],
-      [[], [], []],
-      [[], [], []],
-      [[], [], []],
-      [[], [], []],
-      [[], [], []],
-    ]
-
-    for (let level = 0; level < Config.kNumLevels; level++) {
-      for (let file of this._base.files[level]) {
-        debuglist[level][0].push(file.number)
-      }
-      for (let file of this._levels[level].addedFiles.iterator()) {
-        debuglist[level][1].push(file.number)
-      }
-
-      for (let file of this._levels[level].deletedFiles) {
-        debuglist[level][2].push(file)
-      }
-    }
-
-    function stringifyBuilderState(): string {
-      let result = ''
-      let level = 0
-      for (let levelFiles of debuglist) {
-        result += `level=${level} baseFiles=${levelFiles[0].join(
-          ','
-        )} addedFiles=${levelFiles[1].join(
-          ','
-        )} deletedFiles=${levelFiles[2].join(',')} \n`
-        level++
-      }
-      return result
-    }
-
-    function stringifyVersion(ver: Version): string {
-      let result = ''
-      let level = 0
-      for (let levelFiles of ver.files) {
-        result += `level=${level} files=${levelFiles
-          .map(file => file.number)
-          .join(',')}\n`
-        level++
-      }
-      return result
-    }
-
-    return key + '\n' + stringifyBuilderState() + '\n' + stringifyVersion(ver)
-  }
-
   private maybeAddFile(ver: Version, level: number, file: FileMetaData) {
     if (this._levels[level].deletedFiles.has(file.number)) {
       // File is deleted: do nothing
