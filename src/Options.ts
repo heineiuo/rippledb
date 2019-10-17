@@ -101,7 +101,9 @@ export class Options {
   // when a database is opened.  This can significantly speed up open.
   //
   // Default: currently false, but may become true later.
-  reuseLogs = false
+  reuseLogs: boolean = false
 
   filterPolicy: FilterPolicy = new BloomFilter()
+
+  debug: boolean = false
 }

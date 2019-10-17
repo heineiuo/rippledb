@@ -78,14 +78,14 @@ function getTableCacheSize(sanitizedOptions: Options) {
 }
 
 export default class Database {
-  constructor(dbpath: string) {
+  constructor(dbpath: string, options: Options = new Options()) {
     this._backgroundCompactionScheduled = false
     this._internalKeyComparator = new InternalKeyComparator(
       new BytewiseComparator()
     )
     this._ok = false
     this._dbpath = dbpath
-    this._memtable = new MemTable(this._internalKeyComparator)
+    // this._memtable = new MemTable(this._internalKeyComparator)
     this._sn = new SequenceNumber(0)
     this.pendingOutputs = new Set()
     this._stats = Array.from(
@@ -93,11 +93,10 @@ export default class Database {
       () => new CompactionStats()
     )
 
-    const options = new Options()
     options.comparator = this._internalKeyComparator
     this._options = options
 
-    this._log = new LogWriter(this._options, getLogFilename(dbpath, 1))
+    // this._log = new LogWriter(this._options, getLogFilename(dbpath, 1))
     this._tableCache = new TableCache(
       dbpath,
       options,
@@ -119,9 +118,9 @@ export default class Database {
   private _dbpath: string
   private _sn: SequenceNumber
   // _cache: LRU
-  private _log: LogWriter
-  private _logFileNumber!: number
-  private _memtable: MemTable
+  private _log!: LogWriter
+  private _logFileNumber: number = 0
+  private _memtable!: MemTable
   private _immtable!: MemTable
   private _versionSet: VersionSet
   private _ok: boolean
@@ -407,8 +406,8 @@ export default class Database {
    * table.get
    */
   public async get(
-    options: ReadOptions,
-    userKey: Slice
+    userKey: Slice,
+    options: ReadOptions = new ReadOptions()
   ): Promise<Slice | string | null | void> {
     await this.ok()
     const slicedUserKey = new Slice(userKey)
@@ -451,19 +450,36 @@ export default class Database {
    * 1. check if memtable bigger then 4mb
    * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
-  public async put(options: WriteOptions, key: any, value: any): Promise<void> {
+  public put(
+    key: any,
+    value: any,
+    options: WriteOptions = new WriteOptions()
+  ): Promise<void> {
     const batch = new WriteBatch()
     batch.put(new Slice(key), new Slice(value))
-    await this.write(options, batch)
+    return this.write(options, batch)
   }
 
-  public async del(options: WriteOptions, key: any): Promise<void> {
+  public del(
+    key: any,
+    options: WriteOptions = new WriteOptions()
+  ): Promise<void> {
     const batch = new WriteBatch()
     batch.del(new Slice(key))
-    await this.write(options, batch)
+    return this.write(options, batch)
   }
 
-  public async write(options: WriteOptions, batch?: WriteBatch): Promise<void> {
+  public batch(
+    batch: WriteBatch,
+    options: WriteOptions = new WriteOptions()
+  ): Promise<void> {
+    return this.write(options, batch)
+  }
+
+  private async write(
+    options: WriteOptions,
+    batch?: WriteBatch
+  ): Promise<void> {
     await this.ok()
     await this.makeRoomForWrite(!batch)
 
