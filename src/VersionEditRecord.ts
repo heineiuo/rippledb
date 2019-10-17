@@ -79,11 +79,11 @@ export default class VersionEditRecord {
     return new Slice(Buffer.concat(bufList))
   }
 
-  static decode(op: Slice): VersionEdit {
+  static decode(opSlice: Slice): VersionEdit {
     let index = 0
     const edit = new VersionEdit()
-    const opBuffer = op.buffer
-    while (index < op.length) {
+    const opBuffer = opSlice.buffer
+    while (index < opSlice.length) {
       const type = opBuffer.readUInt8(index)
       index += 1
 

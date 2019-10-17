@@ -39,7 +39,8 @@ export default class LogReader {
     let latestType = null
     let bufHandledPosition = 0
     while (true) {
-      if (blockIndex === -1 || bufHandledPosition >= kBlockSize - 7) {
+      // read file fragment to `buf`
+      if (blockIndex === -1 || bufHandledPosition >= kBlockSize - kHeaderSize) {
         const position = ++blockIndex * kBlockSize
         const { bytesRead } = await this._file.read(
           buf,
@@ -56,24 +57,27 @@ export default class LogReader {
       }
 
       // buf may be re-fill, to avoid this, copy it
-      const record = this.decode(Buffer.from(buf.slice(bufHandledPosition)))
-      bufHandledPosition += record.data.length
+      const record = this.readPhysicalRecord(
+        Buffer.from(buf.slice(bufHandledPosition))
+      )
+      bufHandledPosition += record.length + kHeaderSize
       if (record.type === RecordType.kFullType) {
-        const op = new Slice(record.data.buffer)
-        yield op
+        const opSlice = new Slice(record.data.buffer)
+        yield opSlice
       } else if (record.type === RecordType.kLastType) {
         assert(latestType !== RecordType.kLastType)
         latestOpBuf = Buffer.concat([latestOpBuf, record.data.buffer])
         assert(record.length === latestOpBuf.length)
-        const op = new Slice(latestOpBuf)
+        const opSlice = new Slice(latestOpBuf)
         latestOpBuf = Buffer.alloc(0)
-        yield op
+        yield opSlice
       } else if (record.type === RecordType.kFirstType) {
         assert(latestType !== RecordType.kFirstType)
         latestOpBuf = record.data.buffer
       } else if (record.type === RecordType.kMiddleType) {
         latestOpBuf = Buffer.concat([latestOpBuf, record.data.buffer])
       } else if (record.type === RecordType.kZeroType) {
+        // skip this block
         latestType = record.type
         bufHandledPosition = kBlockSize
       }
@@ -81,7 +85,7 @@ export default class LogReader {
     }
   }
 
-  decode(buf: Buffer): Record {
+  private readPhysicalRecord(buf: Buffer): Record {
     const head = buf.slice(0, kHeaderSize)
     const recordType = head[6]
     const head4 = head[4] & 0xff

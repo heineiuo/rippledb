@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import assert from 'assert'
 import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
@@ -37,7 +38,12 @@ export default class WriteBatch {
   }
 
   static getContents(batch: WriteBatch): Buffer {
-    return batch.buffer.slice(WriteBatch.kHeader)
+    return batch.buffer
+  }
+
+  static setContents(batch: WriteBatch, contents: Buffer) {
+    assert(contents.length >= WriteBatch.kHeader)
+    batch.buffer = contents
   }
 
   static setSequence(batch: WriteBatch, sequence: number) {

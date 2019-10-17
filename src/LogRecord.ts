@@ -10,7 +10,11 @@ import varint from 'varint'
 import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { ValueType } from './Format'
-import { RecordType, createHexStringFromDecimal } from './LogFormat'
+import {
+  RecordType,
+  createHexStringFromDecimal,
+  kHeaderSize,
+} from './LogFormat'
 
 export default class LogRecord {
   static add(key: Slice, value: Slice): Slice {
@@ -66,7 +70,7 @@ export default class LogRecord {
   }
 
   get length() {
-    return this.data.length + 7
+    return this.data.length + kHeaderSize
   }
 
   get size() {

@@ -97,5 +97,11 @@ export class Options {
   // in the same directory as the DB contents if info_log is null.
   infoLog!: InfoLog
 
+  // EXPERIMENTAL: If true, append to existing MANIFEST and log files
+  // when a database is opened.  This can significantly speed up open.
+  //
+  // Default: currently false, but may become true later.
+  reuseLogs = false
+
   filterPolicy: FilterPolicy = new BloomFilter()
 }

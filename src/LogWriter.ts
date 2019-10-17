@@ -10,10 +10,8 @@ import crc32 from 'buffer-crc32'
 import { Buffer } from 'buffer'
 import { kBlockSize, kHeaderSize, RecordType } from './LogFormat'
 import Slice from './Slice'
-import LogRecord from './LogRecord'
 import { FileHandle } from './Env'
 import { Options } from './Options'
-import { encodeFixed32 } from './Coding'
 
 export default class LogWriter {
   constructor(options: Options, filename: string) {
@@ -38,23 +36,22 @@ export default class LogWriter {
     await this._file.close()
   }
 
-  private async emitPhysicalRecord(record: LogRecord): Promise<void> {
+  private async emitPhysicalRecord(
+    record: Buffer,
+    type: RecordType
+  ): Promise<void> {
     const head = Buffer.alloc(kHeaderSize)
     const length = record.length
     head[4] = length & 0xff
     head[5] = length >> 8
-    head[6] = record.recordType
+    head[6] = type
     const crc = crc32(
-      Buffer.concat([
-        Buffer.from([record.recordType]),
-        record.buffer,
-        Buffer.from([record.length]),
-      ])
+      Buffer.concat([Buffer.from([type]), record, Buffer.from([record.length])])
     )
     head.fill(crc, 0, 4)
 
-    this._blockOffset += record.length
-    await this.appendFile(Buffer.concat([head, record.buffer]))
+    this._blockOffset += record.length + kHeaderSize
+    await this.appendFile(Buffer.concat([head, record]))
   }
 
   /**
@@ -63,7 +60,7 @@ export default class LogWriter {
   public async addRecord(recordOp: Slice): Promise<void> {
     let hasFirstRecordCreated = false
     let left = recordOp.size
-    let startPosition = 0
+    let position = 0
     while (left > 0) {
       let leftover = kBlockSize - this._blockOffset
       assert(leftover >= 0)
@@ -84,29 +81,25 @@ export default class LogWriter {
       const fragmentLength = left < avail ? left : avail
 
       let recordType: RecordType
-      const end = left === fragmentLength
+      const isEnd = left === fragmentLength
 
-      if (!hasFirstRecordCreated && end) {
+      if (!hasFirstRecordCreated && isEnd) {
         recordType = RecordType.kFullType
       } else if (!hasFirstRecordCreated) {
         recordType = RecordType.kFirstType
-      } else if (end) {
+      } else if (isEnd) {
         recordType = RecordType.kLastType
       } else {
         recordType = RecordType.kMiddleType
       }
 
-      const record = new LogRecord(
-        recordType,
-        new Slice(
-          recordOp.buffer.slice(startPosition, startPosition + fragmentLength)
-        )
+      await this.emitPhysicalRecord(
+        recordOp.buffer.slice(position, position + fragmentLength),
+        recordType
       )
 
-      await this.emitPhysicalRecord(record)
-
       hasFirstRecordCreated = true
-      startPosition += fragmentLength
+      position += fragmentLength
       left -= fragmentLength
     }
   }
