@@ -202,7 +202,7 @@ export default class Database {
 
       if (await status.ok()) {
         await this.deleteObsoleteFiles()
-        await this.maybeScheduleCompaction()
+        // await this.maybeScheduleCompaction()
         assert(!!this._memtable)
       }
       if (!(await status.ok())) {
@@ -210,7 +210,7 @@ export default class Database {
       }
       this._ok = true
     } catch (e) {
-      console.error(e)
+      if (this._options.debug) console.log(e)
       this._ok = false
     }
   }
@@ -618,7 +618,8 @@ export default class Database {
           compaction.inputs[0][compaction.numInputFiles(0) - 1].largest
       }
       // Manual compaction ...
-      Log(this._options.infoLog, 'DEBUG Manual compaction ...')
+      if (this._options.debug)
+        Log(this._options.infoLog, 'DEBUG Manual compaction ...')
     } else {
       // is not manual compaction
       compaction = this._versionSet.pickCompaction()
@@ -696,10 +697,11 @@ export default class Database {
     let currentUserKey = new Slice()
     let hasCurrentUserKey: boolean = false
     let lastSequenceForKey = InternalKey.kMaxSequenceNumber
-    Log(
-      this._options.infoLog,
-      `DEBUG doCompactionWork before make input iterator`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG doCompactionWork before make input iterator`
+      )
     let count = 0
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
@@ -794,10 +796,11 @@ export default class Database {
         }
       }
     }
-    Log(
-      this._options.infoLog,
-      `DEBUG doCompactionWork after makeInputIterator count=${count}`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG doCompactionWork after makeInputIterator count=${count}`
+      )
 
     if ((await status.ok()) && !!compact.builder) {
       status = await this.finishCompactionOutputFile(compact, status)
@@ -941,9 +944,11 @@ export default class Database {
     if (await s.ok()) {
       compact.outfile = await s.promise
       compact.builder = new SSTableBuilder(this._options, compact.outfile)
-      Log(this._options.infoLog, 'DEBUG open file success')
+      if (this._options.debug)
+        Log(this._options.infoLog, 'DEBUG open file success')
     } else {
-      Log(this._options.infoLog, `DEBUG open file error ${s.message || ''}`)
+      if (this._options.debug)
+        Log(this._options.infoLog, `DEBUG open file error ${s.message || ''}`)
     }
     return s
   }
@@ -961,10 +966,11 @@ export default class Database {
     // Add compaction outputs
     compact.compaction.addInputDeletions(compact.compaction.edit)
     const level = compact.compaction.level
-    Log(
-      this._options.infoLog,
-      `DEBUG compact.outputs.length=${compact.outputs.length}`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG compact.outputs.length=${compact.outputs.length}`
+      )
     for (let i = 0; i < compact.outputs.length; i++) {
       const out = compact.outputs[i]
       compact.compaction.edit.addFile(
@@ -976,16 +982,19 @@ export default class Database {
       )
     }
 
-    Log(
-      this._options.infoLog,
-      `DEBUG installCompactionResults logAndApply starting...`
-    )
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG installCompactionResults logAndApply starting...`
+      )
 
     const status = await this._versionSet.logAndApply(compact.compaction.edit)
     if (!(await status.ok())) {
-      Log(this._options.infoLog, `DEBUG installCompactionResults fail`)
+      if (this._options.debug)
+        Log(this._options.infoLog, `DEBUG installCompactionResults fail`)
     } else {
-      Log(this._options.infoLog, `DEBUG installCompactionResults success`)
+      if (this._options.debug)
+        Log(this._options.infoLog, `DEBUG installCompactionResults success`)
     }
     return status
   }
@@ -1013,7 +1022,11 @@ export default class Database {
     begin: Slice,
     end: Slice
   ): Promise<void> {
-    Log(this._options.infoLog, `DEBUG manualCompactRangeWithLevel ${level}...`)
+    if (this._options.debug)
+      Log(
+        this._options.infoLog,
+        `DEBUG manualCompactRangeWithLevel ${level}...`
+      )
     assert(level >= 0)
     assert(level + 1 < Config.kNumLevels)
     let beginStorage = new InternalKey()
@@ -1049,10 +1062,11 @@ export default class Database {
         this._manualCompaction = manual
         await this.maybeScheduleCompaction()
       } else {
-        Log(
-          this._options.infoLog,
-          'DEBUG Running either my compaction or another compaction.'
-        )
+        if (this._options.debug)
+          Log(
+            this._options.infoLog,
+            'DEBUG Running either my compaction or another compaction.'
+          )
         // Running either my compaction or another compaction.
         // TODO background_work_finished_signal_.Wait();
       }
