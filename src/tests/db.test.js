@@ -27,7 +27,12 @@ describe('Database', () => {
     const db2 = new Database(dbpath2)
     await db2.ok()
 
-    const result = await db2.get({}, 'key')
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    const db3 = new Database(dbpath2)
+    await db3.ok()
+
+    const result = await db3.get({}, 'key')
     expect(!!result).toBe(true)
     expect(result.toString()).toBe('world')
   })
