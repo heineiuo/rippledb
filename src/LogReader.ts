@@ -67,7 +67,6 @@ export default class LogReader {
       } else if (record.type === RecordType.kLastType) {
         assert(latestType !== RecordType.kLastType)
         latestOpBuf = Buffer.concat([latestOpBuf, record.data.buffer])
-        assert(record.length === latestOpBuf.length)
         const opSlice = new Slice(latestOpBuf)
         latestOpBuf = Buffer.alloc(0)
         yield opSlice

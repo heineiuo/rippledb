@@ -1,6 +1,7 @@
 import assert from 'assert'
 import Database from '../Database'
 import { Options } from '../Options'
+import { random } from '../../fixtures/random'
 import { createDir, cleanup } from '../../fixtures/dbpath'
 
 const dbpath = createDir()
@@ -35,6 +36,9 @@ describe('Database', () => {
     await new Promise(resolve => setTimeout(resolve, 500))
     const db3 = new Database(dbpath2, debugOptions)
     await db3.ok()
+    for (let i = 0; i < 1000; i++) {
+      await db3.put(...random())
+    }
     await db3.put('key', 'world')
 
     await new Promise(resolve => setTimeout(resolve, 500))
