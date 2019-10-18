@@ -324,7 +324,7 @@ export default class Database {
       if (record.size < 12) {
         Log(
           this._options.infoLog,
-          ` ${logFilename} log record too small: dropping ${this.recordBackgroundError.size} bytes`
+          ` ${logFilename} log record too small: dropping ${record.size} bytes`
         )
         continue
       }
