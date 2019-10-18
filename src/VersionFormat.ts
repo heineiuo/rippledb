@@ -144,7 +144,7 @@ export type NewFile = {
   fileMetaData: FileMetaData
 }
 
-export function getMaxBytesForLevel(level: number) {
+export function getMaxBytesForLevel(level: number): number {
   // Note: the result for level zero is not really used since we set
   // the level-0 compaction threshold based on number of files.
   // Result for both level-0 and level-1

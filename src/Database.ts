@@ -201,7 +201,7 @@ export default class Database {
 
       if (await status.ok()) {
         await this.deleteObsoleteFiles()
-        // await this.maybeScheduleCompaction()
+        await this.maybeScheduleCompaction()
         assert(!!this._memtable)
       }
       if (!(await status.ok())) {
@@ -400,7 +400,7 @@ export default class Database {
    * table.get
    */
   public async get(
-    userKey: Slice,
+    userKey: Slice | string | Buffer,
     options: ReadOptions = new ReadOptions()
   ): Promise<Slice | string | null | void> {
     await this.ok()
@@ -445,8 +445,8 @@ export default class Database {
    * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
   public put(
-    key: any,
-    value: any,
+    key: string | Buffer,
+    value: string | Buffer,
     options: WriteOptions = new WriteOptions()
   ): Promise<void> {
     const batch = new WriteBatch()
@@ -455,7 +455,7 @@ export default class Database {
   }
 
   public del(
-    key: any,
+    key: string | Buffer,
     options: WriteOptions = new WriteOptions()
   ): Promise<void> {
     const batch = new WriteBatch()
@@ -554,7 +554,12 @@ export default class Database {
   }
 
   private async maybeScheduleCompaction(): Promise<void> {
-    Log(this._options.infoLog, 'maybeScheduleCompaction')
+    Log(
+      this._options.infoLog,
+      `DEBUG !this._immtable=${!this._immtable} !this._manualCompaction=${!this
+        ._manualCompaction} !this._versionSet.needsCompaction()=${!this._versionSet.needsCompaction()}`
+    )
+
     if (this._backgroundCompactionScheduled) {
       // Already scheduled
       Log(this._options.infoLog, 'Already scheduled')
@@ -571,12 +576,13 @@ export default class Database {
     } else {
       this._backgroundCompactionScheduled = true
       // ignore: Env.Schedule, BGWork
-      await this.backgroundCall()
+      Log(this._options.infoLog, 'Background Compaction Scheduled')
+
+      process.nextTick(() => this.backgroundCall())
     }
   }
 
   private async backgroundCall(): Promise<void> {
-    Log(this._options.infoLog, 'backgroundCall')
     assert(this._backgroundCompactionScheduled)
     await this.backgroundCompaction()
     this._backgroundCompactionScheduled = false
