@@ -20,7 +20,6 @@ const { Database } = require('node-level') // install from npm
 
 async function main(){
   const db = new Database(path.resolve(__dirname, './db'))
-  await db.ok()
   await db.put('foo', 'bar')
   console.log(
     (await db.get('foo')).toString()

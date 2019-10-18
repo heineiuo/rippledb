@@ -201,14 +201,16 @@ export default class Database {
 
       if (await status.ok()) {
         await this.deleteObsoleteFiles()
-        // await this.maybeScheduleCompaction()
+        await this.maybeScheduleCompaction()
         assert(!!this._memtable)
       }
       if (!(await status.ok())) {
         throw status.error
       }
     } catch (e) {
-      if (this._options.debug) console.log(e)
+      if (this._options.debug) {
+        Log(this._options.infoLog, `DEBUG DB recover fail`)
+      }
       throw e
     }
   }
@@ -313,16 +315,17 @@ export default class Database {
     let result = {} as RecoverLogFileResult
     let status = new Status()
     // Open the log file
-    const reader = new LogReader(
-      this._options,
-      getLogFilename(this._dbpath, logNumber)
-    )
+    const logFilename = getLogFilename(this._dbpath, logNumber)
+    const reader = new LogReader(this._options, logFilename)
     Log(this._options.infoLog, `Recovering log #${logNumber}`)
     let compactions = 0
     let mem = null
     for await (let record of reader.iterator()) {
       if (record.size < 12) {
-        console.log('log record too small')
+        Log(
+          this._options.infoLog,
+          ` ${logFilename} log record too small: dropping ${record.size} bytes`
+        )
         continue
       }
 
@@ -400,7 +403,7 @@ export default class Database {
    * table.get
    */
   public async get(
-    userKey: Slice,
+    userKey: Slice | string | Buffer,
     options: ReadOptions = new ReadOptions()
   ): Promise<Slice | string | null | void> {
     await this.ok()
@@ -445,8 +448,8 @@ export default class Database {
    * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
   public put(
-    key: any,
-    value: any,
+    key: string | Buffer,
+    value: string | Buffer,
     options: WriteOptions = new WriteOptions()
   ): Promise<void> {
     const batch = new WriteBatch()
@@ -455,7 +458,7 @@ export default class Database {
   }
 
   public del(
-    key: any,
+    key: string | Buffer,
     options: WriteOptions = new WriteOptions()
   ): Promise<void> {
     const batch = new WriteBatch()
@@ -475,9 +478,9 @@ export default class Database {
     batch?: WriteBatch
   ): Promise<void> {
     await this.ok()
-    await this.makeRoomForWrite(!batch)
+    const status = await this.makeRoomForWrite(!batch)
 
-    if (!!batch) {
+    if ((await status.ok()) && !!batch) {
       let lastSequence = this._versionSet.lastSequence
       WriteBatch.setSequence(batch, lastSequence + 1)
       lastSequence += WriteBatch.getCount(batch)
@@ -516,16 +519,13 @@ export default class Database {
       } else if (!!this._immtable) {
         // We have filled up the current memtable, but the previous
         // one is still being compacted, so we wait.
-        // TODO wait
-        Log(this._options.infoLog, 'Current memtable full; waiting...\n')
-        // await this._backgroundWorkingPromise
+        Log(this._options.infoLog, 'Current memtable full; waiting...')
       } else if (
         this._versionSet.getNumLevelFiles(0) >= Config.kL0StopWritesTrigger
       ) {
         // There are too many level-0 files.
         // TODO wait
-        Log(this._options.infoLog, 'Too many L0 files; waiting...\n')
-        // await this._backgroundWorkingPromise
+        Log(this._options.infoLog, 'Too many L0 files; waiting...')
       } else {
         // 1. level0number < 12 and no immtable
         // 2. if (not force) level0number < 8 and memtable > 4MB
@@ -554,7 +554,14 @@ export default class Database {
   }
 
   private async maybeScheduleCompaction(): Promise<void> {
-    Log(this._options.infoLog, 'maybeScheduleCompaction')
+    if (this._options.infoLog)
+      Log(
+        this._options.infoLog,
+        `DEBUG !this._immtable=${!this
+          ._immtable} !this._manualCompaction=${!this
+          ._manualCompaction} !this._versionSet.needsCompaction()=${!this._versionSet.needsCompaction()}`
+      )
+
     if (this._backgroundCompactionScheduled) {
       // Already scheduled
       Log(this._options.infoLog, 'Already scheduled')
@@ -571,12 +578,13 @@ export default class Database {
     } else {
       this._backgroundCompactionScheduled = true
       // ignore: Env.Schedule, BGWork
+      Log(this._options.infoLog, 'Background Compaction Scheduled')
+
       await this.backgroundCall()
     }
   }
 
   private async backgroundCall(): Promise<void> {
-    Log(this._options.infoLog, 'backgroundCall')
     assert(this._backgroundCompactionScheduled)
     await this.backgroundCompaction()
     this._backgroundCompactionScheduled = false
@@ -696,12 +704,9 @@ export default class Database {
         this._options.infoLog,
         `DEBUG doCompactionWork before make input iterator`
       )
-    let count = 0
     for await (let input of this._versionSet.makeInputIterator(
       compact.compaction
     )) {
-      count++
-      // Prioritize immutable compaction work
       if (!!this._immtable) {
         const immStartTime = this._options.env.now()
         await this.compactMemTable()
@@ -790,11 +795,6 @@ export default class Database {
         }
       }
     }
-    if (this._options.debug)
-      Log(
-        this._options.infoLog,
-        `DEBUG doCompactionWork after makeInputIterator count=${count}`
-      )
 
     if ((await status.ok()) && !!compact.builder) {
       status = await this.finishCompactionOutputFile(compact, status)
@@ -997,6 +997,7 @@ export default class Database {
    * manually compact
    */
   public async compactRange(begin: Slice, end: Slice): Promise<void> {
+    await this.ok()
     let maxLevelWithFiles = 1
     let base = this._versionSet._current
     for (let level = 0; level < Config.kNumLevels; level++) {
@@ -1062,7 +1063,6 @@ export default class Database {
             'DEBUG Running either my compaction or another compaction.'
           )
         // Running either my compaction or another compaction.
-        // TODO background_work_finished_signal_.Wait();
       }
     }
     if (this._manualCompaction === manual) {

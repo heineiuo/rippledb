@@ -275,6 +275,12 @@ export default class VersionSet {
         score = ver.files[level].length / Config.kL0CompactionTrigger
       } else {
         const levelBytes = this.getTotalBytes(ver.files[level])
+        if (this._options.debug)
+          Log(
+            this._options.infoLog,
+            `DEBUG leve=${level} levelBytes=${levelBytes}`
+          )
+        // score >= 1 means size is bigger then limit
         score = levelBytes / getMaxBytesForLevel(level)
       }
 
@@ -288,7 +294,7 @@ export default class VersionSet {
     ver.compactionScore = bestScore
   }
 
-  private getTotalBytes(files: FileMetaData[]) {
+  private getTotalBytes(files: FileMetaData[]): number {
     let sum = 0
     for (let f of files) {
       sum += f.fileSize
@@ -398,7 +404,7 @@ export default class VersionSet {
   }
 
   // TODO
-  private reuseManifest() {
+  private reuseManifest(): boolean {
     return false
   }
 
@@ -450,7 +456,7 @@ export default class VersionSet {
   public pickCompaction(): Compaction | void {
     // We prefer compactions triggered by too much data in a level over
     // the compactions triggered by seeks.
-    const shouldSizeCompaction = this._current.compactionScore > 1
+    const shouldSizeCompaction = this._current.compactionScore >= 1
     const shouldSeekCompaction = !!this._current.fileToCompact
     let c: Compaction
     let level: number
