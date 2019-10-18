@@ -997,6 +997,7 @@ export default class Database {
    * manually compact
    */
   public async compactRange(begin: Slice, end: Slice): Promise<void> {
+    await this.ok()
     let maxLevelWithFiles = 1
     let base = this._versionSet._current
     for (let level = 0; level < Config.kNumLevels; level++) {
