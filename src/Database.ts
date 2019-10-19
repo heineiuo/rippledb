@@ -382,13 +382,12 @@ export default class Database {
 
   public async *iterator(
     options?: ReadOptions
-  ): AsyncIterableIterator<Slice | string> {
+  ): AsyncIterableIterator<{ key: string | Buffer; value: string | Buffer }> {
     await this.ok()
+    // TODO
     for (let key in this._memtable.iterator()) {
-      yield key
+      yield { key, value: key }
     }
-    // await new Promise()
-    // yield 'a'
   }
 
   /**

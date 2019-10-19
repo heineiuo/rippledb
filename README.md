@@ -36,15 +36,16 @@ For more details, see [documention](./docs)
 ## Roadmap
 - [x] TableBuilder
 - [x] TableReader
+- [ ] TableCache
 - [x] LogWriter
 - [x] LogReader
-- [x] MemTable
 - [x] WriteBatch
+- [x] MemTable
+- [x] Database Recovery
 - [x] Version Manager
 - [x] Compaction
-- [x] Top-level API
-- [ ] Database Recovery
-- [ ] TableCache
+- [x] Top-level API (put, get, del, compactRange, ok)
+- [ ] Top-level API (Iterator)
 
 ## Benchmark
 
