@@ -70,9 +70,9 @@ async iterator():AsyncIterableIterator<{key: Buffer | string, value: Buffer | st
 
 ### Options
 
-Name|Description|Type|Default value
--|-|-
-debug|debug|`boolean`|`false`
+Name|Type|Default|Description
+-|-|-|-
+debug|`boolean`|`false`|-
 
 
 ### ReadOptions
