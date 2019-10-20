@@ -20,7 +20,7 @@ import { FilterPolicy } from './Options'
  * from past experience, bitsPerKey = 10 is best
  */
 export default class BloomFilter implements FilterPolicy {
-  constructor(buffer?: Buffer, bitsPerKey: number = 10) {
+  constructor(buffer?: Buffer, bitsPerKey = 10) {
     this._offset = 0
     this._bitsPerKey = bitsPerKey
     const k = Math.round(bitsPerKey * 0.69)
@@ -72,7 +72,7 @@ export default class BloomFilter implements FilterPolicy {
   // changes in an incompatible way, the name returned by this method
   // must be changed.  Otherwise, old incompatible filters may be
   // passed to methods of this type.
-  public name() {
+  public name(): string {
     return 'leveldb.BuiltinBloomFilter2'
   }
 
@@ -90,7 +90,7 @@ export default class BloomFilter implements FilterPolicy {
     // by enforcing a minimum bloom filter length.
     if (bits < 64) bits = 64
 
-    let bytes = (bits + 7) / 8
+    const bytes = (bits + 7) / 8
     bits = bytes * 8
 
     this._bitBuffer.resizeBits(bits)
@@ -100,7 +100,7 @@ export default class BloomFilter implements FilterPolicy {
       // Use double-hashing to generate a sequence of hash values.
       // See analysis in [Kirsch,Mitzenmacher 2006].
       let h = BloomHash(keys[i].toString())
-      let delta = (h >> 17) | (h << 15)
+      const delta = (h >> 17) | (h << 15)
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits
         this._bitBuffer.set(bitPosition, true)
@@ -122,7 +122,7 @@ export default class BloomFilter implements FilterPolicy {
 
     if (filter.kNumber > 30) return true
     let h = BloomHash(key.toString())
-    let delta = (h >> 17) | (h << 15)
+    const delta = (h >> 17) | (h << 15)
     for (let j = 0; j < filter.kNumber; j++) {
       const bitPosition = h % filter._bitBuffer.bits
       if (!filter._bitBuffer.get(bitPosition)) return false

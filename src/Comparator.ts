@@ -7,7 +7,6 @@
 
 import assert from 'assert'
 import Slice from './Slice'
-import { InternalKey } from './Format'
 
 export interface Comparator {
   // Three-way comparison.  Returns value:
@@ -43,17 +42,17 @@ export interface Comparator {
 }
 
 export class BytewiseComparator implements Comparator {
-  getName() {
+  getName(): string {
     return 'leveldb.BytewiseComparator'
   }
 
-  compare(a: Slice, b: Slice) {
+  compare(a: Slice, b: Slice): number {
     return a.compare(b)
   }
 
   findShortestSeparator(start: Slice, limit: Slice): void {
     // Find length of common prefix
-    let minLength = Math.min(start.length, limit.size)
+    const minLength = Math.min(start.length, limit.size)
     let diffIndex = 0
     while (
       diffIndex < minLength &&
@@ -65,7 +64,7 @@ export class BytewiseComparator implements Comparator {
     if (diffIndex >= minLength) {
       // Do not shorten if one string is a prefix of the other
     } else {
-      let diffByte = start.buffer[diffIndex]
+      const diffByte = start.buffer[diffIndex]
       if (diffByte < 0xff && diffByte + 1 < limit.buffer[diffIndex]) {
         start.buffer[diffIndex]++
         start.buffer = start.buffer.slice(0, diffIndex + 1)
@@ -76,7 +75,7 @@ export class BytewiseComparator implements Comparator {
 
   findShortSuccessor(key: Slice): void {
     // Find first character that can be incremented
-    let n = key.length
+    const n = key.length
     for (let i = 0; i < n; i++) {
       const byte = key.buffer[i]
       if (byte != 0xff) {

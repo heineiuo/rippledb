@@ -15,8 +15,8 @@ const kFixed64MaxValue = (1n << 56n) - 1n
 // only use 1 - 7 bytes
 export function encodeFixed64(value: number | bigint): Buffer {
   // or Buffer.from(new BigUint64Array([BigInt(value)]).buffer)
-  let buf = Buffer.alloc(8)
-  let bigIntValue = BigInt(value)
+  const buf = Buffer.alloc(8)
+  const bigIntValue = BigInt(value)
   buf.writeBigUInt64LE(
     bigIntValue < kFixed64MaxValue ? bigIntValue : kFixed64MaxValue
   )
@@ -30,7 +30,7 @@ export function decodeFixed64(buf: Buffer): number {
 }
 
 export function encodeFixed32(value: number): Buffer {
-  let buf = Buffer.alloc(4)
+  const buf = Buffer.alloc(4)
   buf.writeUInt16LE(value, 0)
   return buf
 }
