@@ -108,7 +108,7 @@ export default class SSTable {
   private _filterBuffer!: Buffer
   private _filterReader!: FilterBlock
 
-  private async readMeta(footer: Footer) {
+  private async readMeta(footer: Footer): Promise<void> {
     if (!this._options.filterPolicy) {
       return // Do not need any metadata
     }
@@ -120,14 +120,14 @@ export default class SSTable {
     const meta = new DataBlock(contents)
     meta.blockType = 'metaindexblock'
     const key = new Slice('filter.' + this._options.filterPolicy.name())
-    for (let entry of meta.iterator(this._options.comparator)) {
+    for (const entry of meta.iterator(this._options.comparator)) {
       if (entry.key.isEqual(key)) {
         await this.readFilter(entry.value.buffer)
       }
     }
   }
 
-  private async readFilter(filterHandleBuffer: Buffer) {
+  private async readFilter(filterHandleBuffer: Buffer): Promise<void> {
     const filterHandle = BlockHandle.from(filterHandleBuffer)
 
     const readOptions = new ReadOptions() // TODO
@@ -150,13 +150,10 @@ export default class SSTable {
         InternalKey.from(target).sequence
       }`
     )
-    let count = 0
-    let indexBlockCount = 0
 
-    for (let handleValue of this._indexBlock.iterator(
+    for (const handleValue of this._indexBlock.iterator(
       this._options.comparator
     )) {
-      indexBlockCount++
       const handle = BlockHandle.from(handleValue.value.buffer)
 
       if (
@@ -166,13 +163,12 @@ export default class SSTable {
         Log(this._options.infoLog, `Not found`)
         // Not found
       } else {
-        for (let entry of this.blockIterator(
+        for (const entry of this.blockIterator(
           this,
           this._options,
           handle,
           'datablock'
         )) {
-          count++
           const entryInternalKey = InternalKey.from(entry.key)
           if (entryInternalKey.userKey.toString() === 'foo') {
             Log(
@@ -197,7 +193,7 @@ export default class SSTable {
   }
 
   *entryIterator(): IterableIterator<Entry> {
-    for (let handleValue of this._indexBlock.iterator(
+    for (const handleValue of this._indexBlock.iterator(
       this._options.comparator
     )) {
       const handle = BlockHandle.from(handleValue.value.buffer)

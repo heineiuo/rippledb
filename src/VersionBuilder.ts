@@ -16,7 +16,7 @@ export default class VersionBuilder {
   constructor(versionSet: VersionSet, base: Version) {
     this._versionSet = versionSet
     this._base = base
-    this._levels = Array.from({ length: Config.kNumLevels }, (v, k) => ({
+    this._levels = Array.from({ length: Config.kNumLevels }, () => ({
       addedFiles: new FileSet(this.cmp),
       deletedFiles: new Set(),
     }))
@@ -38,7 +38,7 @@ export default class VersionBuilder {
   private cmp: BySmallestKey
 
   // Apply all of the edits in *edit to the current state.
-  public apply(edit: VersionEdit) {
+  public apply(edit: VersionEdit): void {
     // Update compaction pointers
     // compactPointers: type = <int, InternalKey>
     for (let i = 0; i < edit.compactPointers.length; i++) {
@@ -53,7 +53,7 @@ export default class VersionBuilder {
     }
 
     // traverse new files
-    for (let file of edit.newFiles) {
+    for (const file of edit.newFiles) {
       const { level, fileMetaData } = file
       fileMetaData.refs = 1
       fileMetaData.allowedSeeks = Math.floor(file.fileMetaData.fileSize / 16384) // 16kb, experience value
@@ -64,7 +64,7 @@ export default class VersionBuilder {
   }
 
   // Save the current state in `ver`.
-  public saveTo(ver: Version) {
+  public saveTo(ver: Version): void {
     const cmp = new BySmallestKey(this._versionSet.internalKeyComparator)
     // traverse every level and put added files in right
     // position [ baseFiles_A, addedFiles, baseFiels_B ) ]
@@ -84,7 +84,7 @@ export default class VersionBuilder {
           // empty level, just push addedFile
           break
         }
-        let baseFile = baseFilesInThisLevel[i++]
+        const baseFile = baseFilesInThisLevel[i++]
         if (!addedFile.done) {
           if (cmp.operator(baseFile, addedFile.value)) {
             // Add all smaller files listed in base_
@@ -106,7 +106,7 @@ export default class VersionBuilder {
     }
   }
 
-  private maybeAddFile(ver: Version, level: number, file: FileMetaData) {
+  private maybeAddFile(ver: Version, level: number, file: FileMetaData): void {
     if (this._levels[level].deletedFiles.has(file.number)) {
       // File is deleted: do nothing
     } else {

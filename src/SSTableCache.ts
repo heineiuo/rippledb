@@ -37,8 +37,8 @@ export class TableCache {
     fileNumber: number,
     fileSize: number,
     key: Slice,
-    arg: any, // state.saver, set kNotFound if not found
-    saveValue: (arg: any, key: Slice, value: Slice) => void
+    arg: unknown, // state.saver, set kNotFound if not found
+    saveValue: (arg: unknown, key: Slice, value: Slice) => void
   ): Promise<Status> {
     let status = await this.findTable(fileNumber, fileSize)
     if (await status.ok()) {
@@ -49,22 +49,22 @@ export class TableCache {
     }
 
     if (await status.ok()) {
-      const { key, value } = await status.promise
+      const { key, value } = (await status.promise) as Entry
       saveValue(arg, key, value)
     }
     return status
   }
 
   async findTable(fileNumber: number, fileSize: number): Promise<Status> {
-    let fname = getTableFilename(this._dbpath, fileNumber)
+    const fname = getTableFilename(this._dbpath, fileNumber)
     let status = new Status(this._env.open(fname, 'r+'))
     const tf = {} as TableAndFile
     if (await status.ok()) {
-      tf.file = await status.promise
-      status = new Status(Table.open(this._options, await status.promise))
+      tf.file = (await status.promise) as FileHandle
+      status = new Status(Table.open(this._options, tf.file))
     }
     if (await status.ok()) {
-      tf.table = await status.promise
+      tf.table = (await status.promise) as Table
       status = new Status(Promise.resolve(tf))
     } else {
       // We do not cache error results so that if the error is transient,
@@ -81,7 +81,7 @@ export class TableCache {
   ): AsyncIterableIterator<Entry> {
     const status = await this.findTable(fileNumber, fileSize)
     if (await status.ok()) {
-      const tf: TableAndFile = await status.promise
+      const tf = (await status.promise) as TableAndFile
       yield* tf.table.entryIterator()
     } else {
       Log(this._options.infoLog, `Open Table file(${fileNumber}) fail.`)

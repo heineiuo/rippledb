@@ -7,7 +7,7 @@
 
 import { Comparator } from './Comparator'
 import { decodeFixed32 } from './Coding'
-import { BlockContents, kSizeOfUInt32, Entry, InternalKey } from './Format'
+import { BlockContents, kSizeOfUInt32, Entry } from './Format'
 import Slice from './Slice'
 import assert from 'assert'
 
@@ -46,7 +46,7 @@ export default class SSTableBlock {
     return this._size
   }
 
-  getNumRestarts() {
+  getNumRestarts(): number {
     return decodeFixed32(this._buffer.slice(this._size - 4))
   }
 
@@ -91,6 +91,7 @@ export default class SSTableBlock {
     }
   }
 
+  // eslint-disable-next-line
   *iterator(comparator: Comparator): IterableIterator<Entry> {
     const numRestarts = this.getNumRestarts()
     if (numRestarts === 0) {

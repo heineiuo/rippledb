@@ -29,9 +29,9 @@ export default class WriteBatch {
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
   static kHeader = 12
 
-  static insert(batch: WriteBatch, mem: MemTable) {
+  static insert(batch: WriteBatch, mem: MemTable): void {
     const sn = WriteBatch.getSequence(batch)
-    for (let update of batch.iterator()) {
+    for (const update of batch.iterator()) {
       const { type, key, value } = update
       mem.add(sn, type, key, value)
     }
@@ -41,12 +41,12 @@ export default class WriteBatch {
     return batch.buffer
   }
 
-  static setContents(batch: WriteBatch, contents: Buffer) {
+  static setContents(batch: WriteBatch, contents: Buffer): void {
     assert(contents.length >= WriteBatch.kHeader)
     batch.buffer = contents
   }
 
-  static setSequence(batch: WriteBatch, sequence: number) {
+  static setSequence(batch: WriteBatch, sequence: number): void {
     batch.buffer.fill(new SequenceNumber(sequence).toFixed64Buffer(), 0, 7)
   }
 
@@ -54,7 +54,7 @@ export default class WriteBatch {
     return new SequenceNumber(decodeFixed64(batch.buffer.slice(0, 8)))
   }
 
-  static setCount(batch: WriteBatch, count: number) {
+  static setCount(batch: WriteBatch, count: number): void {
     batch.buffer.fill(encodeFixed32(count), 8, 11)
   }
 
@@ -76,13 +76,13 @@ export default class WriteBatch {
 
   private _buffer!: Buffer
 
-  put(key: Slice, value: Slice) {
+  put(key: Slice, value: Slice): void {
     const slice = LogRecord.add(key, value)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
     WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
   }
 
-  del(key: Slice) {
+  del(key: Slice): void {
     const slice = LogRecord.del(key)
     this.buffer = Buffer.concat([this.buffer, slice.buffer])
     WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)

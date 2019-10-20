@@ -58,7 +58,7 @@ export default class SSTableFilterBlock {
   }
 
   public keyMayMatch(blockOffset: number, key: Slice): boolean {
-    let index = blockOffset >> this._baseLg
+    const index = blockOffset >> this._baseLg
     if (index < this._num) {
       const start = decodeFixed32(this._buffer.slice(this._offset + index * 4))
       const limit = decodeFixed32(

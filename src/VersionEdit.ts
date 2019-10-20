@@ -38,7 +38,7 @@ export default class VersionEdit {
     this.compactPointers = []
   }
 
-  clear() {
+  clear(): void {
     this.deletedFiles = []
     this.newFiles = []
     this.compactPointers = []
@@ -123,7 +123,7 @@ export default class VersionEdit {
   }
 
   // Delete the specified "file" from the specified "level".
-  public deleteFile(level: number, fileNum: number) {
+  public deleteFile(level: number, fileNum: number): void {
     this.deletedFiles.push({
       level,
       fileNum,
@@ -139,7 +139,7 @@ export default class VersionEdit {
     fileSize: number,
     smallest: InternalKey,
     largest: InternalKey
-  ) {
+  ): void {
     const f = new FileMetaData()
     f.number = fileNum
     f.fileSize = fileSize
@@ -148,7 +148,7 @@ export default class VersionEdit {
     this.newFiles.push({ level, fileMetaData: f })
   }
 
-  setCompactPointer(level: number, internalKey: InternalKey) {
+  setCompactPointer(level: number, internalKey: InternalKey): void {
     this.compactPointers.push({
       level,
       internalKey,

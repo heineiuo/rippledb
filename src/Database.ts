@@ -46,8 +46,8 @@ import {
 import WriteBatch from './WriteBatch'
 import Status from './Status'
 import SSTableBuilder from './SSTableBuilder'
-import { BytewiseComparator } from './Comparator'
-import { Direct, InfoLog, Log } from './Env'
+import { BytewiseComparator, Comparator } from './Comparator'
+import { Direct, InfoLog, Log, FileHandle } from './Env'
 import { TableCache } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
@@ -72,7 +72,7 @@ interface RecoverLogFileResult {
 
 const kNumNonTableCacheFiles = 10
 
-function getTableCacheSize(sanitizedOptions: Options) {
+function getTableCacheSize(sanitizedOptions: Options): number {
   // Reserve ten files or so for other uses and give the rest to TableCache.
   return sanitizedOptions.maxOpenFiles - kNumNonTableCacheFiles
 }
@@ -119,7 +119,7 @@ export default class Database {
   // _cache: LRU
   private _status: Status
   private _log!: LogWriter
-  private _logFileNumber: number = 0
+  private _logFileNumber = 0
   private _memtable!: MemTable
   private _immtable!: MemTable
   private _versionSet: VersionSet
@@ -131,7 +131,7 @@ export default class Database {
   private _options: Options
   private _tableCache: TableCache
 
-  private get userComparator() {
+  private get userComparator(): Comparator {
     return this._internalKeyComparator.userComparator
   }
 
@@ -170,13 +170,13 @@ export default class Database {
     )
   }
 
-  private async recoverWrapper() {
+  private async recoverWrapper(): Promise<void> {
     try {
       let status = new Status(this.recover())
-      let edit = null
+      let edit = {} as VersionEdit
       let saveManifest = false
       if (await status.ok()) {
-        const result = await status.promise
+        const result = (await status.promise) as RecoverResult
         edit = result.edit
         saveManifest = result.saveManifest
       }
@@ -240,7 +240,7 @@ export default class Database {
       result.saveManifest = versionSetRecoverResult.saveManifest
     }
 
-    let maxSequence = new SequenceNumber(0)
+    const maxSequence = new SequenceNumber(0)
     // Recover from all newer log files than the ones named in the
     // descriptor (new log files may have been added by the previous
     // incarnation without registering them in the descriptor).
@@ -262,7 +262,7 @@ export default class Database {
     const expected: Set<number> = new Set()
     this._versionSet.addLiveFiles(expected)
     let logs = []
-    for (let filename of filenames) {
+    for (const filename of filenames) {
       const internalFile = parseFilename(filename)
       if (internalFile.isInternalFile) {
         expected.delete(internalFile.number)
@@ -278,7 +278,7 @@ export default class Database {
       throw new Error(`${expected.size} missing files; e.g.`)
     }
 
-    let edit = result.edit
+    const edit = result.edit
 
     // Recover in the order in which the logs were generated
     logs = logs.sort()
@@ -312,7 +312,7 @@ export default class Database {
     edit: VersionEdit,
     maxSequence: SequenceNumber
   ): Promise<RecoverLogFileResult> {
-    let result = {} as RecoverLogFileResult
+    const result = {} as RecoverLogFileResult
     let status = new Status()
     // Open the log file
     const logFilename = getLogFilename(this._dbpath, logNumber)
@@ -320,7 +320,7 @@ export default class Database {
     Log(this._options.infoLog, `Recovering log #${logNumber}`)
     let compactions = 0
     let mem = null
-    for await (let record of reader.iterator()) {
+    for await (const record of reader.iterator()) {
       if (record.size < 12) {
         Log(
           this._options.infoLog,
@@ -388,7 +388,7 @@ export default class Database {
     const start: Buffer = Buffer.isBuffer(options.start)
       ? options.start
       : Buffer.from(options.start)
-    for (let entry of this._memtable.iterator()) {
+    for (const entry of this._memtable.iterator()) {
       const { key, value } = entry
       const userKey = InternalKey.from(key).userKey
       yield { key: userKey.buffer, value: value.buffer }
@@ -423,7 +423,7 @@ export default class Database {
     current.ref()
 
     let hasStatUpdate = false
-    let stats = {} as GetStats
+    const stats = {} as GetStats
     let result = this._memtable.get(lookupKey)
     if (!result && !!this._immtable) {
       result = this._immtable.get(lookupKey)
@@ -432,7 +432,7 @@ export default class Database {
       const s = await current.get(lookupKey, stats)
       hasStatUpdate = true
       if (await s.ok()) {
-        result = await s.promise
+        result = (await s.promise) as Slice
       }
     }
 
@@ -612,7 +612,7 @@ export default class Database {
     let manualEnd = new InternalKey()
 
     if (!!this._manualCompaction) {
-      let manual = this._manualCompaction
+      const manual = this._manualCompaction
       compaction = this._versionSet.compactRange(
         manual.level,
         manual.begin,
@@ -669,7 +669,7 @@ export default class Database {
     }
 
     if (!!this._manualCompaction) {
-      let m = this._manualCompaction
+      const m = this._manualCompaction
       if (!(await status.ok())) {
         m.done = true
       }
@@ -699,16 +699,16 @@ export default class Database {
     }
 
     let status = new Status()
-    let ikey = new ParsedInternalKey()
-    let currentUserKey = new Slice()
-    let hasCurrentUserKey: boolean = false
+    const ikey = new ParsedInternalKey()
+    const currentUserKey = new Slice()
+    let hasCurrentUserKey = false
     let lastSequenceForKey = InternalKey.kMaxSequenceNumber
     if (this._options.debug)
       Log(
         this._options.infoLog,
         `DEBUG doCompactionWork before make input iterator`
       )
-    for await (let input of this._versionSet.makeInputIterator(
+    for await (const input of this._versionSet.makeInputIterator(
       compact.compaction
     )) {
       if (!!this._immtable) {
@@ -875,8 +875,11 @@ export default class Database {
     if (!(await status.ok())) {
       return status
     }
-    const builder = new SSTableBuilder(this._options, await status.promise)
-    for (let entry of mem.iterator()) {
+    const builder = new SSTableBuilder(
+      this._options,
+      (await status.promise) as FileHandle
+    )
+    for (const entry of mem.iterator()) {
       if (!meta.smallest) {
         meta.smallest = InternalKey.from(entry.key)
       }
@@ -929,7 +932,7 @@ export default class Database {
   ): Promise<Status> {
     assert(!!compact)
     assert(!compact.builder)
-    let fileNumber = this._versionSet.getNextFileNumber()
+    const fileNumber = this._versionSet.getNextFileNumber()
     this.pendingOutputs.add(fileNumber)
     const out = {} as CompactionStateOutput
     out.number = fileNumber
@@ -940,7 +943,7 @@ export default class Database {
     Log(this._options.infoLog, `Compaction output file number is ${fileNumber}`)
     const s = new Status(this._options.env.open(fname, 'a+'))
     if (await s.ok()) {
-      compact.outfile = await s.promise
+      compact.outfile = (await s.promise) as FileHandle
       compact.builder = new SSTableBuilder(this._options, compact.outfile)
       if (this._options.debug)
         Log(this._options.infoLog, 'DEBUG open file success')
@@ -1003,7 +1006,7 @@ export default class Database {
   public async compactRange(begin: Slice, end: Slice): Promise<void> {
     await this.ok()
     let maxLevelWithFiles = 1
-    let base = this._versionSet._current
+    const base = this._versionSet._current
     for (let level = 0; level < Config.kNumLevels; level++) {
       if (base.overlapInLevel(level, begin, end)) {
         maxLevelWithFiles = level
@@ -1030,7 +1033,7 @@ export default class Database {
     assert(level + 1 < Config.kNumLevels)
     let beginStorage = new InternalKey()
     let endStorage = new InternalKey()
-    let manual = {} as ManualCompaction
+    const manual = {} as ManualCompaction
 
     manual.level = level
     manual.done = false
@@ -1110,11 +1113,11 @@ export default class Database {
       },
       []
     )
-    let filesToDelete: string[] = []
-    for (let filename of filenames) {
+    const filesToDelete: string[] = []
+    for (const filename of filenames) {
       const internalFile = parseFilename(filename)
-      let number = internalFile.number
-      let type = internalFile.type
+      const number = internalFile.number
+      const type = internalFile.type
 
       if (internalFile.isInternalFile) {
         let keep = true
@@ -1153,7 +1156,7 @@ export default class Database {
       }
     }
 
-    for (let filename of filesToDelete) {
+    for (const filename of filesToDelete) {
       await this._options.env.unlink(path.resolve(this._dbpath, filename))
     }
   }

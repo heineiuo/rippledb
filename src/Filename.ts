@@ -8,7 +8,7 @@
 import path from 'path'
 import { FileType } from './Format'
 
-function numberToString(num: number) {
+function numberToString(num: number): string {
   let str = String(num)
   while (str.length < 6) {
     str = `0${str}`
@@ -16,7 +16,7 @@ function numberToString(num: number) {
   return str
 }
 
-export function getCurrentFilename(dbpath: string) {
+export function getCurrentFilename(dbpath: string): string {
   return path.resolve(dbpath, 'CURRENT')
 }
 
@@ -35,10 +35,7 @@ export function getManifestFilename(
   return path.resolve(dbpath, `MANIFEST-${numberToString(manifestNumber)}`)
 }
 
-export function getLockFilename(
-  dbpath: string,
-  manifestNumber: number
-): string {
+export function getLockFilename(dbpath: string): string {
   return path.resolve(dbpath, `LOCK`)
 }
 
@@ -51,7 +48,7 @@ export function getOldInfoLogFilename(dbpath: string): string {
 }
 
 export class InternalFile {
-  isInternalFile: boolean = true
+  isInternalFile = true
   filename!: string
   number!: number
   type!: FileType
@@ -69,7 +66,7 @@ export function parseFilename(filename: string): InternalFile {
     internalFile.number = 0
     internalFile.type = FileType.kInfoLogFile
   } else if (filename.startsWith('MANIFEST-')) {
-    let num = Number(filename.substr('MANIFEST-'.length))
+    const num = Number(filename.substr('MANIFEST-'.length))
     if (isNaN(num)) {
       internalFile.isInternalFile = false
       return internalFile
@@ -77,12 +74,12 @@ export function parseFilename(filename: string): InternalFile {
     internalFile.number = num
     internalFile.type = FileType.kDescriptorFile
   } else {
-    let num = Number(filename.split('.')[0])
+    const num = Number(filename.split('.')[0])
     if (isNaN(num)) {
       internalFile.isInternalFile = false
       return internalFile
     }
-    let suffix = filename.substr(filename.split('.')[0].length)
+    const suffix = filename.substr(filename.split('.')[0].length)
     if (suffix === '.log') {
       internalFile.type = FileType.kLogFile
     } else if (suffix === '.ldb') {

@@ -1,15 +1,43 @@
-
 // via https://gist.github.com/588423
 // thanks github.com/raycmorgan!
-export default function murmur(str: string, seed: number = 0): number {
-  var m = 0x5bd1e995
-  var r = 24
-  var h: number = seed ^ str.length
-  var length = str.length
-  var currentIndex = 0
+
+function UInt32(str: string, pos: number): number {
+  return (
+    str.charCodeAt(pos++) +
+    (str.charCodeAt(pos++) << 8) +
+    (str.charCodeAt(pos++) << 16) +
+    (str.charCodeAt(pos) << 24)
+  )
+}
+
+function UInt16(str: string, pos: number): number {
+  return str.charCodeAt(pos++) + (str.charCodeAt(pos++) << 8)
+}
+
+function Umul32(n: number, m: number): number {
+  n = n | 0
+  m = m | 0
+  const nlo = n & 0xffff
+  const nhi = n >>> 16
+  const res = (nlo * m + (((nhi * m) & 0xffff) << 16)) | 0
+  return res
+}
+
+// function getBucket (str, buckets) {
+//   var hash = murmur(str, str.length)
+//   var bucket = hash % buckets
+//   return bucket
+// }
+
+export default function murmur(str: string, seed = 0): number {
+  const m = 0x5bd1e995
+  const r = 24
+  let h: number = seed ^ str.length
+  let length = str.length
+  let currentIndex = 0
 
   while (length >= 4) {
-    var k = UInt32(str, currentIndex)
+    let k = UInt32(str, currentIndex)
 
     k = Umul32(k, m)
     k ^= k >>> r
@@ -46,31 +74,3 @@ export default function murmur(str: string, seed: number = 0): number {
 
   return h >>> 0
 }
-
-function UInt32(str: string, pos: number): number {
-  return (
-    str.charCodeAt(pos++) +
-    (str.charCodeAt(pos++) << 8) +
-    (str.charCodeAt(pos++) << 16) +
-    (str.charCodeAt(pos) << 24)
-  )
-}
-
-function UInt16(str: string, pos: number): number {
-  return str.charCodeAt(pos++) + (str.charCodeAt(pos++) << 8)
-}
-
-function Umul32(n: number, m: number) {
-  n = n | 0
-  m = m | 0
-  var nlo = n & 0xffff
-  var nhi = n >>> 16
-  var res = (nlo * m + (((nhi * m) & 0xffff) << 16)) | 0
-  return res
-}
-
-// function getBucket (str, buckets) {
-//   var hash = murmur(str, str.length)
-//   var bucket = hash % buckets
-//   return bucket
-// }

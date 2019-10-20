@@ -10,8 +10,7 @@ import BloomFilter from './BloomFilter'
 import { Comparator } from './Comparator'
 import Slice from './Slice'
 import { Env, NodeEnv, InfoLog } from './Env'
-import { Snapshot } from './Snapshot'
-import { SequenceNumber, Filter } from './Format'
+import { SequenceNumber } from './Format'
 
 export type Encodings = 'string' | 'buffer' | 'json'
 
@@ -29,11 +28,11 @@ export interface FilterPolicy {
 export class ReadOptions {
   // If true, all data read from underlying storage will be
   // verified against corresponding checksums.
-  verifyChecksums: boolean = false
+  verifyChecksums = false
 
   // Should the data read for this iteration be cached in memory?
   // Callers may wish to set this field to false for bulk scans.
-  fillCache: boolean = true
+  fillCache = true
 
   // If "snapshot" is non-null, read as of the supplied snapshot
   // (which must belong to the DB that is being read and which must
@@ -61,7 +60,7 @@ export class WriteOptions {
   // crash semantics as the "write()" system call.  A DB write
   // with sync==true has similar crash semantics to a "write()"
   // system call followed by "fsync()".
-  sync: boolean = false
+  sync = false
 }
 
 export class Options {
@@ -89,7 +88,7 @@ export class Options {
   maxOpenFiles = 1000
 
   blockSize: number = 2 << 11
-  blockRestartInterval: number = 16
+  blockRestartInterval = 16
 
   // Use the specified object to interact with the environment,
   // e.g. to read/write files, schedule background work, etc.
@@ -105,9 +104,9 @@ export class Options {
   // when a database is opened.  This can significantly speed up open.
   //
   // Default: currently false, but may become true later.
-  reuseLogs: boolean = false
+  reuseLogs = false
 
   filterPolicy: FilterPolicy = new BloomFilter()
 
-  debug: boolean = false
+  debug = false
 }

@@ -69,11 +69,11 @@ export default class LogRecord {
     this.data = new Slice(data)
   }
 
-  get length() {
+  get length(): number {
     return this.data.length + kHeaderSize
   }
 
-  get size() {
+  get size(): number {
     return this.length
   }
 
