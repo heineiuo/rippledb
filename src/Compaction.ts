@@ -15,23 +15,24 @@ import { Config, InternalKey } from './Format'
 import { FileHandle } from './Env'
 
 export default class Compaction {
-  static targetFileSize(options: Options) {
+  static targetFileSize(options: Options): number {
     return options.maxFileSize
   }
 
-  static maxGrandParentOverlapBytes(options: Options) {
+  static maxGrandParentOverlapBytes(options: Options): number {
     return 10 * Compaction.targetFileSize(options)
   }
 
-  static totalFileSize(files: FileMetaData[]) {
+  static totalFileSize(files: FileMetaData[]): number {
     let sum = 0
-    for (let file of files) {
+    for (const file of files) {
       sum += file.fileSize
     }
     return sum
   }
 
-  static maxFileSizeForLevel(options: Options, level: number) {
+  // eslint-disable-next-line
+  static maxFileSizeForLevel(options: Options, level: number): number {
     // We could vary per level to reduce number of files?
     return Compaction.targetFileSize(options)
   }
@@ -66,7 +67,7 @@ export default class Compaction {
   // all L >= level_ + 2).
   private levelPtrs: number[]
 
-  get maxOutputFilesize() {
+  get maxOutputFilesize(): number {
     return this._maxOutputFilesize
   }
 
@@ -115,7 +116,7 @@ export default class Compaction {
 
   // Release the input version for the compaction, once the compaction
   // is successful.
-  public releaseInputs() {
+  public releaseInputs(): void {
     if (!!this.inputVersion) {
       this.inputVersion.unref()
       delete this.inputVersion
@@ -156,7 +157,7 @@ export default class Compaction {
   }
 
   // Add all inputs to this compaction as delete operations to *edit.
-  public addInputDeletions(edit: VersionEdit) {
+  public addInputDeletions(edit: VersionEdit): void {
     for (let which = 0; which < 2; which++) {
       for (let i = 0; i < this.inputs[which].length; i++) {
         edit.deleteFile(this.level + which, this.inputs[which][i].number)
@@ -175,7 +176,7 @@ export class CompactionStats {
     this.bytesWritten = 0
   }
 
-  add(c: CompactionStats) {
+  add(c: CompactionStats): void {
     this.times += c.times
     this.bytesRead += c.bytesRead
     this.bytesWritten += c.bytesWritten

@@ -14,7 +14,7 @@ export default class Slice {
   private _inputType: Encodings
   private _buffer: Buffer
 
-  constructor(value: any = Slice.defaultValue) {
+  constructor(value: unknown = Slice.defaultValue) {
     if (value instanceof Slice) {
       this._inputType = value._inputType
       this._buffer = value._buffer
@@ -45,7 +45,7 @@ export default class Slice {
     return this._buffer.length
   }
 
-  get data(): any {
+  get data(): unknown {
     if (this._inputType === 'string') {
       return this._buffer.toString()
     } else if (this._inputType === 'json') {
@@ -55,15 +55,23 @@ export default class Slice {
     }
   }
 
-  set data(buf: any) {
-    this._buffer = buf
+  set data(value: unknown) {
+    if (value instanceof Slice) {
+      this._buffer = value._buffer
+    } else if (Buffer.isBuffer(value)) {
+      this._buffer = value
+    } else if (typeof value === 'string') {
+      this._buffer = Buffer.from(value)
+    } else {
+      this._buffer = Buffer.from(JSON.stringify(value))
+    }
   }
 
   toString(encoding?: Encodings): string {
     return this._buffer.toString(encoding)
   }
 
-  clear() {
+  clear(): void {
     // this._inputType = 'buffer'
     this._buffer = Buffer.alloc(0)
   }
