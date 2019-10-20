@@ -7,11 +7,7 @@
 
 import assert from 'assert'
 import Version from './Version'
-import {
-  getCurrentFilename,
-  getManifestFilename,
-  getTableFilename,
-} from './Filename'
+import { getCurrentFilename, getManifestFilename } from './Filename'
 import Slice from './Slice'
 import {
   getExpandedCompactionByteSizeLimit,
@@ -23,17 +19,10 @@ import VersionBuilder from './VersionBuilder'
 import VersionEditRecord from './VersionEditRecord'
 import LogReader from './LogReader'
 import VersionEdit from './VersionEdit'
-import {
-  Config,
-  InternalKeyComparator,
-  InternalKey,
-  Entry,
-  SequenceNumber,
-} from './Format'
+import { Config, InternalKeyComparator, InternalKey, Entry } from './Format'
 import LogWriter from './LogWriter'
 import Compaction from './Compaction'
 import { Options } from './Options'
-import SSTable from './SSTable'
 import { TableCache } from './SSTableCache'
 import Merger from './Merger'
 import { decodeFixed64 } from './Coding'
@@ -53,17 +42,17 @@ export default class VersionSet {
   hasNextFileNumber?: boolean
   hasPrevLogNumber?: boolean
 
-  logNumber: number = 0
+  logNumber = 0
 
   // Return the log file number for the log file that is currently
   // being compacted, or zero if there is no such log file.
   // if prevLogNumber is 0, then no log file is being compacted
-  prevLogNumber: number = 0
+  prevLogNumber = 0
 
-  private _lastSequence: number = 0
+  private _lastSequence = 0
   hasLastSequence?: boolean
-  manifestFileNumber: number = 0
-  nextFileNumber: number = 2
+  manifestFileNumber = 0
+  nextFileNumber = 2
 
   private _dbpath: string
   _options: Options
@@ -121,7 +110,7 @@ export default class VersionSet {
     // and we must not pick one file and drop another older file if the
     // two files overlap.
     if (level > 0) {
-      let limit = this.maxFileSizeForLevel(this._options, level)
+      const limit = this.maxFileSizeForLevel(this._options, level)
       let total = 0
       for (let i = 0; i < inputs.length; i++) {
         total += inputs[i].fileSize
@@ -140,7 +129,7 @@ export default class VersionSet {
     return compaction
   }
 
-  private maxFileSizeForLevel(options: any, level: number): number {
+  private maxFileSizeForLevel(options: Options, level: number): number {
     return options.maxFileSize
   }
 
@@ -190,7 +179,7 @@ export default class VersionSet {
     // Update next file
     // Update last sequence
     // Use version builder to create a new version
-    for await (let editSlice of reader.iterator()) {
+    for await (const editSlice of reader.iterator()) {
       const edit = VersionEditRecord.decode(editSlice)
       builder.apply(edit)
 
@@ -254,14 +243,14 @@ export default class VersionSet {
     return result
   }
 
-  public markFileNumberUsed(num: number) {
+  public markFileNumberUsed(num: number): void {
     if (this.nextFileNumber <= num) {
       this.nextFileNumber = num + 1
     }
   }
 
   // Precomputed best level for next compaction
-  private finalize(ver: Version) {
+  private finalize(ver: Version): void {
     // traverse levels(0-6),
     // calculate score，0 level use files number / 8（kLevel0MaxFileSize)
     // other level use file bytes / maxFileBytes * 10^level
@@ -296,7 +285,7 @@ export default class VersionSet {
 
   private getTotalBytes(files: FileMetaData[]): number {
     let sum = 0
-    for (let f of files) {
+    for (const f of files) {
       sum += f.fileSize
     }
     return sum
@@ -423,7 +412,7 @@ export default class VersionSet {
         !!this.compactPointers[level] &&
         this.compactPointers[level].length !== 0
       ) {
-        let key = new InternalKey()
+        const key = new InternalKey()
         key.decodeFrom(this.compactPointers[level])
         edit.setCompactPointer(level, key)
       }
@@ -466,7 +455,7 @@ export default class VersionSet {
       assert(level + 1 < Config.kNumLevels)
       c = new Compaction(this._options, level)
 
-      for (let f of this._current.files[level]) {
+      for (const f of this._current.files[level]) {
         if (
           !this.compactPointers[level] ||
           this.compactPointers[level].length === 0 ||
@@ -494,8 +483,8 @@ export default class VersionSet {
     c.inputVersion.ref()
 
     if (level === 0) {
-      let smallest = new InternalKey()
-      let largest = new InternalKey()
+      const smallest = new InternalKey()
+      const largest = new InternalKey()
       this.getRange(c.inputs[0], smallest, largest)
       // Note that the next call will discard the file we placed in
       // c->inputs_[0] earlier and replace it with an overlapping set
@@ -516,7 +505,7 @@ export default class VersionSet {
     inputs: FileMetaData[],
     smallest: InternalKey,
     largest: InternalKey
-  ) {
+  ): void {
     assert(inputs.length > 0)
     smallest.clear()
     largest.clear()
@@ -551,7 +540,7 @@ export default class VersionSet {
     inputs2: FileMetaData[],
     smallest: InternalKey,
     largest: InternalKey
-  ) {
+  ): void {
     const all = inputs1.concat(inputs2)
     this.getRange(all, smallest, largest)
   }
@@ -592,7 +581,7 @@ export default class VersionSet {
     icmp: InternalKeyComparator,
     levelFiles: FileMetaData[],
     compactionFiles: FileMetaData[]
-  ) {
+  ): void {
     let largestKey = new InternalKey()
     if (!this.findLargestKey(icmp, compactionFiles, largestKey)) {
       return
@@ -651,11 +640,15 @@ export default class VersionSet {
       smallest,
       largest
     )
-    let allStart = new InternalKey()
-    let allLimit = new InternalKey()
+    const allStart = new InternalKey()
+    const allLimit = new InternalKey()
     this.getRange2(c.inputs[0], c.inputs[1], allStart, allLimit)
     if (c.inputs.length > 0) {
-      let expand0 = this.current.getOverlappingInputs(level, allStart, allLimit)
+      const expand0 = this.current.getOverlappingInputs(
+        level,
+        allStart,
+        allLimit
+      )
       this.addBoundryInputs(
         this.internalKeyComparator,
         this._current.files[level],
@@ -669,10 +662,10 @@ export default class VersionSet {
         input1Size + expand0Size <
           getExpandedCompactionByteSizeLimit(this._options)
       ) {
-        let newStart = new InternalKey()
-        let newLimit = new InternalKey()
+        const newStart = new InternalKey()
+        const newLimit = new InternalKey()
         this.getRange(expand0, newStart, newLimit)
-        let expand1 = this._current.getOverlappingInputs(
+        const expand1 = this._current.getOverlappingInputs(
           level + 1,
           newStart,
           newLimit
@@ -712,7 +705,7 @@ export default class VersionSet {
     c.edit.compactPointers.push({ level, internalKey: largest })
   }
 
-  public addLiveFiles(live: Set<number>) {
+  public addLiveFiles(live: Set<number>): void {
     for (
       let ver = this._dummyVersions.next;
       ver != this._dummyVersions;
@@ -737,7 +730,7 @@ export default class VersionSet {
     // Level-0 files have to be merged together.  For other levels,
     // we will make a concatenating iterator per level.
     // TODO(opt): use concatenating iterator for level-0 if there is no overlap
-    let space =
+    const space =
       currentCompaction.level === 0 ? currentCompaction.inputs[0].length + 1 : 2
     const list: AsyncIterableIterator<Entry>[] = Array.from({ length: space })
     for (let which = 0; which < 2; which++) {
@@ -768,7 +761,7 @@ export default class VersionSet {
   private async *levelFileEntryIterator(
     files: FileMetaData[]
   ): AsyncIterableIterator<Entry> {
-    for (let fileEntry of Version.levelFileNumIterator(
+    for (const fileEntry of Version.levelFileNumIterator(
       this.internalKeyComparator,
       files
     )) {

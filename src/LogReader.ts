@@ -22,7 +22,7 @@ export default class LogReader {
   _filename: string
   _options: Options
 
-  async close() {
+  async close(): Promise<void> {
     if (!!this._file) {
       await this._file.close()
       delete this._file
@@ -33,7 +33,7 @@ export default class LogReader {
     if (!this._file) {
       this._file = await this._options.env.open(this._filename, 'r')
     }
-    let buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))
+    const buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))
     let blockIndex = -1
     let latestOpBuf = Buffer.alloc(0)
     let latestType = null

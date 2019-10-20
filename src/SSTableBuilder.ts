@@ -25,16 +25,16 @@ export default class SSTableBuilder {
   constructor(options: Options, file: FileHandle) {
     this._file = file
     this._fileSize = 0
-    this._metaBlock = new FilterBlockBuilder()
+    this._metaBlock = new FilterBlockBuilder() // eslint-disable-line
     this._footer = new Footer(Buffer.alloc(48))
     this._numberOfEntries = 0
     this._offset = 0
     this._pendingIndexEntry = false
     this._closed = false
     this._options = options
-    this._dataBlock = new BlockBuilder(this._options)
+    this._dataBlock = new BlockBuilder(this._options) // eslint-disable-line
     this._dataBlock.blockType = 'datablock'
-    this._indexBlock = new BlockBuilder(this._options)
+    this._indexBlock = new BlockBuilder(this._options) // eslint-disable-line
     this._indexBlock.blockType = 'indexblock'
     this._pendingHandle = new BlockHandle()
   }
@@ -66,7 +66,7 @@ export default class SSTableBuilder {
     if (this._pendingIndexEntry) {
       assert(this._dataBlock.isEmpty())
       this._options.comparator.findShortestSeparator(this._lastKey, key)
-      let handleEncoding = this._pendingHandle.buffer
+      const handleEncoding = this._pendingHandle.buffer
       this._indexBlock.add(this._lastKey, new Slice(handleEncoding))
       this._pendingIndexEntry = false
     }
@@ -84,15 +84,15 @@ export default class SSTableBuilder {
     }
   }
 
-  get numEntries() {
+  get numEntries(): number {
     return this._numberOfEntries
   }
 
-  get fileSize() {
+  get fileSize(): number {
     return this._fileSize
   }
 
-  async flush() {
+  async flush(): Promise<void> {
     assert(!this._closed)
     if (this._dataBlock.isEmpty()) return
     assert(!this._pendingIndexEntry)
@@ -103,7 +103,7 @@ export default class SSTableBuilder {
     }
   }
 
-  async writeBlock(block: BlockBuilder, handle: BlockHandle) {
+  async writeBlock(block: BlockBuilder, handle: BlockHandle): Promise<void> {
     // File format contains a sequence of blocks where each block has:
     //    block_data: uint8[n]
     //    type: uint8
@@ -118,7 +118,7 @@ export default class SSTableBuilder {
     blockContent: Slice,
     type: CompressionTypes,
     handle: BlockHandle
-  ) {
+  ): Promise<void> {
     handle.offset = this._offset
     handle.size = blockContent.size
     await this.appendFile(blockContent.buffer)
@@ -132,18 +132,18 @@ export default class SSTableBuilder {
     this._offset += blockContent.size + kBlockTrailerSize
   }
 
-  async appendFile(buffer: Buffer) {
+  async appendFile(buffer: Buffer): Promise<void> {
     await this._file.appendFile(buffer, { encoding: 'buffer' })
     this._fileSize += buffer.length
   }
 
-  public async abandon() {
+  public async abandon(): Promise<void> {
     await this._file.close()
     assert(!this._closed)
     this._closed = true
   }
 
-  async finish() {
+  async finish(): Promise<void> {
     await this.flush()
     assert(!this._closed)
     this._closed = true
@@ -160,6 +160,7 @@ export default class SSTableBuilder {
       )
     }
 
+    // eslint-disable-next-line
     const metaIndexBlock = new BlockBuilder(this._options)
     metaIndexBlock.blockType = 'metaindexblock'
     if (!!this._metaBlock) {
@@ -216,7 +217,7 @@ class BlockBuilder {
     return this._buffer
   }
 
-  public reset() {
+  public reset(): void {
     this._buffer = Buffer.alloc(0)
     this._restarts = [0]
     this._counter = 0
@@ -268,7 +269,7 @@ class BlockBuilder {
     assert(this._lastKey.buffer.compare(key.buffer) === 0)
   }
 
-  public isEmpty() {
+  public isEmpty(): boolean {
     return this._buffer.length === 0
   }
 
@@ -316,7 +317,7 @@ class FilterBlockBuilder {
   private _tempKeys: Slice[] // policy_->CreateFilter() argument
   private _filterOffsets: number[] // Offset in _result of each filter
 
-  public startBlock(blockOffset: number) {
+  public startBlock(blockOffset: number): void {
     const filterIndex = Math.floor(blockOffset / FilterBlockBuilder.kFilterBase)
     assert(filterIndex >= this._filterOffsets.length)
     while (filterIndex > this._filterOffsets.length) {
@@ -362,7 +363,7 @@ class FilterBlockBuilder {
     this._starts = []
   }
 
-  public addkey(key: Slice) {
+  public addkey(key: Slice): void {
     this._starts.push(this._keys.length)
     this._keys = Buffer.concat([this._keys, key.buffer])
   }

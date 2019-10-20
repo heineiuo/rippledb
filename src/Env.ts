@@ -8,7 +8,9 @@
 import fs from 'fs'
 import { getInfoLogFilename } from './Filename'
 
+// eslint-disable-next-line
 export interface FileHandle extends fs.promises.FileHandle {}
+// eslint-disable-next-line
 export interface Direct extends fs.Dirent {}
 
 export interface Env {
@@ -37,16 +39,17 @@ export class InfoLog {
 
   private _fd: FileHandle
 
-  async log(message: string) {
-    let finalMessage = `${new Date().toISOString()} ${message}\n`
+  async log(message: string): Promise<void> {
+    const finalMessage = `${new Date().toISOString()} ${message}\n`
     await this._fd.appendFile(finalMessage)
   }
 }
 
-export function Log(infoLog: InfoLog, message: string) {
+export function Log(infoLog: InfoLog, message: string): Promise<void> {
   if (infoLog) {
     return infoLog.log(message)
   }
+  return Promise.resolve()
 }
 
 export class NodeEnv implements Env {
@@ -57,11 +60,11 @@ export class NodeEnv implements Env {
     return Number(process.hrtime.bigint()) / Math.pow(10, 9)
   }
 
-  access(dbpath: string) {
+  access(dbpath: string): Promise<void> {
     return fs.promises.access(dbpath, fs.constants.W_OK)
   }
 
-  mkdir(dbpath: string) {
+  mkdir(dbpath: string): Promise<void> {
     return fs.promises.mkdir(dbpath, { recursive: true })
   }
 
@@ -71,11 +74,12 @@ export class NodeEnv implements Env {
   rename = fs.promises.rename
   unlink = fs.promises.unlink
 
+  // eslint-disable-next-line
   readdir(dbpath: string) {
     return fs.promises.readdir(dbpath, { withFileTypes: true })
   }
 
-  openInfoLog(dbpath: string) {
+  openInfoLog(dbpath: string): Promise<FileHandle> {
     const filename = getInfoLogFilename(dbpath)
     return fs.promises.open(filename, 'a+')
   }

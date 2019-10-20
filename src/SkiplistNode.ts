@@ -22,13 +22,13 @@ export default class SkiplistNode {
   /**
    * link every level in this node to next
    */
-  fill(next: SkiplistNode) {
+  fill(next: SkiplistNode): void {
     for (let i = 0; i <= this.maxlevel; i++) {
       this.levels[i] = next
     }
   }
 
-  forEach(cb: (node: SkiplistNode, index: number) => void) {
+  forEach(cb: (node: SkiplistNode, index: number) => void): void {
     for (let i = 0; i <= this.maxlevel; i++) {
       cb(this.levels[i], i)
     }

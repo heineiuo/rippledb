@@ -22,7 +22,6 @@ export class Snapshot {
 }
 
 export class SnapshotList {
-  constructor() {}
   oldest(): Snapshot {
     // TODO
     return new Snapshot(new SequenceNumber())

@@ -52,10 +52,11 @@ class State {
   saver: Saver = new Saver()
 
   static async match(
-    state: State,
+    state: unknown,
     level: number,
     f: FileMetaData
   ): Promise<boolean> {
+    if (!(state instanceof State)) return Promise.resolve(false)
     if (!state.stats.seekFile && !!state.lastFileRead) {
       // We have had more than one seek for this read.  Charge the 1st file.
       state.stats.seekFile = state.lastFileRead
@@ -71,7 +72,7 @@ class State {
       f.fileSize,
       state.ikey,
       state.saver,
-      Version.saveValue
+      Version.saveValue // eslint-disable-line
     )
 
     if (!(await state.s.ok())) {
@@ -108,7 +109,8 @@ interface FileEntry {
 }
 
 export default class Version {
-  static saveValue(saver: Saver, ikey: Slice, v: Slice) {
+  static saveValue(saver: unknown, ikey: Slice, v: Slice): void {
+    if (!(saver instanceof Saver)) return
     const parsedKey = new ParsedInternalKey()
     // saver.state default value is kNotFound
     if (!parseInternalKey(ikey, parsedKey)) {
@@ -135,7 +137,7 @@ export default class Version {
     icmp: InternalKeyComparator, // TODO used for seek
     files: FileMetaData[]
   ): IterableIterator<FileEntry> {
-    for (let file of files) {
+    for (const file of files) {
       const valueBuf = Buffer.alloc(16)
       valueBuf.fill(encodeFixed64(file.number), 0, 8)
       valueBuf.fill(encodeFixed64(file.fileSize), 8, 16)
@@ -184,11 +186,11 @@ export default class Version {
     this.files = Array.from({ length: Config.kNumLevels }, () => [])
   }
 
-  public ref() {
+  public ref(): void {
     this.refs++
   }
 
-  public unref() {
+  public unref(): void {
     assert(this.refs >= 1)
     this.refs--
     if (this.refs === 0) {
@@ -200,7 +202,7 @@ export default class Version {
     delete stats.seekFile
     stats.seekFileLevel = -1
 
-    let state = new State()
+    const state = new State()
     state.found = false
     state.stats = stats
     state.lastFileReadLevel = -1
@@ -235,8 +237,8 @@ export default class Version {
   public async forEachOverlapping(
     userKey: Slice,
     internalKey: Slice,
-    arg: any,
-    match: (arg: any, level: number, f: FileMetaData) => Promise<boolean>
+    arg: unknown,
+    match: (arg: unknown, level: number, f: FileMetaData) => Promise<boolean>
   ): Promise<void> {
     const ucmp = this.versionSet.internalKeyComparator.userComparator
     // Search level-0 in order from newest to oldest.
@@ -335,8 +337,8 @@ export default class Version {
     let left = 0 //  uint32_t
     let right = files.length // uint32_t
     while (left < right) {
-      let mid = Math.floor((left + right) / 2)
-      let file = files[mid]
+      const mid = Math.floor((left + right) / 2)
+      const file = files[mid]
       if (icmp.compare(file.largest, key) < 0) {
         left = mid + 1
       } else {

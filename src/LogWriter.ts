@@ -25,14 +25,14 @@ export default class LogWriter {
   private _filename: string
   private _blockOffset: number
 
-  private async appendFile(buf: Buffer) {
+  private async appendFile(buf: Buffer): Promise<void> {
     if (!this._file) {
       this._file = await this._options.env.open(this._filename, 'a+')
     }
     await this._file.appendFile(buf, {})
   }
 
-  public async close() {
+  public async close(): Promise<void> {
     await this._file.close()
   }
 
@@ -62,7 +62,7 @@ export default class LogWriter {
     let left = recordOp.size
     let position = 0
     while (left > 0) {
-      let leftover = kBlockSize - this._blockOffset
+      const leftover = kBlockSize - this._blockOffset
       assert(leftover >= 0)
       if (leftover < kHeaderSize) {
         // Switch to a new block

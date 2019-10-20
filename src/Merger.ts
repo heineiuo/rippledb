@@ -35,20 +35,18 @@ export default class IteratorMerger {
       return
     }
     while (true) {
-      const smallest = await this.findSmallest(this._list)
+      const smallest = await this.findSmallest()
       if (!smallest) break
       yield smallest
     }
   }
 
-  private async findSmallest(
-    list: AsyncIterableIterator<Entry>[]
-  ): Promise<Entry | null> {
+  private async findSmallest(): Promise<Entry | null> {
     let smallest = null
     let hit = -1
 
     for (let i = 0; i < this._num; i++) {
-      let child = this._cache[i] || (await this._list[i].next())
+      const child = this._cache[i] || (await this._list[i].next())
       this._cache[i] = child
       if (!child.done) {
         if (smallest === null) {

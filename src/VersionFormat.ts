@@ -6,15 +6,8 @@
  */
 
 import assert from 'assert'
-import {
-  ValueType,
-  SequenceNumber,
-  InternalKeyComparator,
-  InternalKey,
-} from './Format'
-import Slice from './Slice'
+import { InternalKeyComparator, InternalKey } from './Format'
 import { Options } from './Options'
-import { decodeFixed64 } from './Coding'
 
 export class FileMetaData {
   // reference count
@@ -60,7 +53,7 @@ export class FileSet {
     this._set = []
   }
 
-  add(file: FileMetaData) {
+  add(file: FileMetaData): void {
     if (this._set.find(item => item === file)) {
       return
     }
@@ -80,7 +73,7 @@ export class FileSet {
     }
   }
 
-  push(file: FileMetaData) {
+  push(file: FileMetaData): void {
     const endFile = this.end()
     assert(!endFile || this.compare.operator(endFile, file))
     this._set.push(file)
@@ -94,7 +87,7 @@ export class FileSet {
     return this._set[this._set.length - 1] || null
   }
 
-  delete(file: FileMetaData) {
+  delete(file: FileMetaData): void {
     this._set = this._set.filter(item => item !== file)
   }
 
@@ -104,13 +97,13 @@ export class FileSet {
 
   totalBytes(): number {
     let bytes = 0
-    for (let fileMetaData of this.iterator()) {
+    for (const fileMetaData of this.iterator()) {
       bytes += fileMetaData.fileSize
     }
     return bytes
   }
 
-  get data() {
+  get data(): FileMetaData[] {
     return this._set
   }
 
@@ -156,7 +149,7 @@ export function getMaxBytesForLevel(level: number): number {
   return result
 }
 
-export function getExpandedCompactionByteSizeLimit(options: Options) {
+export function getExpandedCompactionByteSizeLimit(options: Options): number {
   return 25 * options.maxFileSize
 }
 

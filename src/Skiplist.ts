@@ -12,7 +12,7 @@ import SkiplistNode from './SkiplistNode'
 const PROBABILITY = 1 / Math.E
 
 const kMaxHeight = 12 // Math.round(Math.log(this.maxsize, 2))
-const kBranching = 4
+// const kBranching = 4
 
 export default class Skiplist {
   constructor(maxsize: number, keyComparator: (a: Slice, b: Slice) => number) {
@@ -94,13 +94,13 @@ export default class Skiplist {
   // TODO maybe there is something error
   //   Advance to the first entry with a key >= target
   public seek(key: Slice): SkiplistNode {
-    let prevNode = this.findGreaterOrEqual(key)
+    const prevNode = this.findGreaterOrEqual(key)
     return prevNode
   }
 
-  public put(key: Slice) {
-    let shouldUpdatePrevNodes = new Array(kMaxHeight)
-    let prevNode = this.findGreaterOrEqual(key, shouldUpdatePrevNodes)
+  public put(key: Slice): void {
+    const shouldUpdatePrevNodes = new Array(kMaxHeight)
+    const prevNode = this.findGreaterOrEqual(key, shouldUpdatePrevNodes)
     assert(!prevNode || !this.isEqual(key, prevNode.key))
 
     const nodeLevel = this.generateNodeLevel()

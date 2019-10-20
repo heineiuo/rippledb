@@ -31,8 +31,25 @@ export const kValueTypeForSeek = ValueType.kTypeValue
 
 export const kMaxSequenceNumber: bigint = (1n << 56n) - 1n
 
+export class ParsedInternalKey {
+  userKey!: Slice
+  sn!: SequenceNumber
+  valueType!: ValueType
+  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
+    if (
+      typeof userKey !== 'undefined' &&
+      typeof sn !== 'undefined' &&
+      typeof valueType !== 'undefined'
+    ) {
+      this.userKey = userKey
+      this.sn = sn
+      this.valueType = valueType
+    }
+  }
+}
+
 function packSequenceAndType(seq: number | bigint, t: ValueType): bigint {
-  let bSeq = BigInt(seq)
+  const bSeq = BigInt(seq)
   assert(bSeq <= kMaxSequenceNumber)
   assert(t <= kValueTypeForSeek)
   return (bSeq << 8n) | BigInt(t)
@@ -71,7 +88,7 @@ export const kMemTableDumpSize = 4194304 // 4MB
 //   let bnum = BigInt(`0x${buf.toString('hex')}`)
 export class SequenceNumber {
   // bigint?
-  constructor(initial: number = 0) {
+  constructor(initial = 0) {
     this._value = initial
   }
 
@@ -128,7 +145,7 @@ export class InternalKey extends Slice {
     }
   }
 
-  get userKey() {
+  get userKey(): Slice {
     return extractUserKey(this)
   }
 
@@ -142,7 +159,7 @@ export class InternalKey extends Slice {
     return decodeFixed32(sequenceBuf)
   }
 
-  public decodeFrom(slice: Slice) {
+  public decodeFrom(slice: Slice): boolean {
     this.buffer = slice.buffer
     return this.buffer.length > 0
   }
@@ -203,7 +220,7 @@ export class InternalKeyComparator implements Comparator {
 
   private _userComparator: Comparator
 
-  get userComparator() {
+  get userComparator(): Comparator {
     return this._userComparator
   }
 
@@ -211,7 +228,7 @@ export class InternalKeyComparator implements Comparator {
     return 'leveldb.InternalKeyComparator'
   }
 
-  findShortestSeparator(start: Slice, limit: Slice) {
+  findShortestSeparator(start: Slice, limit: Slice): void {
     // Attempt to shorten the user portion of the key
     const userStart = extractUserKey(start)
     const userLimit = extractUserKey(limit)
@@ -236,7 +253,7 @@ export class InternalKeyComparator implements Comparator {
     }
   }
 
-  findShortSuccessor(key: Slice) {
+  findShortSuccessor(key: Slice): void {
     const userKey = extractUserKey(key)
     const tmp = new Slice(Buffer.from(userKey.buffer))
     this._userComparator.findShortSuccessor(tmp)
@@ -276,23 +293,6 @@ export class InternalKeyComparator implements Comparator {
     const sn2 = decodeFixed64(sn2Buf)
     if (sn1 === sn2) return 0
     return sn1 > sn2 ? -1 : 1
-  }
-}
-
-export class ParsedInternalKey {
-  userKey!: Slice
-  sn!: SequenceNumber
-  valueType!: ValueType
-  constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
-    if (
-      typeof userKey !== 'undefined' &&
-      typeof sn !== 'undefined' &&
-      typeof valueType !== 'undefined'
-    ) {
-      this.userKey = userKey
-      this.sn = sn
-      this.valueType = valueType
-    }
   }
 }
 
@@ -360,10 +360,11 @@ export interface EntryRequireType extends Entry {
   type: ValueType
 }
 
+// eslint-disable-next-line
 export interface Filter extends BloomFilter {}
 
 export class BlockHandle {
-  static from(buf: Buffer) {
+  static from(buf: Buffer): BlockHandle {
     const handle = new BlockHandle()
     handle.offset = varint.decode(buf)
     handle.size = varint.decode(buf, varint.decode.bytes)

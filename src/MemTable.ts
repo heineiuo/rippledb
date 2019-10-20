@@ -42,13 +42,13 @@ export default class MemTable {
 
     const internalKeySize = varint.decode(key.buffer)
     index += varint.decode.bytes
-    let internalKey = new Slice(
+    const internalKey = new Slice(
       key.buffer.slice(index, index + internalKeySize)
     )
     index += internalKeySize
     const valueSize = varint.decode(key.buffer.slice(index))
     index += varint.decode.bytes
-    let value = new Slice(key.buffer.slice(index, index + valueSize))
+    const value = new Slice(key.buffer.slice(index, index + valueSize))
     return { key: internalKey, value } as Entry
   }
 
@@ -73,11 +73,11 @@ export default class MemTable {
     return this.internalKeyComparator.compare(internalKeyBufA, internalKeyBufB)
   }
 
-  ref() {
+  ref(): void {
     this.refs++
   }
 
-  unref() {
+  unref(): void {
     this.refs--
   }
 
@@ -98,7 +98,7 @@ export default class MemTable {
     valueType: ValueType,
     key: Slice,
     value?: Slice
-  ) {
+  ): void {
     const keySize = key.length
     const valueSize = !value ? 0 : value.length
     const internalKeySize = keySize + 8 // sequence=7bytes, type = 1byte
@@ -162,7 +162,7 @@ export default class MemTable {
   }
 
   *iterator(): IterableIterator<Entry> {
-    for (let value of this._list.iterator()) {
+    for (const value of this._list.iterator()) {
       yield MemTable.getEntryFromMemTableKey(value)
     }
   }

@@ -25,30 +25,30 @@ class StatusError extends Error {
 }
 
 export default class Status {
-  static createNotFound(message?: string) {
+  static createNotFound(message?: string): Status {
     return new Status(Promise.reject(new StatusError(Code.kNotFound, message)))
   }
-  static createCorruption(message?: string) {
+  static createCorruption(message?: string): Status {
     return new Status(
       Promise.reject(new StatusError(Code.kCorruption, message))
     )
   }
 
   private _error!: Error
-  private _promise: Promise<any> | void
+  private _promise: Promise<unknown> | void
   private _code!: Code
   private _finish: boolean
 
-  constructor(promise?: Promise<any>) {
+  constructor(promise?: Promise<unknown>) {
     this._promise = promise
     this._finish = false
   }
 
-  get promise() {
+  get promise(): void | Promise<unknown> {
     return this._promise
   }
 
-  get error() {
+  get error(): Error {
     return this._error
   }
 
@@ -76,27 +76,27 @@ export default class Status {
     }
   }
 
-  public isNotFound() {
+  public isNotFound(): boolean {
     assert(this._finish)
     return this._code === Code.kNotFound
   }
 
-  public isCorruption() {
+  public isCorruption(): boolean {
     assert(this._finish)
     return this._code === Code.kCorruption
   }
 
-  public isIOError() {
+  public isIOError(): boolean {
     assert(this._finish)
     return this._code === Code.kIOError
   }
 
-  public isNotSupportedError() {
+  public isNotSupportedError(): boolean {
     assert(this._finish)
     return this._code === Code.kNotSupported
   }
 
-  public isInvalidArgument() {
+  public isInvalidArgument(): boolean {
     assert(this._finish)
     return this._code === Code.kNotSupported
   }

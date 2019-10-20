@@ -13,7 +13,7 @@ import Slice from './Slice'
 import { InternalKey, VersionEditTag } from './Format'
 import VersionEdit from './VersionEdit'
 import { FileMetaData, NewFile } from './VersionFormat'
-import { createHexStringFromDecimal, kHeaderSize } from './LogFormat'
+import { createHexStringFromDecimal } from './LogFormat'
 
 export default class VersionEditRecord {
   static from(buf: Buffer): VersionEditRecord {
@@ -26,7 +26,7 @@ export default class VersionEditRecord {
   }
 
   static add(edit: VersionEdit): Slice {
-    let bufList: Buffer[] = []
+    const bufList: Buffer[] = []
     if (edit.hasComparator) {
       bufList.push(Buffer.from([VersionEditTag.kComparator]))
       bufList.push(Buffer.from(varint.encode(edit.comparator.length)))
@@ -157,7 +157,7 @@ export default class VersionEditRecord {
         index += varint.decode.bytes
         const largestKey = opBuffer.slice(index, index + largestKeyLength)
         index += largestKeyLength
-        let fileMetaData = new FileMetaData()
+        const fileMetaData = new FileMetaData()
         fileMetaData.number = fileNum
         fileMetaData.fileSize = fileSize
         fileMetaData.smallest = InternalKey.from(new Slice(smallestKey))
@@ -178,11 +178,11 @@ export default class VersionEditRecord {
     this.data = new Slice(data)
   }
 
-  get length() {
+  get length(): number {
     return this.data.length + 7
   }
 
-  get size() {
+  get size(): number {
     return this.length
   }
 
