@@ -42,6 +42,10 @@ export class ReadOptions {
   snapshot!: SequenceNumber
 }
 
+export class IteratorOptions extends ReadOptions {
+  start: string | Buffer = Buffer.alloc(0)
+}
+
 export class WriteOptions {
   // If true, the write will be flushed from the operating system
   // buffer cache (by calling WritableFile::Sync()) before the write

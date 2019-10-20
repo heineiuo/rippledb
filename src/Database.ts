@@ -9,7 +9,7 @@ import path from 'path'
 import assert from 'assert'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
-import { Options, ReadOptions, WriteOptions } from './Options'
+import { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
 import {
   ValueType,
   kMemTableDumpSize,
@@ -381,12 +381,17 @@ export default class Database {
   }
 
   public async *iterator(
-    options?: ReadOptions
+    options: IteratorOptions = new IteratorOptions()
   ): AsyncIterableIterator<{ key: string | Buffer; value: string | Buffer }> {
     await this.ok()
     // TODO
-    for (let key in this._memtable.iterator()) {
-      yield { key, value: key }
+    const start: Buffer = Buffer.isBuffer(options.start)
+      ? options.start
+      : Buffer.from(options.start)
+    for (let entry of this._memtable.iterator()) {
+      const { key, value } = entry
+      const userKey = InternalKey.from(key).userKey
+      yield { key: userKey.buffer, value: value.buffer }
     }
   }
 
