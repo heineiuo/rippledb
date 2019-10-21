@@ -10,6 +10,7 @@ import assert from 'assert'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
 import { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
+import IteratorHelper from './IteratorHelper'
 import {
   ValueType,
   kMemTableDumpSize,
@@ -384,14 +385,35 @@ export default class Database {
     options: IteratorOptions = new IteratorOptions()
   ): AsyncIterableIterator<{ key: string | Buffer; value: string | Buffer }> {
     await this.ok()
-    // TODO
-    const start: Buffer = Buffer.isBuffer(options.start)
-      ? options.start
-      : Buffer.from(options.start)
-    for (const entry of this._memtable.iterator()) {
+    const startUserKey = new Slice(options.start)
+    const sequence = options.snapshot
+      ? new Snapshot(options.snapshot).sequenceNumber
+      : new SequenceNumber(this._versionSet.lastSequence)
+    const lookupKey = new LookupKey(startUserKey, sequence)
+
+    this._memtable.ref()
+    for (const entry of IteratorHelper.wrap(this._memtable.iterator(), () => {
+      this._memtable.unref()
+    })) {
       const { key, value } = entry
       const userKey = InternalKey.from(key).userKey
-      yield { key: userKey.buffer, value: value.buffer }
+      if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
+        lookupKey.userKey = userKey
+        yield { key: userKey.buffer, value: value.buffer }
+      }
+    }
+    if (this._immtable) {
+      this._immtable.ref()
+      for (const entry of IteratorHelper.wrap(this._immtable.iterator(), () => {
+        this._immtable.unref()
+      })) {
+        const { key, value } = entry
+        const userKey = InternalKey.from(key).userKey
+        if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
+          lookupKey.userKey = userKey
+          yield { key: userKey.buffer, value: value.buffer }
+        }
+      }
     }
   }
 
