@@ -54,7 +54,7 @@ export class FileSet {
   }
 
   add(file: FileMetaData): void {
-    if (this._set.find(item => item === file)) {
+    if (this._set.find(item => item.number === file.number)) {
       return
     }
     const setLength = this._set.length
@@ -66,7 +66,7 @@ export class FileSet {
         const b = this.compare.operator(file, file1)
         if (b) {
           this._set.splice(i, 0, file)
-          break
+          return
         }
       }
       this._set.push(file)
