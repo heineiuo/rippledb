@@ -15,7 +15,7 @@ import { Entry } from './Format'
 
 // TODO use LRUCache
 
-interface TableAndFile {
+export interface TableAndFile {
   file: FileHandle
   table: Table
 }
