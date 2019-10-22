@@ -112,6 +112,9 @@ export default class VersionBuilder {
     } else {
       const files = ver.files[level]
       if (level > 0 && files.length > 0) {
+        // Must not overlap: smallest key in file should bigger
+        // then this level biggest key so can push file to this
+        // level tail
         assert(
           this._versionSet.internalKeyComparator.compare(
             files[files.length - 1].largest,
