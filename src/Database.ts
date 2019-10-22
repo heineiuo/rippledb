@@ -10,6 +10,7 @@ import assert from 'assert'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
 import { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
+import IteratorHelper from './IteratorHelper'
 import {
   ValueType,
   kMemTableDumpSize,
@@ -48,9 +49,10 @@ import Status from './Status'
 import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator, Comparator } from './Comparator'
 import { Direct, InfoLog, Log, FileHandle } from './Env'
-import { TableCache } from './SSTableCache'
+import { TableCache, TableAndFile } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
+import SSTable from './SSTable'
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -384,24 +386,77 @@ export default class Database {
     options: IteratorOptions = new IteratorOptions()
   ): AsyncIterableIterator<{ key: string | Buffer; value: string | Buffer }> {
     await this.ok()
-    // TODO
-    const start: Buffer = Buffer.isBuffer(options.start)
-      ? options.start
-      : Buffer.from(options.start)
-    for (const entry of this._memtable.iterator()) {
+    const startUserKey = new Slice(options.start)
+    const sequence = options.snapshot
+      ? new Snapshot(options.snapshot).sequenceNumber
+      : new SequenceNumber(this._versionSet.lastSequence)
+    const lookupKey = new LookupKey(startUserKey, sequence)
+
+    this._memtable.ref()
+    for (const entry of IteratorHelper.wrap(this._memtable.iterator(), () => {
+      this._memtable.unref()
+    })) {
       const { key, value } = entry
       const userKey = InternalKey.from(key).userKey
-      yield { key: userKey.buffer, value: value.buffer }
+      if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
+        lookupKey.userKey = userKey
+        yield { key: userKey.buffer, value: value.buffer }
+      }
+    }
+    if (this._immtable) {
+      this._immtable.ref()
+      for (const entry of IteratorHelper.wrap(this._immtable.iterator(), () => {
+        this._immtable.unref()
+      })) {
+        const { key, value } = entry
+        const userKey = InternalKey.from(key).userKey
+        if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
+          lookupKey.userKey = userKey
+          yield { key: userKey.buffer, value: value.buffer }
+        }
+      }
+    }
+    const current = this._versionSet.current
+    const tableCache = this._versionSet.tableCache
+    current.ref()
+    for (let i = 0; i < Config.kNumLevels; i++) {
+      if (current.files[i].length === 0) continue
+      const files = current.files[i]
+      for (const file of files) {
+        if (
+          this.userComparator.compare(file.largest.userKey, lookupKey.userKey) <
+          0
+        ) {
+          continue
+        }
+        file.refs++
+        const status = await tableCache.findTable(file.number, file.fileSize)
+        if (await status.ok()) {
+          const tf = (await status.promise) as TableAndFile
+          for (const entry of IteratorHelper.wrap(
+            tf.table.entryIterator(),
+            () => {
+              file.refs--
+              tf.file.close()
+              current.unref()
+            }
+          )) {
+            const { key, value } = entry
+            const userKey = InternalKey.from(key).userKey
+            if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
+              yield { key: userKey.buffer, value: value.buffer }
+              lookupKey.userKey = userKey
+            }
+          }
+        } else {
+          continue
+        }
+        file.refs--
+      }
     }
   }
 
   /**
-   * TODO Trigger major compaction's condition:
-   * 1. manually compact
-   * 2. filter seek miss > allowed_seeks
-   * 3. level0 sstable > 8
-   * 4. leveli(i>0) sstable bytes > 10^iMB
-   *
    * db.get -> memtable.get -> imm.get -> versionCurrent.get ->
    * versionCurrent.forEachOverlapping -> tableCache.get -> tableCache.findTable ->
    * table.get

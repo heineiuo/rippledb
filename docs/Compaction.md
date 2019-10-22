@@ -1,5 +1,8 @@
-## 合并sstable操作：
+# Compaction
 
-0. 将需要合并的所有sstable的kv取出来放进一个数组
-0. 使用merge sort排序数组
-0. 写入新的sstable
+Trigger major compaction condition
+
+1. manually compact
+2. filter seek miss > allowed_seeks(25)
+3. level0 table > 8
+4. level_i(i>0) table bytes > 10^i MB

@@ -313,10 +313,6 @@ export function parseInternalKey(
 }
 
 export class LookupKey {
-  private _buffer: Buffer
-  private _internalKeyBuf: Buffer
-  private _userKeyBuf: Buffer
-
   // We construct a char array of the form:
   //    klength  varint32               <-- start_
   //    userkey  char[klength]          <-- kstart_
@@ -325,27 +321,39 @@ export class LookupKey {
   // The array is a suitable MemTable key.
   // The suffix starting with "userkey" can be used as an InternalKey.
   constructor(userKey: Slice, sequence: SequenceNumber) {
-    const keySize = userKey.size
-    const internalKeySize = keySize + 8
-    const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize))
-    const sequenceBuf = sequence.toFixed64Buffer()
-    sequenceBuf.fill(Buffer.from(varint.encode(kValueTypeForSeek)), 7)
-    const buf = Buffer.concat([internalKeySizeBuf, userKey.buffer, sequenceBuf])
-    this._internalKeyBuf = buf.slice(internalKeySizeBuf.length)
     this._userKeyBuf = userKey.buffer
-    this._buffer = buf
+    this._internalKeySizeBuf = Buffer.from(varint.encode(userKey.size + 8))
+    this._sequenceBuf = sequence.toFixed64Buffer()
+    this._sequenceBuf.fill(Buffer.from(varint.encode(kValueTypeForSeek)), 7)
+  }
+
+  private _internalKeySizeBuf: Buffer
+  private _userKeyBuf: Buffer
+  private _sequenceBuf: Buffer
+
+  get buffer(): Buffer {
+    return Buffer.concat([
+      this._internalKeySizeBuf,
+      this._userKeyBuf,
+      this._sequenceBuf,
+    ])
   }
 
   get internalKey(): Slice {
-    return new Slice(this._internalKeyBuf)
+    return new Slice(Buffer.concat([this._userKeyBuf, this._sequenceBuf]))
   }
 
   get memKey(): Slice {
-    return new Slice(this._buffer)
+    return new Slice(this.buffer)
   }
 
   get userKey(): Slice {
     return new Slice(this._userKeyBuf)
+  }
+
+  set userKey(userKey: Slice) {
+    this._userKeyBuf = userKey.buffer
+    this._internalKeySizeBuf = Buffer.from(varint.encode(userKey.size + 8))
   }
 }
 
