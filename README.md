@@ -44,8 +44,7 @@ For more details, see [documention](./docs)
 - [x] Database Recovery
 - [x] Version Manager
 - [x] Compaction
-- [x] Top-level API (put, get, del, compactRange, ok)
-- [ ] Top-level API (Iterator)
+- [x] Top-level API (put, get, del, batch, iterator, compactRange, ok)
 
 ## Benchmark
 
