@@ -1058,19 +1058,21 @@ export default class Database {
   /**
    * manually compact
    */
-  public async compactRange(begin: Slice, end: Slice): Promise<void> {
+  public async compactRange(begin: Buffer, end: Buffer): Promise<void> {
+    const sliceBegin = new Slice(begin)
+    const sliceEnd = new Slice(end)
     await this.ok()
     let maxLevelWithFiles = 1
     const base = this._versionSet._current
     for (let level = 0; level < Config.kNumLevels; level++) {
-      if (base.overlapInLevel(level, begin, end)) {
+      if (base.overlapInLevel(level, sliceBegin, sliceEnd)) {
         maxLevelWithFiles = level
       }
     }
 
     await this.manualCompactMemTable()
     for (let level = 0; level < maxLevelWithFiles; level++) {
-      await this.manualCompactRangeWithLevel(level, begin, end)
+      await this.manualCompactRangeWithLevel(level, sliceBegin, sliceEnd)
     }
   }
 

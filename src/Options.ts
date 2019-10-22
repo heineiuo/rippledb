@@ -12,14 +12,6 @@ import Slice from './Slice'
 import { Env, NodeEnv, InfoLog } from './Env'
 import { SequenceNumber } from './Format'
 
-export type Encodings = 'string' | 'buffer' | 'json'
-
-export interface EncodingOptions {
-  keyEncoding?: Encodings
-  valueEncoding?: Encodings
-  prefix?: string
-}
-
 export interface FilterPolicy {
   name(): string
   keyMayMatch(key: Slice, filter: Slice): boolean
