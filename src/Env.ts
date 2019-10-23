@@ -6,7 +6,6 @@
  */
 
 import fs from 'fs'
-import { getInfoLogFilename } from './Filename'
 
 // eslint-disable-next-line
 export interface FileHandle extends fs.promises.FileHandle {}
@@ -29,7 +28,6 @@ export interface Env {
   open(dbpath: string, flag: string): Promise<FileHandle>
   unlink(dbpath: string): Promise<void>
   readdir(dbpath: string): Promise<Direct[]>
-  openInfoLog(dbpath: string): Promise<FileHandle>
 }
 
 export class InfoLog {
@@ -77,10 +75,5 @@ export class NodeEnv implements Env {
   // eslint-disable-next-line
   readdir(dbpath: string) {
     return fs.promises.readdir(dbpath, { withFileTypes: true })
-  }
-
-  openInfoLog(dbpath: string): Promise<FileHandle> {
-    const filename = getInfoLogFilename(dbpath)
-    return fs.promises.open(filename, 'a+')
   }
 }

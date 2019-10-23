@@ -234,7 +234,7 @@ export default class Database {
     }
 
     this._options.infoLog = new InfoLog(
-      await this._options.env.openInfoLog(this._dbpath)
+      await this._options.env.open(getInfoLogFilename(this._dbpath), 'a+')
     )
 
     const versionSetRecoverResult = await this._versionSet.recover()
