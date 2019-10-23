@@ -14,6 +14,8 @@ import LogRecord from './LogRecord'
 import { SequenceNumber, EntryRequireType, ValueType } from './Format'
 import { decodeFixed64, encodeFixed32, decodeFixed32 } from './Coding'
 
+// TODO should be separate to two class: WriteBatch and WriteBatchInternal
+
 // Simplified WriteBatch
 // WriteBatch::rep_ :=
 //    sequence: fixed64
@@ -76,15 +78,15 @@ export default class WriteBatch {
 
   private _buffer!: Buffer
 
-  put(key: Slice, value: Slice): void {
-    const slice = LogRecord.add(key, value)
-    this.buffer = Buffer.concat([this.buffer, slice.buffer])
+  put(key: string | Buffer, value: string | Buffer): void {
+    const record = LogRecord.add(new Slice(key), new Slice(value))
+    this.buffer = Buffer.concat([this.buffer, record.buffer])
     WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
   }
 
-  del(key: Slice): void {
-    const slice = LogRecord.del(key)
-    this.buffer = Buffer.concat([this.buffer, slice.buffer])
+  del(key: string | Buffer): void {
+    const record = LogRecord.del(new Slice(key))
+    this.buffer = Buffer.concat([this.buffer, record.buffer])
     WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
   }
 
