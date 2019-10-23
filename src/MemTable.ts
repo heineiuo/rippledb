@@ -14,6 +14,7 @@ import {
   InternalKeyComparator,
   LookupKey,
   Entry,
+  EntryRequireType,
   InternalKey,
 } from './Format'
 import Skiplist from './Skiplist'
@@ -141,7 +142,7 @@ export default class MemTable {
   // all entries with overly large sequence numbers.
   //
   // this key is lookup key
-  get(key: LookupKey): Slice | void {
+  get(key: LookupKey): EntryRequireType | void {
     const memkey = key.memKey
     const node = this._list.seek(memkey)
     if (!!node) {
@@ -153,10 +154,7 @@ export default class MemTable {
           key.userKey
         ) === 0
       ) {
-        const valueType = internalKey.type
-        if (valueType === ValueType.kTypeValue) {
-          return entry.value
-        }
+        return { key: entry.key, value: entry.value, type: internalKey.type }
       }
     }
   }

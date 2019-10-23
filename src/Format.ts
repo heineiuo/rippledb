@@ -304,12 +304,16 @@ export function parseInternalKey(
   internalKey: Slice,
   ikey: ParsedInternalKey
 ): boolean {
-  ikey.userKey = extractUserKey(internalKey)
-  const snBuf = Buffer.alloc(8)
-  snBuf.fill(internalKey.buffer.slice(internalKey.length - 8), 0, 7)
-  ikey.sn = new SequenceNumber(decodeFixed64(snBuf))
-  ikey.valueType = internalKey.buffer[internalKey.length - 1]
-  return true
+  try {
+    ikey.userKey = extractUserKey(internalKey)
+    const snBuf = Buffer.alloc(8)
+    snBuf.fill(internalKey.buffer.slice(internalKey.length - 8), 0, 7)
+    ikey.sn = new SequenceNumber(decodeFixed64(snBuf))
+    ikey.valueType = internalKey.buffer[internalKey.length - 1]
+    return true
+  } catch (e) {
+    return false
+  }
 }
 
 export class LookupKey {
