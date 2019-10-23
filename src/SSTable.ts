@@ -181,10 +181,8 @@ export default class SSTable {
             entryInternalKey.userKey.isEqual(targetInternalKey.userKey) &&
             entryInternalKey.sequence <= targetInternalKey.sequence
           ) {
-            if (entryInternalKey.type === ValueType.kTypeValue) {
-              return new Status(Promise.resolve(entry))
-            }
-            break
+            // do not handle value type here, handle it at `Version.saveValue`
+            return new Status(Promise.resolve(entry))
           }
         }
       }

@@ -839,6 +839,28 @@ export default class Database {
         lastSequenceForKey = ikey.sn
       }
 
+      // used for debug
+      // if (
+      //   this._options.debug &&
+      //   ikey.valueType === ValueType.kTypeDeletion &&
+      //   !drop
+      // ) {
+      //   const snValueBig =
+      //     ikey.sn.value > compact.smallestSnapshot
+      //       ? 'key sequence is bigger then compact.smallestSnapshot. '
+      //       : ''
+      //   const isNotBaseLevel = !compact.compaction.isBaseLevelForKey(
+      //     ikey.userKey
+      //   )
+      //     ? 'this level is not base level for key. '
+      //     : ''
+      //   const becauseMsg = !drop ? `Because ${snValueBig}${isNotBaseLevel}` : ''
+      //   Log(
+      //     this._options.infoLog,
+      //     `${ikey.userKey} has been delete = ${drop}; ${becauseMsg}`
+      //   )
+      // }
+
       if (!drop) {
         // Open output file if necessary
         if (!compact.builder) {
