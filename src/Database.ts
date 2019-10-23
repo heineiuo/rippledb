@@ -397,9 +397,11 @@ export default class Database {
       this._memtable.unref()
     })) {
       const { key, value } = entry
-      const userKey = InternalKey.from(key).userKey
+      const iKey = InternalKey.from(key)
+      const userKey = iKey.userKey
       if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
         lookupKey.userKey = userKey
+        if (iKey.type === ValueType.kTypeDeletion) continue
         yield { key: userKey.buffer, value: value.buffer }
       }
     }
@@ -409,9 +411,11 @@ export default class Database {
         this._immtable.unref()
       })) {
         const { key, value } = entry
-        const userKey = InternalKey.from(key).userKey
+        const iKey = InternalKey.from(key)
+        const userKey = iKey.userKey
         if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
           lookupKey.userKey = userKey
+          if (iKey.type === ValueType.kTypeDeletion) continue
           yield { key: userKey.buffer, value: value.buffer }
         }
       }
@@ -442,10 +446,12 @@ export default class Database {
             }
           )) {
             const { key, value } = entry
-            const userKey = InternalKey.from(key).userKey
+            const iKey = InternalKey.from(key)
+            const userKey = iKey.userKey
             if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
-              yield { key: userKey.buffer, value: value.buffer }
               lookupKey.userKey = userKey
+              if (iKey.type === ValueType.kTypeDeletion) continue
+              yield { key: userKey.buffer, value: value.buffer }
             }
           }
         } else {
