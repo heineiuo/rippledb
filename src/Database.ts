@@ -468,7 +468,7 @@ export default class Database {
    * table.get
    */
   public async get(
-    userKey: Slice | string | Buffer,
+    userKey: string | Buffer,
     options: ReadOptions = new ReadOptions()
   ): Promise<Slice | string | null | void> {
     await this.ok()
@@ -536,7 +536,7 @@ export default class Database {
     options: WriteOptions = new WriteOptions()
   ): Promise<void> {
     const batch = new WriteBatch()
-    batch.put(new Slice(key), new Slice(value))
+    batch.put(key, value)
     return this.write(options, batch)
   }
 
@@ -545,7 +545,7 @@ export default class Database {
     options: WriteOptions = new WriteOptions()
   ): Promise<void> {
     const batch = new WriteBatch()
-    batch.del(new Slice(key))
+    batch.del(key)
     return this.write(options, batch)
   }
 
