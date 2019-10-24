@@ -59,7 +59,7 @@ export default class VersionSet {
   internalKeyComparator: InternalKeyComparator
   public tableCache: TableCache
 
-  manifestWritter?: LogWriter
+  manifestWriter?: LogWriter
 
   constructor(
     dbpath: string,
@@ -174,7 +174,7 @@ export default class VersionSet {
       // VersionEditRecord
     )
     // read record，apply to versionSet(apply method)
-    // Update log number and prev log number（can be ignore because prevlognumber has
+    // Update log number and prev log number（can be ignore because prev log number has
     // been deprecated in fact ）
     // Update next file
     // Update last sequence
@@ -269,7 +269,7 @@ export default class VersionSet {
         if (this._options.debug)
           Log(
             this._options.infoLog,
-            `DEBUG leve=${level} levelBytes=${levelBytes}`
+            `DEBUG level=${level} levelBytes=${levelBytes}`
           )
         // score >= 1 means size is bigger then limit
         score = levelBytes / getMaxBytesForLevel(level)
@@ -319,7 +319,7 @@ export default class VersionSet {
     // a temporary file that contains a snapshot of the current version.
     let manifestFilename = ''
     let status = new Status()
-    if (!this.manifestWritter) {
+    if (!this.manifestWriter) {
       // No reason to unlock *mu here since we only hit this path in the
       // first call to LogAndApply (when opening the database).
       manifestFilename = getManifestFilename(
@@ -327,18 +327,19 @@ export default class VersionSet {
         this.manifestFileNumber
       )
       edit.nextFileNumber = this.nextFileNumber
-      this.manifestWritter = new LogWriter(this._options, manifestFilename)
+      this.manifestWriter = new LogWriter(this._options, manifestFilename)
       if (this._options.debug)
         Log(this._options.infoLog, 'DEBUG writeSnapshot starting...')
 
-      status = this.writeSnapshot(this.manifestWritter)
+      status = this.writeSnapshot(this.manifestWriter)
     }
 
     if (await status.ok()) {
       const record = VersionEditRecord.add(edit)
-      status = new Status(this.manifestWritter.addRecord(record))
+      status = new Status(this.manifestWriter.addRecord(record))
     } else {
-      Log(this._options.infoLog, 'DEBUG writeSnapshot fail')
+      if (this._options.debug)
+        Log(this._options.infoLog, 'DEBUG writeSnapshot fail')
     }
 
     // If we just created a new descriptor file, install it by writing a
@@ -351,6 +352,10 @@ export default class VersionSet {
 
     // Install the new version
     if (await status.ok()) {
+      if (!!manifestFilename) {
+        await this.manifestWriter.close()
+      }
+
       Log(
         this._options.infoLog,
         'DEBUG LogAndApply success, Install the new version'
@@ -363,7 +368,8 @@ export default class VersionSet {
       Log(this._options.infoLog, 'DEBUG LogAndApply fail, Delete ver')
       // delete ver
       if (!!manifestFilename) {
-        delete this.manifestWritter
+        await this.manifestWriter.close()
+        delete this.manifestWriter
         await this._options.env.unlink(manifestFilename)
       }
     }
@@ -402,7 +408,7 @@ export default class VersionSet {
   /**
    * dump current to manifest
    */
-  private writeSnapshot(writter: LogWriter): Status {
+  private writeSnapshot(writer: LogWriter): Status {
     const edit = new VersionEdit()
 
     // Save metadata
@@ -430,7 +436,8 @@ export default class VersionSet {
     }
 
     const record = VersionEditRecord.add(edit)
-    return new Status(writter.addRecord(record))
+    const status = new Status(writer.addRecord(record))
+    return status
   }
 
   private async writeCurrentFile(
@@ -579,7 +586,7 @@ export default class VersionSet {
   // parameters:
   //   in     level_files:      List of files to search for boundary files.
   //   in/out compaction_files: List of files to extend by adding boundary files.
-  private addBoundryInputs(
+  private addBoundaryInputs(
     icmp: InternalKeyComparator,
     levelFiles: FileMetaData[],
     compactionFiles: FileMetaData[]
@@ -608,7 +615,7 @@ export default class VersionSet {
     largestKey: InternalKey
   ): FileMetaData {
     const userComparator = icmp.userComparator
-    let smallestBoundryFile!: FileMetaData
+    let smallestBoundaryFile!: FileMetaData
     for (let i = 0; i < levelFiles.length; i++) {
       const f = levelFiles[i]
       if (
@@ -616,22 +623,22 @@ export default class VersionSet {
         userComparator.compare(f.smallest.userKey, largestKey.userKey) === 0
       ) {
         if (
-          !smallestBoundryFile ||
-          icmp.compare(f.smallest, smallestBoundryFile.smallest) < 0
+          !smallestBoundaryFile ||
+          icmp.compare(f.smallest, smallestBoundaryFile.smallest) < 0
         ) {
-          smallestBoundryFile = f
+          smallestBoundaryFile = f
         }
       }
     }
 
-    return smallestBoundryFile
+    return smallestBoundaryFile
   }
 
   public setupOtherInputs(c: Compaction): void {
     const level = c.level
     let smallest = new InternalKey()
     let largest = new InternalKey()
-    this.addBoundryInputs(
+    this.addBoundaryInputs(
       this.internalKeyComparator,
       this._current.files[level],
       c.inputs[0]
@@ -651,7 +658,7 @@ export default class VersionSet {
         allStart,
         allLimit
       )
-      this.addBoundryInputs(
+      this.addBoundaryInputs(
         this.internalKeyComparator,
         this._current.files[level],
         expand0

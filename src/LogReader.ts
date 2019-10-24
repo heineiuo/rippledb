@@ -51,7 +51,7 @@ export default class LogReader {
           position
         )
         if (bytesRead === 0) {
-          await this._file.close()
+          await this.close()
           return
         }
         bufHandledPosition = 0

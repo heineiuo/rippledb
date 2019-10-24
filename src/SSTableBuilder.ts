@@ -22,8 +22,9 @@ import {
 } from './Format'
 
 export default class SSTableBuilder {
-  constructor(options: Options, file: FileHandle) {
+  constructor(options: Options, file: FileHandle, filename: string) {
     this._file = file
+    this._filename = filename
     this._fileSize = 0
     this._metaBlock = new FilterBlockBuilder() // eslint-disable-line
     this._footer = new Footer(Buffer.alloc(48))
@@ -43,6 +44,7 @@ export default class SSTableBuilder {
   private _numberOfEntries: number
   private _options: Options
   private _file: FileHandle
+  private _filename: string
   private _fileSize: number
   private _lastKey!: Slice // internalkey
   private _dataBlock: BlockBuilder
@@ -137,16 +139,21 @@ export default class SSTableBuilder {
     this._fileSize += buffer.length
   }
 
+  public async close(): Promise<void> {
+    if (!this._closed) {
+      try {
+        await this._file.close()
+      } catch (e) {}
+      this._closed = true
+    }
+  }
+
   public async abandon(): Promise<void> {
-    await this._file.close()
-    assert(!this._closed)
-    this._closed = true
+    await this.close()
   }
 
   async finish(): Promise<void> {
     await this.flush()
-    assert(!this._closed)
-    this._closed = true
 
     const filterBlockHandle = new BlockHandle()
     const metaIndexBlockHandle = new BlockHandle()
@@ -191,7 +198,7 @@ export default class SSTableBuilder {
     })
     await this.appendFile(this._footer.buffer)
     this._offset += this._footer.buffer.length
-    await this._file.close()
+    await this.close()
   }
 }
 
