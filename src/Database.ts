@@ -23,6 +23,7 @@ import {
   SequenceNumber,
   kValueTypeForSeek,
   LookupKey,
+  Entry,
 } from './Format'
 import { FileMetaData, GetStats } from './VersionFormat'
 import Version from './Version'
@@ -52,6 +53,7 @@ import { Direct, InfoLog, Log, FileHandle } from './Env'
 import { TableCache, TableAndFile } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
+import IteratorMerger from './Merger'
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -391,72 +393,70 @@ export default class Database {
       : new SequenceNumber(this._versionSet.lastSequence)
     const lookupKey = new LookupKey(startUserKey, sequence)
 
+    const iteratorList: AsyncIterableIterator<Entry>[] = []
+
     this._memtable.ref()
-    for (const entry of IteratorHelper.wrap(this._memtable.iterator(), () => {
-      this._memtable.unref()
-    })) {
-      const { key, value } = entry
-      const iKey = InternalKey.from(key)
+    iteratorList.push(
+      IteratorHelper.wrap(
+        IteratorHelper.makeAsync(this._memtable.iterator()),
+        () => {
+          this._memtable.unref()
+        }
+      )
+    )
+    if (this._immtable) {
+      this._immtable.ref()
+      iteratorList.push(
+        IteratorHelper.wrap(
+          IteratorHelper.makeAsync(this._immtable.iterator()),
+          () => {
+            this._immtable.unref()
+          }
+        )
+      )
+    }
+
+    const current = this._versionSet.current
+    const tableCache = this._versionSet.tableCache
+    current.ref()
+
+    for (let i = 0; i < Config.kNumLevels; i++) {
+      const files = current.files[i]
+
+      if (files.length > 0) {
+        for (const file of files) {
+          const status = await tableCache.findTable(file.number, file.fileSize)
+          if (await status.ok()) {
+            file.refs++
+            const tf = (await status.promise) as TableAndFile
+            iteratorList.push(
+              IteratorHelper.wrap(
+                IteratorHelper.makeAsync(tf.table.entryIterator()),
+                () => {
+                  file.refs--
+                  tf.file.close()
+                  current.unref()
+                }
+              )
+            )
+          }
+        }
+      }
+    }
+
+    const merger = new IteratorMerger(
+      this._internalKeyComparator,
+      iteratorList,
+      iteratorList.length
+    )
+
+    for await (const entry of merger.iterator()) {
+      const iKey = InternalKey.from(entry.key)
       const userKey = iKey.userKey
       if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
         lookupKey.userKey = userKey
         if (iKey.type === ValueType.kTypeDeletion) continue
-        yield { key: userKey.buffer, value: value.buffer }
-      }
-    }
-    if (this._immtable) {
-      this._immtable.ref()
-      for (const entry of IteratorHelper.wrap(this._immtable.iterator(), () => {
-        this._immtable.unref()
-      })) {
-        const { key, value } = entry
-        const iKey = InternalKey.from(key)
-        const userKey = iKey.userKey
-        if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
-          lookupKey.userKey = userKey
-          if (iKey.type === ValueType.kTypeDeletion) continue
-          yield { key: userKey.buffer, value: value.buffer }
-        }
-      }
-    }
-    const current = this._versionSet.current
-    const tableCache = this._versionSet.tableCache
-    current.ref()
-    for (let i = 0; i < Config.kNumLevels; i++) {
-      if (current.files[i].length === 0) continue
-      const files = current.files[i]
-      for (const file of files) {
-        if (
-          this.userComparator.compare(file.largest.userKey, lookupKey.userKey) <
-          0
-        ) {
-          continue
-        }
-        file.refs++
-        const status = await tableCache.findTable(file.number, file.fileSize)
-        if (await status.ok()) {
-          const tf = (await status.promise) as TableAndFile
-          for (const entry of IteratorHelper.wrap(
-            tf.table.entryIterator(),
-            () => {
-              file.refs--
-              tf.file.close()
-              current.unref()
-            }
-          )) {
-            const { key, value } = entry
-            const iKey = InternalKey.from(key)
-            const userKey = iKey.userKey
-            if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
-              lookupKey.userKey = userKey
-              if (iKey.type === ValueType.kTypeDeletion) continue
-              yield { key: userKey.buffer, value: value.buffer }
-            }
-          }
-        } else {
-          continue
-        }
-        file.refs--
+        yield { key: userKey.buffer, value: entry.value.buffer }
       }
     }
   }
