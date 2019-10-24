@@ -430,14 +430,11 @@ export default class Database {
             file.refs++
             const tf = (await status.promise) as TableAndFile
             iteratorList.push(
-              IteratorHelper.wrap(
-                IteratorHelper.makeAsync(tf.table.entryIterator()),
-                () => {
-                  file.refs--
-                  tf.file.close()
-                  current.unref()
-                }
-              )
+              IteratorHelper.wrap(tf.table.entryIterator(), () => {
+                file.refs--
+                tf.file.close()
+                current.unref()
+              })
             )
           }
         }
