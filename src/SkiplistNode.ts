@@ -28,17 +28,17 @@ export default class SkiplistNode {
     }
   }
 
-  forEach(cb: (node: SkiplistNode, index: number) => void): void {
-    for (let i = 0; i <= this.maxlevel; i++) {
-      cb(this.levels[i], i)
-    }
-  }
+  // forEach(cb: (node: SkiplistNode, index: number) => void): void {
+  //   for (let i = 0; i <= this.maxlevel; i++) {
+  //     cb(this.levels[i], i)
+  //   }
+  // }
 
-  *iterator(): IterableIterator<SkiplistNode> {
-    for (let i = 0; i <= this.maxlevel; i++) {
-      yield this.levels[i]
-    }
-  }
+  // *iterator(): IterableIterator<SkiplistNode> {
+  //   for (let i = 0; i <= this.maxlevel; i++) {
+  //     yield this.levels[i]
+  //   }
+  // }
 
   next(level: number): SkiplistNode {
     return this.levels[level]
