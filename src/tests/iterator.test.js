@@ -2,10 +2,17 @@ import Database from '../Database'
 import { random } from '../../fixtures/random'
 import { createDir, cleanup } from '../../fixtures/dbpath'
 
+jest.setTimeout(60000 * 10)
+
 const dbpath = createDir()
+const dbpath2 = createDir()
 afterAll(() => {
   cleanup(dbpath)
+  cleanup(dbpath2)
 })
+
+cleanup(dbpath)
+cleanup(dbpath2)
 
 describe('Database Iterator', () => {
   test('iterator with start option', async done => {
@@ -36,5 +43,24 @@ describe('Database Iterator', () => {
       if (count > 10) break
     }
     done()
+  })
+
+  test('iterator count', async () => {
+    const db = new Database(dbpath2)
+    const list = []
+    for (let i = 0; i < 50000; i++) {
+      list.push(random())
+    }
+
+    for (const entry of list) {
+      await db.put(...entry)
+    }
+
+    let count = 0
+    for await (const entry of db.iterator()) {
+      count++
+    }
+
+    expect(count).toBe(list.length)
   })
 })

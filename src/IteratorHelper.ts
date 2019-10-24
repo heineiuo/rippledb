@@ -40,4 +40,27 @@ export default class IteratorHelper {
     }
     return iterator
   }
+
+  static makeAsync<T>(iterator: IterableIterator<T>): AsyncIterableIterator<T> {
+    const asyncIter = {
+      return: async (value?: any): Promise<IteratorResult<T>> => {
+        try {
+          const value = iterator.next().value
+          return { done: true, value }
+        } catch (e) {
+          return { done: true, value: e }
+        }
+      },
+      next: async (value?: any): Promise<IteratorResult<T>> => {
+        return iterator.next()
+      },
+    } as AsyncIterableIterator<T>
+
+    return {
+      next: asyncIter.next,
+      [Symbol.asyncIterator](): AsyncIterableIterator<T> {
+        return asyncIter
+      },
+    }
+  }
 }
