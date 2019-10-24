@@ -6,7 +6,7 @@
  */
 
 import { Buffer } from 'buffer'
-import { FileHandle, Log } from './Env'
+import { FileHandle } from './Env'
 import Slice from './Slice'
 import Footer from './SSTableFooter'
 import DataBlock from './SSTableBlock'
@@ -18,15 +18,15 @@ import {
   kBlockTrailerSize,
   InternalKey,
   Entry,
-  ValueType,
 } from './Format'
 import Status from './Status'
 import { Options, ReadOptions } from './Options'
+import assert from 'assert'
 
 // Reader
 export default class SSTable {
   static async readBlock(
-    buf: Buffer,
+    file: FileHandle,
     options: ReadOptions,
     handle: BlockHandle
   ): Promise<BlockContents> {
@@ -39,11 +39,10 @@ export default class SSTable {
     // Read the block contents as well as the type/crc footer.
     // See table_builder.cc for the code that built this structure.
     const n = handle.size
-    const data = buf.slice(
-      handle.offset,
-      handle.offset + handle.size + kBlockTrailerSize
-    )
-    if (data.length !== handle.size + kBlockTrailerSize) {
+    const data = Buffer.alloc(handle.size + kBlockTrailerSize)
+    const { bytesRead } = await file.read(data, 0, data.length, handle.offset)
+
+    if (bytesRead !== handle.size + kBlockTrailerSize) {
       throw new Error('truncated block read')
     }
 
@@ -61,25 +60,28 @@ export default class SSTable {
     return result
   }
 
-  static async open(
-    options: Options,
-    fileHandle: FileHandle
-  ): Promise<SSTable> {
-    const buf = await fileHandle.readFile()
-    if (buf.length < Footer.kEncodedLength) {
+  static async open(options: Options, file: FileHandle): Promise<SSTable> {
+    const stat = await file.stat()
+    if (stat.size < Footer.kEncodedLength) {
       throw new Error('file is too short to be an sstable')
     }
-    const footer = new Footer(buf.slice(buf.length - Footer.kEncodedLength))
-
+    const footerBuf = Buffer.alloc(Footer.kEncodedLength)
+    await file.read(
+      footerBuf,
+      0,
+      footerBuf.length,
+      stat.size - Footer.kEncodedLength
+    )
+    const footer = new Footer(footerBuf)
     const indexBlockContents = await this.readBlock(
-      buf,
+      file,
       new ReadOptions(),
       footer.indexHandle
     )
     const indexBlock = new DataBlock(indexBlockContents)
     indexBlock.blockType = 'indexblock'
     const table = new SSTable({
-      buf,
+      file,
       options,
       indexBlock,
       metaIndexHandle: footer.metaIndexHandle,
@@ -89,23 +91,19 @@ export default class SSTable {
   }
 
   constructor(rep: {
-    buf: Buffer
+    file: FileHandle
     options: Options
     indexBlock: DataBlock
     metaIndexHandle: BlockHandle
   }) {
+    this._file = rep.file
     this._options = rep.options
-    this._buffer = rep.buf
-    this._metaIndexHandle = rep.metaIndexHandle
     this._indexBlock = rep.indexBlock
   }
 
-  private _buffer: Buffer
+  private _file: FileHandle
   private _options: Options
-  private _metaIndexHandle: BlockHandle
   private _indexBlock: DataBlock
-  private _dataBlock!: DataBlock
-  private _filterBuffer!: Buffer
   private _filterReader!: FilterBlock
 
   private async readMeta(footer: Footer): Promise<void> {
@@ -113,7 +111,7 @@ export default class SSTable {
       return // Do not need any metadata
     }
     const contents = await SSTable.readBlock(
-      this._buffer,
+      this._file,
       new ReadOptions(),
       footer.metaIndexHandle
     )
@@ -131,25 +129,13 @@ export default class SSTable {
     const filterHandle = BlockHandle.from(filterHandleBuffer)
 
     const readOptions = new ReadOptions() // TODO
-    const block = await SSTable.readBlock(
-      this._buffer,
-      readOptions,
-      filterHandle
-    )
-    this._filterBuffer = block.data.buffer
+    const block = await SSTable.readBlock(this._file, readOptions, filterHandle)
     this._filterReader = new FilterBlock(this._options.filterPolicy, block.data)
   }
 
-  // key: internalkey
+  // key: internalKey
   public async get(target: Slice): Promise<Status> {
     const targetInternalKey = InternalKey.from(target)
-
-    Log(
-      this._options.infoLog,
-      `Searching key=${InternalKey.from(target).userKey.toString()} sequence=${
-        InternalKey.from(target).sequence
-      }`
-    )
 
     for (const handleValue of this._indexBlock.iterator(
       this._options.comparator
@@ -160,23 +146,15 @@ export default class SSTable {
         !!this._filterReader &&
         !this._filterReader.keyMayMatch(handle.offset, target)
       ) {
-        Log(this._options.infoLog, `Not found`)
         // Not found
       } else {
-        for (const entry of this.blockIterator(
+        for await (const entry of this.blockIterator(
           this,
           this._options,
           handle,
           'datablock'
         )) {
           const entryInternalKey = InternalKey.from(entry.key)
-          if (entryInternalKey.userKey.toString() === 'foo') {
-            Log(
-              this._options.infoLog,
-              `entryInternalKey.userKey.toString() === 'foo'`
-            )
-          }
-
           if (
             entryInternalKey.userKey.isEqual(targetInternalKey.userKey) &&
             entryInternalKey.sequence <= targetInternalKey.sequence
@@ -190,7 +168,7 @@ export default class SSTable {
     return Status.createNotFound()
   }
 
-  *entryIterator(): IterableIterator<Entry> {
+  async *entryIterator(): AsyncIterableIterator<Entry> {
     for (const handleValue of this._indexBlock.iterator(
       this._options.comparator
     )) {
@@ -201,16 +179,23 @@ export default class SSTable {
 
   // Convert an index iterator value (i.e., an encoded BlockHandle)
   // into an iterator over the contents of the corresponding block.
-  *blockIterator(
+  async *blockIterator(
     table: SSTable,
     options: Options,
     handle: BlockHandle,
     blockType?: string
-  ): IterableIterator<Entry> {
+  ): AsyncIterableIterator<Entry> {
+    const data = Buffer.alloc(handle.size)
+    const { bytesRead } = await this._file.read(
+      data,
+      0,
+      data.length,
+      handle.offset
+    )
+    assert(bytesRead === data.length)
+
     const contents = {
-      data: new Slice(
-        this._buffer.slice(handle.offset, handle.offset + handle.size)
-      ),
+      data: new Slice(data),
     } as BlockContents
     const dataBlock = new DataBlock(contents)
     if (blockType) dataBlock.blockType = blockType

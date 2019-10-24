@@ -19,9 +19,9 @@ test('sstable', async () => {
   const fd1 = await fs.promises.open(getTableFilename(dbpath, 1), 'w')
   const builder = new SSTableBuilder(new Options(), fd1)
 
-  let count = 1000
+  const count = 1000
   let i = 0
-  let list = []
+  const list = []
   while (i < count) {
     list.push(random())
     i++
@@ -49,7 +49,7 @@ test('sstable', async () => {
 
   const listKeys = []
   const listValues = []
-  for (let entry of table.entryIterator()) {
+  for await (const entry of table.entryIterator()) {
     const ikey = InternalKey.from(entry.key)
     listKeys.push(ikey.userKey.toString())
     listValues.push(entry.value.toString())
