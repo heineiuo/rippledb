@@ -12,6 +12,7 @@ import { getTableFilename } from './Filename'
 import { Options, ReadOptions } from './Options'
 import Slice from './Slice'
 import { Entry } from './Format'
+import IteratorHelper from './IteratorHelper'
 
 // TODO use LRUCache
 
@@ -56,8 +57,8 @@ export class TableCache {
   }
 
   async findTable(fileNumber: number, fileSize: number): Promise<Status> {
-    const fname = getTableFilename(this._dbpath, fileNumber)
-    let status = new Status(this._env.open(fname, 'r+'))
+    const tableFilename = getTableFilename(this._dbpath, fileNumber)
+    let status = new Status(this._env.open(tableFilename, 'r+'))
     const tf = {} as TableAndFile
     if (await status.ok()) {
       tf.file = (await status.promise) as FileHandle
@@ -82,7 +83,9 @@ export class TableCache {
     const status = await this.findTable(fileNumber, fileSize)
     if (await status.ok()) {
       const tf = (await status.promise) as TableAndFile
-      yield* tf.table.entryIterator()
+      yield* IteratorHelper.wrap(tf.table.entryIterator(), () => {
+        tf.file.close()
+      })
     } else {
       Log(this._options.infoLog, `Open Table file(${fileNumber}) fail.`)
       throw new Error(`Open Table file(${fileNumber}) fail.`)

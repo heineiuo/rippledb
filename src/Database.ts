@@ -52,7 +52,6 @@ import { Direct, InfoLog, Log, FileHandle } from './Env'
 import { TableCache, TableAndFile } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
-import SSTable from './SSTable'
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -619,8 +618,11 @@ export default class Database {
           this._options.infoLog,
           'Attempt to switch to a new memtable and trigger compaction of old'
         )
-        assert(this._versionSet.prevLogNumber === 0) // no logfile is compaction
+        assert(this._versionSet.prevLogNumber === 0) // no logFile is compaction
         const newLogNumber = this._versionSet.getNextFileNumber()
+        if (!!this._log) {
+          await this._log.close()
+        }
         this._log = new LogWriter(
           this._options,
           getLogFilename(this._dbpath, newLogNumber)
@@ -637,7 +639,7 @@ export default class Database {
   }
 
   private async maybeScheduleCompaction(): Promise<void> {
-    if (this._options.infoLog)
+    if (this._options.debug)
       Log(
         this._options.infoLog,
         `DEBUG !this._immtable=${!this
@@ -971,14 +973,15 @@ export default class Database {
     meta.largest = new InternalKey()
     this.pendingOutputs.add(meta.number)
     Log(this._options.infoLog, `Level-0 table #${meta.number}: started`)
-    const fileHandler = getTableFilename(this._dbpath, meta.number)
-    let status = new Status(this._options.env.open(fileHandler, 'a+'))
+    const tableFilename = getTableFilename(this._dbpath, meta.number)
+    let status = new Status(this._options.env.open(tableFilename, 'a+'))
     if (!(await status.ok())) {
       return status
     }
     const builder = new SSTableBuilder(
       this._options,
-      (await status.promise) as FileHandle
+      (await status.promise) as FileHandle,
+      tableFilename
     )
     for (const entry of mem.iterator()) {
       if (!meta.smallest) {
@@ -1040,12 +1043,16 @@ export default class Database {
     out.smallest = new InternalKey()
     out.largest = new InternalKey()
     compact.outputs.push(out)
-    const fname = getTableFilename(this._dbpath, fileNumber)
+    const tableFilename = getTableFilename(this._dbpath, fileNumber)
     Log(this._options.infoLog, `Compaction output file number is ${fileNumber}`)
-    const s = new Status(this._options.env.open(fname, 'a+'))
+    const s = new Status(this._options.env.open(tableFilename, 'a+'))
     if (await s.ok()) {
       compact.outfile = (await s.promise) as FileHandle
-      compact.builder = new SSTableBuilder(this._options, compact.outfile)
+      compact.builder = new SSTableBuilder(
+        this._options,
+        compact.outfile,
+        tableFilename
+      )
       if (this._options.debug)
         Log(this._options.infoLog, 'DEBUG open file success')
     } else {
@@ -1285,10 +1292,8 @@ export default class Database {
     const currentBytes = compact.builder.fileSize
     compact.currentOutput().fileSize = currentBytes
     compact.totalBytes += currentBytes
+
     delete compact.builder
-
-    // TODO sync and close outfile
-
     delete compact.outfile
 
     if (currentEntries > 0) {

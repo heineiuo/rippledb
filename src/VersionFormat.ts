@@ -73,39 +73,39 @@ export class FileSet {
     }
   }
 
-  push(file: FileMetaData): void {
-    const endFile = this.end()
-    assert(!endFile || this.compare.operator(endFile, file))
-    this._set.push(file)
-  }
+  // push(file: FileMetaData): void {
+  //   const endFile = this.end()
+  //   assert(!endFile || this.compare.operator(endFile, file))
+  //   this._set.push(file)
+  // }
 
-  begin(): FileMetaData {
-    return this._set[0]
-  }
+  // begin(): FileMetaData {
+  //   return this._set[0]
+  // }
 
-  end(): FileMetaData | null {
-    return this._set[this._set.length - 1] || null
-  }
+  // end(): FileMetaData | null {
+  //   return this._set[this._set.length - 1] || null
+  // }
 
-  delete(file: FileMetaData): void {
-    this._set = this._set.filter(item => item !== file)
-  }
+  // delete(file: FileMetaData): void {
+  //   this._set = this._set.filter(item => item !== file)
+  // }
 
-  size(): number {
-    return this._set.length
-  }
+  // size(): number {
+  //   return this._set.length
+  // }
 
-  totalBytes(): number {
-    let bytes = 0
-    for (const fileMetaData of this.iterator()) {
-      bytes += fileMetaData.fileSize
-    }
-    return bytes
-  }
+  // totalBytes(): number {
+  //   let bytes = 0
+  //   for (const fileMetaData of this.iterator()) {
+  //     bytes += fileMetaData.fileSize
+  //   }
+  //   return bytes
+  // }
 
-  get data(): FileMetaData[] {
-    return this._set
-  }
+  // get data(): FileMetaData[] {
+  //   return this._set
+  // }
 
   *iterator(): IterableIterator<FileMetaData> {
     const setLength = this._set.length

@@ -24,7 +24,9 @@ export default class LogReader {
 
   async close(): Promise<void> {
     if (!!this._file) {
-      await this._file.close()
+      try {
+        await this._file.close()
+      } catch (e) {}
       delete this._file
     }
   }
@@ -49,7 +51,7 @@ export default class LogReader {
           position
         )
         if (bytesRead === 0) {
-          await this._file.close()
+          await this.close()
           return
         }
         bufHandledPosition = 0

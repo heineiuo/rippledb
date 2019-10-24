@@ -33,7 +33,12 @@ export default class LogWriter {
   }
 
   public async close(): Promise<void> {
-    await this._file.close()
+    if (!!this._file) {
+      try {
+        await this._file.close()
+      } catch (e) {}
+      delete this._file
+    }
   }
 
   private async emitPhysicalRecord(
