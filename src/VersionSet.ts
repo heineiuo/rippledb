@@ -240,6 +240,8 @@ export default class VersionSet {
     } else {
       result.saveManifest = true
     }
+
+    await reader.close()
     return result
   }
 

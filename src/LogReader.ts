@@ -24,7 +24,9 @@ export default class LogReader {
 
   async close(): Promise<void> {
     if (!!this._file) {
-      await this._file.close()
+      try {
+        await this._file.close()
+      } catch (e) {}
       delete this._file
     }
   }

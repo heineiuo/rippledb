@@ -621,6 +621,9 @@ export default class Database {
         )
         assert(this._versionSet.prevLogNumber === 0) // no logfile is compaction
         const newLogNumber = this._versionSet.getNextFileNumber()
+        if (!!this._log) {
+          await this._log.close()
+        }
         this._log = new LogWriter(
           this._options,
           getLogFilename(this._dbpath, newLogNumber)
@@ -971,8 +974,8 @@ export default class Database {
     meta.largest = new InternalKey()
     this.pendingOutputs.add(meta.number)
     Log(this._options.infoLog, `Level-0 table #${meta.number}: started`)
-    const fileHandler = getTableFilename(this._dbpath, meta.number)
-    let status = new Status(this._options.env.open(fileHandler, 'a+'))
+    const tableFilename = getTableFilename(this._dbpath, meta.number)
+    let status = new Status(this._options.env.open(tableFilename, 'a+'))
     if (!(await status.ok())) {
       return status
     }
@@ -1040,9 +1043,9 @@ export default class Database {
     out.smallest = new InternalKey()
     out.largest = new InternalKey()
     compact.outputs.push(out)
-    const fname = getTableFilename(this._dbpath, fileNumber)
+    const tableFilename = getTableFilename(this._dbpath, fileNumber)
     Log(this._options.infoLog, `Compaction output file number is ${fileNumber}`)
-    const s = new Status(this._options.env.open(fname, 'a+'))
+    const s = new Status(this._options.env.open(tableFilename, 'a+'))
     if (await s.ok()) {
       compact.outfile = (await s.promise) as FileHandle
       compact.builder = new SSTableBuilder(this._options, compact.outfile)
@@ -1285,10 +1288,8 @@ export default class Database {
     const currentBytes = compact.builder.fileSize
     compact.currentOutput().fileSize = currentBytes
     compact.totalBytes += currentBytes
+
     delete compact.builder
-
-    // TODO sync and close outfile
-
     delete compact.outfile
 
     if (currentEntries > 0) {
