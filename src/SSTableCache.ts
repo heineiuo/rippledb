@@ -13,6 +13,7 @@ import { Options, ReadOptions } from './Options'
 import Slice from './Slice'
 import { Entry } from './Format'
 import IteratorHelper from './IteratorHelper'
+import LRUCache from 'lru-cache'
 
 // TODO use LRUCache
 
@@ -27,11 +28,20 @@ export class TableCache {
     this._env = options.env
     this._dbpath = dbpath
     this._options = options
+    this._cache = new LRUCache({
+      max: entries,
+      async dispose(key: number, tf: TableAndFile): Promise<void> {
+        try {
+          await tf.file.close()
+        } catch (e) {}
+      },
+    })
   }
 
   _env: Env
   _dbpath: string
   _options: Options
+  _cache: LRUCache<number, TableAndFile>
 
   public async get(
     options: ReadOptions,
@@ -57,19 +67,26 @@ export class TableCache {
   }
 
   async findTable(fileNumber: number, fileSize: number): Promise<Status> {
-    const tableFilename = getTableFilename(this._dbpath, fileNumber)
-    let status = new Status(this._env.open(tableFilename, 'r+'))
-    const tf = {} as TableAndFile
-    if (await status.ok()) {
-      tf.file = (await status.promise) as FileHandle
-      status = new Status(Table.open(this._options, tf.file))
-    }
-    if (await status.ok()) {
-      tf.table = (await status.promise) as Table
-      status = new Status(Promise.resolve(tf))
+    let status = new Status()
+    const cachedTf = this._cache.get(fileNumber)
+    if (!cachedTf) {
+      const tableFilename = getTableFilename(this._dbpath, fileNumber)
+      status = new Status(this._env.open(tableFilename, 'r+'))
+      const tf = {} as TableAndFile
+      if (await status.ok()) {
+        tf.file = (await status.promise) as FileHandle
+        status = new Status(Table.open(this._options, tf.file))
+      }
+      if (await status.ok()) {
+        tf.table = (await status.promise) as Table
+        this._cache.set(fileNumber, tf)
+        status = new Status(Promise.resolve(tf))
+      } else {
+        // We do not cache error results so that if the error is transient,
+        // or somebody repairs the file, we recover automatically.
+      }
     } else {
-      // We do not cache error results so that if the error is transient,
-      // or somebody repairs the file, we recover automatically.
+      status = new Status(Promise.resolve(cachedTf))
     }
 
     return status
