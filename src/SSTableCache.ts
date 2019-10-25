@@ -13,9 +13,7 @@ import { Options, ReadOptions } from './Options'
 import Slice from './Slice'
 import { Entry } from './Format'
 import IteratorHelper from './IteratorHelper'
-import LRUCache from 'lru-cache'
-
-// TODO use LRUCache
+import Cache from './Cache'
 
 export interface TableAndFile {
   file: FileHandle
@@ -28,7 +26,7 @@ export class TableCache {
     this._env = options.env
     this._dbpath = dbpath
     this._options = options
-    this._cache = new LRUCache({
+    this._cache = new Cache({
       max: entries,
       async dispose(key: number, tf: TableAndFile): Promise<void> {
         try {
@@ -41,7 +39,7 @@ export class TableCache {
   _env: Env
   _dbpath: string
   _options: Options
-  _cache: LRUCache<number, TableAndFile>
+  _cache: Cache<number, TableAndFile>
 
   public async get(
     options: ReadOptions,

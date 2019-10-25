@@ -22,6 +22,7 @@ import {
 import Status from './Status'
 import { Options, ReadOptions } from './Options'
 import assert from 'assert'
+import { encodeFixed64 } from './Coding'
 
 // Reader
 export default class SSTable {
@@ -99,9 +100,11 @@ export default class SSTable {
     this._file = rep.file
     this._options = rep.options
     this._indexBlock = rep.indexBlock
+    this._cacheId = rep.options.blockCache.newId()
   }
 
   private _file: FileHandle
+  private _cacheId: bigint
   private _options: Options
   private _indexBlock: DataBlock
   private _filterReader!: FilterBlock
@@ -185,20 +188,29 @@ export default class SSTable {
     handle: BlockHandle,
     blockType?: string
   ): AsyncIterableIterator<Entry> {
-    const data = Buffer.alloc(handle.size)
-    const { bytesRead } = await this._file.read(
-      data,
-      0,
-      data.length,
-      handle.offset
-    )
-    assert(bytesRead === data.length)
+    const key = Buffer.concat([
+      encodeFixed64(this._cacheId),
+      encodeFixed64(handle.offset),
+    ])
 
-    const contents = {
-      data: new Slice(data),
-    } as BlockContents
-    const dataBlock = new DataBlock(contents)
-    if (blockType) dataBlock.blockType = blockType
+    let dataBlock = this._options.blockCache.get(key)
+    if (!dataBlock) {
+      const data = Buffer.alloc(handle.size)
+      const { bytesRead } = await this._file.read(
+        data,
+        0,
+        data.length,
+        handle.offset
+      )
+      assert(bytesRead === data.length)
+
+      const contents = {
+        data: new Slice(data),
+      } as BlockContents
+      dataBlock = new DataBlock(contents)
+      if (blockType) dataBlock.blockType = blockType
+      this._options.blockCache.set(key, dataBlock)
+    }
     yield* dataBlock.iterator(options.comparator)
   }
 }
