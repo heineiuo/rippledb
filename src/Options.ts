@@ -11,6 +11,8 @@ import { Comparator } from './Comparator'
 import Slice from './Slice'
 import { Env, NodeEnv, InfoLog } from './Env'
 import { SequenceNumber } from './Format'
+import Block from './SSTableBlock'
+import Cache from './Cache'
 
 export interface FilterPolicy {
   name(): string
@@ -79,7 +81,21 @@ export class Options {
   // one open file per 2MB of working set).
   maxOpenFiles = 1000
 
-  blockSize: number = 2 << 11
+  // automatically create and use an 8MB internal cache.
+  // 8MB = 2048 * blockSize(4096B)
+  blockCache = new Cache<Buffer, Block>({
+    max: 2048,
+  })
+
+  // Approximate size of user data packed per block.  Note that the
+  // block size specified here corresponds to uncompressed data.  The
+  // actual size of the unit read from disk may be smaller if
+  // compression is enabled.  This parameter can be changed dynamically.
+  blockSize = 4 * 1024
+
+  // Number of keys between restart points for delta encoding of keys.
+  // This parameter can be changed dynamically.  Most clients should
+  // leave this parameter alone.
   blockRestartInterval = 16
 
   // Use the specified object to interact with the environment,
