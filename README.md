@@ -37,7 +37,6 @@ For more details, see [documention](./docs)
 - [x] TableBuilder
 - [x] TableReader
 - [x] TableCache
-- [ ] BlockCache
 - [x] LogWriter
 - [x] LogReader
 - [x] WriteBatch
