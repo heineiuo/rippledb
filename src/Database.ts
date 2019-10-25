@@ -425,6 +425,10 @@ export default class Database {
 
       if (files.length > 0) {
         for (const file of files) {
+          if (
+            this.userComparator.compare(startUserKey, file.largest.userKey) > 0
+          )
+            continue
           const status = await tableCache.findTable(file.number, file.fileSize)
           if (await status.ok()) {
             file.refs++
