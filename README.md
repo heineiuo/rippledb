@@ -36,7 +36,8 @@ For more details, see [documention](./docs)
 ## Roadmap
 - [x] TableBuilder
 - [x] TableReader
-- [ ] TableCache
+- [x] TableCache
+- [ ] BlockCache
 - [x] LogWriter
 - [x] LogReader
 - [x] WriteBatch
