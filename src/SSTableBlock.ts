@@ -10,6 +10,7 @@ import { decodeFixed32 } from './Coding'
 import { BlockContents, kSizeOfUInt32, Entry } from './Format'
 import Slice from './Slice'
 import assert from 'assert'
+import { Buffer } from 'buffer'
 
 interface RestartedEntry {
   entry: Entry

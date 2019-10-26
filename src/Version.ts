@@ -22,6 +22,7 @@ import {
 } from './Format'
 import Compaction from './Compaction'
 import Status from './Status'
+import { Buffer } from 'buffer'
 import { Comparator } from './Comparator'
 import { ReadOptions } from './Options'
 import { encodeFixed64 } from './Coding'
