@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from 'buffer'
 import varint from 'varint'
 import Slice from './Slice'
 import assert from 'assert'

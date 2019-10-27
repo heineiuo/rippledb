@@ -6,7 +6,6 @@
  */
 
 import assert from 'assert'
-import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { Record, kBlockSize, RecordType, kHeaderSize } from './LogFormat'
 import { FileHandle } from './Env'

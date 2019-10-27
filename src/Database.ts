@@ -635,9 +635,9 @@ export default class Database {
         this._memtable.ref()
         this._logFileNumber = newLogNumber
         force = false
-        console.time('maybeScheduleCompaction when write')
+        // console.time('maybeScheduleCompaction when write')
         await this.maybeScheduleCompaction()
-        console.timeEnd('maybeScheduleCompaction when write')
+        // console.timeEnd('maybeScheduleCompaction when write')
       }
     }
     return status

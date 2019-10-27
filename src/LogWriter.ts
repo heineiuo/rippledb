@@ -7,7 +7,6 @@
 
 import assert from 'assert'
 import crc32 from 'buffer-crc32'
-import { Buffer } from 'buffer'
 import { kBlockSize, kHeaderSize, RecordType } from './LogFormat'
 import Slice from './Slice'
 import { FileHandle } from './Env'

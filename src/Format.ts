@@ -6,7 +6,6 @@
  */
 
 import assert from 'assert'
-import { Buffer } from 'buffer'
 import varint from 'varint'
 import Slice from './Slice'
 import { Comparator } from './Comparator'

@@ -5,16 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import crc32 from 'buffer-crc32'
 import varint from 'varint'
-import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { ValueType } from './Format'
-import {
-  RecordType,
-  createHexStringFromDecimal,
-  kHeaderSize,
-} from './LogFormat'
 
 export default class LogRecord {
   static add(key: Slice, value: Slice): Slice {

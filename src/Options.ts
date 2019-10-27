@@ -13,7 +13,6 @@ import { Env, NodeEnv, InfoLog } from './Env'
 import { SequenceNumber } from './Format'
 import Block from './SSTableBlock'
 import Cache from './Cache'
-import { Buffer } from 'buffer'
 
 export interface FilterPolicy {
   name(): string
