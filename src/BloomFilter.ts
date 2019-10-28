@@ -6,7 +6,6 @@
  */
 
 import varint from 'varint'
-import { Buffer } from 'buffer'
 import BitBuffer from './BitBuffer'
 import BloomHash from './MurmurHash'
 import Slice from './Slice'

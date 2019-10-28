@@ -119,7 +119,7 @@ export default class Database {
   private _backgroundCompactionScheduled: boolean
   private _dbpath: string
   private _sn: SequenceNumber
-  // _cache: LRU
+  private _ok = false
   private _status: Status
   private _log!: LogWriter
   private _logFileNumber = 0
@@ -377,8 +377,10 @@ export default class Database {
   // wait for db.recover
   public async ok(): Promise<boolean> {
     if (await this._status.ok()) {
+      this._ok = true
       return true
     } else {
+      this._ok = false
       throw this._status.error
     }
   }
@@ -386,7 +388,7 @@ export default class Database {
   public async *iterator(
     options: IteratorOptions = new IteratorOptions()
   ): AsyncIterableIterator<{ key: string | Buffer; value: string | Buffer }> {
-    await this.ok()
+    if (!this._ok) await this.ok()
     const startUserKey = new Slice(options.start)
     const sequence = options.snapshot
       ? new Snapshot(options.snapshot).sequenceNumber
@@ -471,7 +473,7 @@ export default class Database {
     userKey: string | Buffer,
     options: ReadOptions = new ReadOptions()
   ): Promise<Slice | string | null | void> {
-    await this.ok()
+    if (!this._ok) await this.ok()
     const slicedUserKey = new Slice(userKey)
     const sequence = options.snapshot
       ? new Snapshot(options.snapshot).sequenceNumber
@@ -560,7 +562,7 @@ export default class Database {
     options: WriteOptions,
     batch?: WriteBatch
   ): Promise<void> {
-    await this.ok()
+    if (!this._ok) await this.ok()
     const status = await this.makeRoomForWrite(!batch)
 
     if ((await status.ok()) && !!batch) {
@@ -633,7 +635,9 @@ export default class Database {
         this._memtable.ref()
         this._logFileNumber = newLogNumber
         force = false
+        // console.time('maybeScheduleCompaction when write')
         await this.maybeScheduleCompaction()
+        // console.timeEnd('maybeScheduleCompaction when write')
       }
     }
     return status
@@ -1113,9 +1117,9 @@ export default class Database {
    * manually compact
    */
   public async compactRange(begin: Buffer, end: Buffer): Promise<void> {
+    if (!this._ok) await this.ok()
     const sliceBegin = new Slice(begin)
     const sliceEnd = new Slice(end)
-    await this.ok()
     let maxLevelWithFiles = 1
     const base = this._versionSet._current
     for (let level = 0; level < Config.kNumLevels; level++) {

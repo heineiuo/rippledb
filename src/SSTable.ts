@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from 'buffer'
 import { FileHandle } from './Env'
 import Slice from './Slice'
 import Footer from './SSTableFooter'

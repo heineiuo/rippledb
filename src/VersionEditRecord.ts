@@ -8,7 +8,6 @@
 import crc32 from 'buffer-crc32'
 import assert from 'assert'
 import varint from 'varint'
-import { Buffer } from 'buffer'
 import Slice from './Slice'
 import { InternalKey, VersionEditTag } from './Format'
 import VersionEdit from './VersionEdit'

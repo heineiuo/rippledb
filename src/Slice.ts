@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from 'buffer'
-
 export default class Slice {
   constructor(value: unknown = Buffer.alloc(0)) {
     if (value instanceof Slice) {

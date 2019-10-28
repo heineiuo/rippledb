@@ -7,7 +7,6 @@
 
 import assert from 'assert'
 import varint from 'varint'
-import { Buffer } from 'buffer'
 import {
   SequenceNumber,
   ValueType,

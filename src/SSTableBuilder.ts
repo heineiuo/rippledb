@@ -6,7 +6,6 @@
  */
 
 import crc32 from 'buffer-crc32'
-import { Buffer } from 'buffer'
 import assert from 'assert'
 import Slice from './Slice'
 import BloomFilter from './BloomFilter'

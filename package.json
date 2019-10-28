@@ -27,6 +27,7 @@
     "@types/assert": "^1.4.3",
     "@types/buffer-crc32": "^0.2.0",
     "@types/lru-cache": "^5.1.0",
+    "@types/node": "^12.11.7",
     "@types/varint": "^5.0.0",
     "@typescript-eslint/eslint-plugin": "^2.4.0",
     "@typescript-eslint/parser": "^2.4.0",
@@ -38,8 +39,6 @@
     "typescript": "~3.4"
   },
   "dependencies": {
-    "assert": "^2.0.0",
-    "buffer": "^5.4.3",
     "buffer-crc32": "^0.2.13",
     "lru-cache": "^5.1.1",
     "varint": "^5.0.0"
