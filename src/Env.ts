@@ -31,15 +31,15 @@ export interface Env {
 }
 
 export class InfoLog {
-  constructor(fd: FileHandle) {
-    this._fd = fd
+  constructor(file: FileHandle) {
+    this._file = file
   }
 
-  private _fd: FileHandle
+  private _file: FileHandle
 
   async log(message: string): Promise<void> {
     const finalMessage = `${new Date().toISOString()} ${message}\n`
-    await this._fd.appendFile(finalMessage)
+    await this._file.appendFile(finalMessage)
   }
 }
 

@@ -98,7 +98,6 @@ export default class Database {
     options.comparator = this._internalKeyComparator
     this._options = options
 
-    // this._log = new LogWriter(this._options, getLogFilename(dbpath, 1))
     this._tableCache = new TableCache(
       dbpath,
       options,
@@ -188,6 +187,9 @@ export default class Database {
         const newLogNumber = this._versionSet.getNextFileNumber()
         edit.logNumber = newLogNumber
         this._logFileNumber = newLogNumber
+        if (!!this._log) {
+          await this._log.close()
+        }
         this._log = new LogWriter(
           this._options,
           getLogFilename(this._dbpath, newLogNumber)
@@ -234,9 +236,12 @@ export default class Database {
       } catch (e) {}
     }
 
-    this._options.infoLog = new InfoLog(
-      await this._options.env.open(getInfoLogFilename(this._dbpath), 'a+')
+    const file = await this._options.env.open(
+      getInfoLogFilename(this._dbpath),
+      'a+'
     )
+    // Log(this._options.infoLog, `open infolog file (${file.fd})`)
+    this._options.infoLog = new InfoLog(file)
 
     const versionSetRecoverResult = await this._versionSet.recover()
     if (typeof versionSetRecoverResult.saveManifest === 'boolean') {
@@ -596,6 +601,12 @@ export default class Database {
         // individual write by 1ms to reduce latency variance.  Also,
         // this delay hands over some CPU to the compaction thread in
         // case it is sharing the same core as the writer.
+        if (this._options.debug) {
+          Log(
+            this._options.infoLog,
+            `DEBUG level0 files >= slowdown trigger, wait 1s.`
+          )
+        }
         await new Promise(resolve => setTimeout(resolve, 1000))
         allowDelay = false
       } else if (!force && this._memtable.size <= kMemTableDumpSize) {
@@ -635,9 +646,7 @@ export default class Database {
         this._memtable.ref()
         this._logFileNumber = newLogNumber
         force = false
-        // console.time('maybeScheduleCompaction when write')
         await this.maybeScheduleCompaction()
-        // console.timeEnd('maybeScheduleCompaction when write')
       }
     }
     return status
@@ -1050,9 +1059,9 @@ export default class Database {
     compact.outputs.push(out)
     const tableFilename = getTableFilename(this._dbpath, fileNumber)
     Log(this._options.infoLog, `Compaction output file number is ${fileNumber}`)
-    const s = new Status(this._options.env.open(tableFilename, 'a+'))
-    if (await s.ok()) {
-      compact.outfile = (await s.promise) as FileHandle
+    const status = new Status(this._options.env.open(tableFilename, 'a+'))
+    if (await status.ok()) {
+      compact.outfile = (await status.promise) as FileHandle
       compact.builder = new SSTableBuilder(
         this._options,
         compact.outfile,
@@ -1062,9 +1071,12 @@ export default class Database {
         Log(this._options.infoLog, 'DEBUG open file success')
     } else {
       if (this._options.debug)
-        Log(this._options.infoLog, `DEBUG open file error ${s.message || ''}`)
+        Log(
+          this._options.infoLog,
+          `DEBUG open file error ${status.message || ''}`
+        )
     }
-    return s
+    return status
   }
 
   private async installCompactionResults(
