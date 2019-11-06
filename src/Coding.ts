@@ -30,7 +30,7 @@ export function decodeFixed64(buf: Buffer): number {
 
 export function encodeFixed32(value: number): Buffer {
   const buf = Buffer.alloc(4)
-  buf.writeUInt16LE(value, 0)
+  buf.writeUInt32LE(value, 0)
   return buf
 }
 
