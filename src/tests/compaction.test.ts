@@ -1,7 +1,6 @@
 import { random } from '../../fixtures/random'
 import Database from '../Database'
 import { createDir, cleanup } from '../../fixtures/dbpath'
-import Slice from '../Slice'
 
 jest.setTimeout(60000 * 10)
 
@@ -26,26 +25,27 @@ describe('Compaction', () => {
         randomCheckRecord = random()
         await db.put(randomCheckRecord[0], randomCheckRecord[1])
       } else {
-        await db.put(...random())
+        const [key, value] = random()
+        await db.put(key, value)
       }
     }
 
     const result = await db.get(checkRecord[0])
     expect(!!result).toBe(true)
-    expect(result.toString()).toBe(checkRecord[1])
+    expect(String(result)).toBe(checkRecord[1])
 
     await db.compactRange(
-      new Slice(Buffer.alloc(16).fill(0x00)),
-      new Slice(Buffer.alloc(16).fill(0xff))
+      Buffer.alloc(16).fill(0x00),
+      Buffer.alloc(16).fill(0xff)
     )
 
     const result2 = await db.get(checkRecord[0])
     expect(!!result2).toBe(true)
-    expect(result2.toString()).toBe(checkRecord[1])
+    expect(`${result2}`).toBe(checkRecord[1])
 
     const result3 = await db.get(randomCheckRecord[0])
     expect(!!result3).toBe(true)
-    expect(result3.toString()).toBe(randomCheckRecord[1])
+    expect(`${result3}`).toBe(randomCheckRecord[1])
     done()
   })
 })

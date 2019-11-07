@@ -4,7 +4,7 @@ test('iterator helper', async done => {
   let asyncNumbersState = 'none'
   let numbersState = 'none'
 
-  async function* asyncNumbers() {
+  async function* asyncNumbers(): AsyncIterableIterator<number> {
     asyncNumbersState = 'started'
     for (let i = 0; i < 100; i++) {
       yield i
@@ -12,7 +12,7 @@ test('iterator helper', async done => {
     asyncNumbersState = 'done'
   }
 
-  function* numbers() {
+  function* numbers(): IterableIterator<number> {
     numbersState = 'started'
     for (let i = 0; i < 100; i++) {
       yield i

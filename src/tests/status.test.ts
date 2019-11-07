@@ -9,5 +9,5 @@ test('status', async () => {
     )
   )
   expect(await status1.ok()).toBe(false)
-  expect(await status1.message()).toBe('error1')
+  expect(status1.message()).toBe('error1')
 })

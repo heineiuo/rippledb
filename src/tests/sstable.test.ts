@@ -1,5 +1,4 @@
 import fs from 'fs'
-import path from 'path'
 import Slice from '../Slice'
 import SSTable from '../SSTable'
 import SSTableBuilder from '../SSTableBuilder'

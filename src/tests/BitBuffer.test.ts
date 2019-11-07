@@ -1,7 +1,7 @@
 import BitBuffer from '../BitBuffer'
 
 test('BitBuffer', done => {
-  const arr1 = new BitBuffer(Buffer.from({ length: Math.ceil(32 / 8) }))
+  const arr1 = new BitBuffer(Buffer.alloc(Math.ceil(32 / 8)))
   arr1.set(20, true)
   arr1.set(35, true)
   arr1.set(40, false)
