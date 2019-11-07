@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "test": "jest",
-    "build": "babel src -d build --source-maps --extensions \".ts\" && tsc -d",
+    "build": "babel src -d build --ignore 'src/tests' --source-maps --extensions \".ts\" && tsc -d",
     "prepublish": "export NODE_ENV=production && yarn build"
   },
   "files": [
@@ -26,6 +26,7 @@
     "@babel/preset-typescript": "^7.6.0",
     "@types/assert": "^1.4.3",
     "@types/buffer-crc32": "^0.2.0",
+    "@types/jest": "^24.0.22",
     "@types/lru-cache": "^5.1.0",
     "@types/node": "^12.11.7",
     "@types/varint": "^5.0.0",
