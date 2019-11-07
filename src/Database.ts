@@ -392,7 +392,7 @@ export default class Database {
 
   public async *iterator(
     options: IteratorOptions = new IteratorOptions()
-  ): AsyncIterableIterator<{ key: string | Buffer; value: string | Buffer }> {
+  ): AsyncIterableIterator<{ key: Buffer; value: Buffer }> {
     if (!this._ok) await this.ok()
     const startUserKey = new Slice(options.start)
     const sequence = options.snapshot
@@ -477,7 +477,7 @@ export default class Database {
   public async get(
     userKey: string | Buffer,
     options: ReadOptions = new ReadOptions()
-  ): Promise<Slice | string | null | void> {
+  ): Promise<Buffer | void> {
     if (!this._ok) await this.ok()
     const slicedUserKey = new Slice(userKey)
     const sequence = options.snapshot
@@ -492,12 +492,12 @@ export default class Database {
 
     let hasStatUpdate = false
     const stats = {} as GetStats
-    let result: Slice | void = undefined
+    let result: Buffer | void = undefined
     while (true) {
       const memResult = this._memtable.get(lookupKey)
       if (!!memResult) {
         if (memResult.type === ValueType.kTypeValue) {
-          result = memResult.value
+          result = memResult.value.buffer
         } else {
           break
         }
@@ -506,7 +506,7 @@ export default class Database {
         const immResult = this._immtable.get(lookupKey)
         if (!!immResult) {
           if (immResult.type === ValueType.kTypeValue) {
-            result = immResult.value
+            result = immResult.value.buffer
           } else {
             break
           }
@@ -516,7 +516,7 @@ export default class Database {
         const s = await current.get(lookupKey, stats)
         hasStatUpdate = true
         if (await s.ok()) {
-          result = (await s.promise) as Slice
+          result = (await s.promise) as Buffer
         }
       }
       break
@@ -994,7 +994,7 @@ export default class Database {
     }
     const builder = new SSTableBuilder(
       this._options,
-      (await status.promise) as FileHandle,
+      (await status.promise) as FileHandle
     )
     for (const entry of mem.iterator()) {
       if (!meta.smallest) {
@@ -1061,10 +1061,7 @@ export default class Database {
     const status = new Status(this._options.env.open(tableFilename, 'a+'))
     if (await status.ok()) {
       compact.outfile = (await status.promise) as FileHandle
-      compact.builder = new SSTableBuilder(
-        this._options,
-        compact.outfile,
-      )
+      compact.builder = new SSTableBuilder(this._options, compact.outfile)
       if (this._options.debug)
         Log(this._options.infoLog, 'DEBUG open file success')
     } else {
@@ -1126,7 +1123,10 @@ export default class Database {
   /**
    * manually compact
    */
-  public async compactRange(begin: Buffer, end: Buffer): Promise<void> {
+  public async compactRange(
+    begin: Buffer | string,
+    end: Buffer | string
+  ): Promise<void> {
     if (!this._ok) await this.ok()
     const sliceBegin = new Slice(begin)
     const sliceEnd = new Slice(end)
