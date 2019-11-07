@@ -21,9 +21,8 @@ import {
 } from './Format'
 
 export default class SSTableBuilder {
-  constructor(options: Options, file: FileHandle, filename: string) {
+  constructor(options: Options, file: FileHandle) {
     this._file = file
-    this._filename = filename
     this._fileSize = 0
     this._metaBlock = new FilterBlockBuilder() // eslint-disable-line
     this._footer = new Footer(Buffer.alloc(48))
@@ -43,7 +42,6 @@ export default class SSTableBuilder {
   private _numberOfEntries: number
   private _options: Options
   private _file: FileHandle
-  private _filename: string
   private _fileSize: number
   private _lastKey!: Slice // internalkey
   private _dataBlock: BlockBuilder

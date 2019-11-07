@@ -22,7 +22,7 @@ describe('WriteBatch', () => {
       const entry = random()
       if (i === 50) delKey = entry[0]
       if (i === 51) getKey = entry[0]
-      batch.put(...entry)
+      batch.put(entry[0], entry[1])
     }
     batch.del(delKey)
 

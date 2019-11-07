@@ -995,7 +995,6 @@ export default class Database {
     const builder = new SSTableBuilder(
       this._options,
       (await status.promise) as FileHandle,
-      tableFilename
     )
     for (const entry of mem.iterator()) {
       if (!meta.smallest) {
@@ -1065,7 +1064,6 @@ export default class Database {
       compact.builder = new SSTableBuilder(
         this._options,
         compact.outfile,
-        tableFilename
       )
       if (this._options.debug)
         Log(this._options.infoLog, 'DEBUG open file success')

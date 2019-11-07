@@ -55,6 +55,10 @@ export default class BloomFilter implements FilterPolicy {
     return this._bitsPerKey
   }
 
+  get bitBuffer(): BitBuffer {
+    return this._bitBuffer
+  }
+
   get buffer(): Buffer {
     return this._buffer
   }

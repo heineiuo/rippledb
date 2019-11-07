@@ -1,4 +1,3 @@
-import assert from 'assert'
 import Database from '../Database'
 import { Options } from '../Options'
 import { random } from '../../fixtures/random'
@@ -17,7 +16,7 @@ describe('Database', () => {
     await db.put('key', 'world')
     const result = await db.get('key')
     expect(!!result).toBe(true)
-    expect(result.toString()).toBe('world')
+    expect(`${result}`).toBe('world')
   })
 
   test('recovery', async done => {
@@ -37,7 +36,8 @@ describe('Database', () => {
     const db3 = new Database(dbpath2, debugOptions)
     await db3.ok()
     for (let i = 0; i < 1000; i++) {
-      await db3.put(...random())
+      const [key, value] = random()
+      await db3.put(key, value)
     }
     await db3.put('key', 'world')
 
@@ -48,7 +48,7 @@ describe('Database', () => {
 
     const result = await db4.get('key')
     expect(!!result).toBe(true)
-    expect(result.toString()).toBe('world')
+    expect(`${result}`).toBe('world')
 
     done()
   })

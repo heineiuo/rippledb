@@ -1,4 +1,3 @@
-import varint from 'varint'
 import Slice from '../Slice'
 import MemTable from '../MemTable'
 import {
