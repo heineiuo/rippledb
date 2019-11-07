@@ -32,7 +32,7 @@ describe('Compaction', () => {
 
     const result = await db.get(checkRecord[0])
     expect(!!result).toBe(true)
-    expect(String(result)).toBe(checkRecord[1])
+    expect(`${result}`).toBe(checkRecord[1])
 
     await db.compactRange(
       Buffer.alloc(16).fill(0x00),
