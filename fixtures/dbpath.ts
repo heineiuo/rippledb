@@ -1,7 +1,7 @@
 import path from 'path'
 import rimraf from 'rimraf'
 
-export function createDir() {
+export function createDir(): string {
   return path.resolve(
     __dirname,
     `../.db/${Date.now()}_${Math.random()
@@ -10,6 +10,6 @@ export function createDir() {
   )
 }
 
-export function cleanup(dbpath) {
+export function cleanup(dbpath: string): void {
   rimraf.sync(dbpath)
 }
