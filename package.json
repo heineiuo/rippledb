@@ -27,6 +27,7 @@
     "@types/assert": "^1.4.3",
     "@types/buffer-crc32": "^0.2.0",
     "@types/jest": "^24.0.22",
+    "@types/lockfile": "^1.0.1",
     "@types/lru-cache": "^5.1.0",
     "@types/node": "^12.11.7",
     "@types/rimraf": "^2.0.3",
@@ -42,6 +43,7 @@
   },
   "dependencies": {
     "buffer-crc32": "^0.2.13",
+    "lockfile": "^1.0.4",
     "lru-cache": "^5.1.1",
     "varint": "^5.0.0"
   },

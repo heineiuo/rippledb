@@ -7,6 +7,7 @@
 
 import path from 'path'
 import assert from 'assert'
+import lockfile from 'lockfile'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
 import { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
@@ -44,12 +45,13 @@ import {
   getTableFilename,
   getOldInfoLogFilename,
   getInfoLogFilename,
+  getLockFilename,
 } from './Filename'
 import WriteBatch from './WriteBatch'
 import Status from './Status'
 import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator, Comparator } from './Comparator'
-import { Direct, InfoLog, Log, FileHandle } from './Env'
+import { Dirent, InfoLog, Log, FileHandle } from './Env'
 import { TableCache, TableAndFile } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
@@ -137,20 +139,23 @@ export default class Database {
     return this._internalKeyComparator.userComparator
   }
 
-  private async existCurrent(): Promise<boolean> {
+  private async shouldInit(): Promise<boolean> {
+    const currentName = getCurrentFilename(this._dbpath)
+    let should = false
     try {
-      const currentName = getCurrentFilename(this._dbpath)
-      try {
-        await this._options.env.access(this._dbpath)
-      } catch (e) {
-        await this._options.env.mkdir(this._dbpath)
-        return false
-      }
-      await this._options.env.access(currentName)
-      return true
+      await this._options.env.access(this._dbpath)
     } catch (e) {
-      return false
+      should = true
+      await this._options.env.mkdir(this._dbpath)
     }
+
+    await this.lock()
+    try {
+      await this._options.env.access(currentName)
+    } catch (e) {
+      should = true
+    }
+    return should
   }
 
   // new db
@@ -172,6 +177,24 @@ export default class Database {
     )
   }
 
+  protected lock(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      lockfile.lock(
+        getLockFilename(this._dbpath),
+        {
+          wait: this._options.debug ? 0 : 60 * 1000,
+          retries: this._options.debug ? 0 : 3,
+        },
+        err => {
+          if (err) {
+            return reject(err)
+          }
+          resolve()
+        }
+      )
+    })
+  }
+
   private async recoverWrapper(): Promise<void> {
     try {
       let status = new Status(this.recover())
@@ -181,6 +204,8 @@ export default class Database {
         const result = (await status.promise) as RecoverResult
         edit = result.edit
         saveManifest = result.saveManifest
+      } else {
+        throw status.error
       }
       if ((await status.ok()) && !this._memtable) {
         // Create new log and a corresponding memtable.
@@ -225,7 +250,7 @@ export default class Database {
       saveManifest: false,
       edit: new VersionEdit(),
     }
-    if (!(await this.existCurrent())) {
+    if (await this.shouldInit()) {
       await this.initVersionEdit()
     } else {
       try {
@@ -259,9 +284,9 @@ export default class Database {
     const minLog = this._versionSet.logNumber
     const prevLog = this._versionSet.prevLogNumber
     const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
-      (filenames: string[], direct: Direct) => {
-        if (direct.isFile()) {
-          filenames.push(direct.name)
+      (filenames: string[], dirent: Dirent) => {
+        if (dirent.isFile()) {
+          filenames.push(dirent.name)
         }
         return filenames
       },
@@ -277,8 +302,9 @@ export default class Database {
         if (
           internalFile.type == FileType.kLogFile &&
           (internalFile.number >= minLog || internalFile.number === prevLog)
-        )
+        ) {
           logs.push(internalFile.number)
+        }
       }
     }
 
@@ -1230,9 +1256,9 @@ export default class Database {
     const live = this.pendingOutputs
     this._versionSet.addLiveFiles(live)
     const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
-      (filenames: string[], direct: Direct) => {
-        if (direct.isFile()) {
-          filenames.push(direct.name)
+      (filenames: string[], dirent: Dirent) => {
+        if (dirent.isFile()) {
+          filenames.push(dirent.name)
         }
         return filenames
       },
