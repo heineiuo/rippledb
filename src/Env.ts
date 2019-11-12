@@ -10,7 +10,7 @@ import fs from 'fs'
 // eslint-disable-next-line
 export interface FileHandle extends fs.promises.FileHandle {}
 // eslint-disable-next-line
-export interface Direct extends fs.Dirent {}
+export interface Dirent extends fs.Dirent {}
 
 export interface Env {
   // get current time
@@ -27,7 +27,7 @@ export interface Env {
   writeFile(dbpath: string, content: Buffer | string): Promise<void>
   open(dbpath: string, flag: string): Promise<FileHandle>
   unlink(dbpath: string): Promise<void>
-  readdir(dbpath: string): Promise<Direct[]>
+  readdir(dbpath: string): Promise<Dirent[]>
 }
 
 export class InfoLog {

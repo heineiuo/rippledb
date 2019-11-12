@@ -303,7 +303,6 @@ export default class Database {
           internalFile.type == FileType.kLogFile &&
           (internalFile.number >= minLog || internalFile.number === prevLog)
         ) {
-          console.log(internalFile)
           logs.push(internalFile.number)
         }
       }
