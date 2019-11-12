@@ -13,12 +13,13 @@ afterAll(() => {
 })
 
 describe('Database', () => {
-  test('read record from db', async () => {
+  test('read record from db', async done => {
     const db = new Database(dbpath)
     await db.put('key', 'world')
     const result = await db.get('key')
     expect(!!result).toBe(true)
     expect(`${result}`).toBe('world')
+    done()
   })
 
   test('recovery', async done => {
