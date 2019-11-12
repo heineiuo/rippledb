@@ -16,7 +16,7 @@ enum Code {
   kIOError = 5,
 }
 
-class StatusError extends Error {
+export class StatusError extends Error {
   _code: Code
   constructor(code: Code, message?: string) {
     super(message)

@@ -61,7 +61,7 @@ export function parseFilename(filename: string): InternalFile {
     internalFile.type = FileType.kCurrentFile
   } else if (filename === 'LOCK') {
     internalFile.number = 0
-    internalFile.type = FileType.kLogFile
+    internalFile.type = FileType.kDBLockFile
   } else if (filename === 'LOG' || filename === 'LOG.old') {
     internalFile.number = 0
     internalFile.type = FileType.kInfoLogFile
