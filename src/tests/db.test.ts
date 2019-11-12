@@ -3,6 +3,8 @@ import { Options } from '../Options'
 import { random } from '../../fixtures/random'
 import { createDir, cleanup } from '../../fixtures/dbpath'
 
+jest.setTimeout(60000 * 10)
+
 const dbpath = createDir()
 const dbpath2 = createDir()
 afterAll(() => {
