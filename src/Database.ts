@@ -51,7 +51,7 @@ import WriteBatch from './WriteBatch'
 import Status from './Status'
 import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator, Comparator } from './Comparator'
-import { Direct, InfoLog, Log, FileHandle } from './Env'
+import { Dirent, InfoLog, Log, FileHandle } from './Env'
 import { TableCache, TableAndFile } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
@@ -284,9 +284,9 @@ export default class Database {
     const minLog = this._versionSet.logNumber
     const prevLog = this._versionSet.prevLogNumber
     const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
-      (filenames: string[], direct: Direct) => {
-        if (direct.isFile()) {
-          filenames.push(direct.name)
+      (filenames: string[], dirent: Dirent) => {
+        if (dirent.isFile()) {
+          filenames.push(dirent.name)
         }
         return filenames
       },
@@ -1256,9 +1256,9 @@ export default class Database {
     const live = this.pendingOutputs
     this._versionSet.addLiveFiles(live)
     const filenames = (await this._options.env.readdir(this._dbpath)).reduce(
-      (filenames: string[], direct: Direct) => {
-        if (direct.isFile()) {
-          filenames.push(direct.name)
+      (filenames: string[], dirent: Dirent) => {
+        if (dirent.isFile()) {
+          filenames.push(dirent.name)
         }
         return filenames
       },
