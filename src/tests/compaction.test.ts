@@ -4,14 +4,28 @@ import { createDir, cleanup } from '../../fixtures/dbpath'
 
 jest.setTimeout(60000 * 10)
 
+const dbpath1 = createDir()
 const dbpath2 = createDir()
 afterAll(() => {
+  cleanup(dbpath1)
   cleanup(dbpath2)
 })
 
+cleanup(dbpath1)
 cleanup(dbpath2)
 
 describe('Compaction', () => {
+  test('writelevel0', async done => {
+    const db = new Database(dbpath1)
+    await db.put('key', 'value1')
+    await db.put('key', 'value2')
+    await db.del('key')
+    await db.put('key', 'value3')
+    await db.put('key', 'value4')
+    await db.compactRange('k', 'kz')
+    done()
+  })
+
   test('do merge', async done => {
     const db = new Database(dbpath2)
     const checkRecord = ['foo', 'bar']

@@ -61,7 +61,7 @@ export default class MemTable {
   constructor(internalKeyComparator: InternalKeyComparator) {
     this._immutable = false
     this.internalKeyComparator = internalKeyComparator
-    this._list = new Skiplist(65535, this.keyComparator)
+    this._list = new Skiplist(this.keyComparator)
     this._size = 0
     this.refs = 0
   }
