@@ -600,10 +600,9 @@ export default class Database {
       let lastSequence = this._versionSet.lastSequence
       WriteBatch.setSequence(batch, lastSequence + 1)
       lastSequence += WriteBatch.getCount(batch)
-      await this._log.addRecord(new Slice(WriteBatch.getContents(batch)))
-
-      WriteBatch.insert(batch, this._memtable)
       this._versionSet.lastSequence = lastSequence
+      WriteBatch.insert(batch, this._memtable)
+      await this._log.addRecord(new Slice(WriteBatch.getContents(batch)))
     }
   }
 
