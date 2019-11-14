@@ -15,8 +15,8 @@ const kMaxHeight = 12 // Math.round(Math.log(this.maxsize, 2))
 // const kBranching = 4
 
 export default class Skiplist {
-  constructor(maxsize: number, keyComparator: (a: Slice, b: Slice) => number) {
-    this.maxsize = maxsize || 65535
+  constructor(keyComparator: (a: Slice, b: Slice) => number, maxsize = 65535) {
+    this.maxsize = maxsize
     this.level = 0
 
     // When initial，tail is null head link to tail

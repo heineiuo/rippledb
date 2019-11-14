@@ -31,10 +31,11 @@ export default class WriteBatch {
   static kHeader = 12
 
   static insert(batch: WriteBatch, mem: MemTable): void {
-    const sn = WriteBatch.getSequence(batch)
+    const nextSequence = WriteBatch.getSequence(batch)
     for (const update of batch.iterator()) {
       const { type, key, value } = update
-      mem.add(sn, type, key, value)
+      mem.add(nextSequence, type, key, value)
+      nextSequence.value += 1
     }
   }
 
@@ -47,6 +48,7 @@ export default class WriteBatch {
     batch.buffer = contents
   }
 
+  // sequence must be lastSequence + 1
   static setSequence(batch: WriteBatch, sequence: number): void {
     batch.buffer.fill(new SequenceNumber(sequence).toFixed64Buffer(), 0, 7)
   }
