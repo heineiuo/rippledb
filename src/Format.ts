@@ -113,7 +113,8 @@ export class SequenceNumber {
 
 // Returns the user key portion of an internal key.
 export function extractUserKey(ikey: Slice): Slice {
-  assert(ikey.size > 8)
+  // if ikey.size === 8, userkey is '' (empty)
+  assert(ikey.size >= 8)
   return new Slice(ikey.buffer.slice(0, ikey.size - 8))
 }
 
