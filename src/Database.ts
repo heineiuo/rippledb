@@ -1005,6 +1005,7 @@ export default class Database {
     edit: VersionEdit,
     base?: Version
   ): Promise<Status> {
+    if (mem.size === 0) return new Status(Promise.resolve())
     const startTime = this._options.env.now()
     const meta = new FileMetaData()
     meta.fileSize = 0
