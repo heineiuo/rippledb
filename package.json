@@ -7,6 +7,7 @@
   "license": "MIT",
   "scripts": {
     "test": "jest",
+    "bench": "babel benchmarks -d benchmarks  --extensions \".ts\" && node benchmarks/bench.js",
     "build": "babel src -d build --ignore 'src/tests' --source-maps --extensions \".ts\" && tsc -d",
     "prepublish": "export NODE_ENV=production && yarn build"
   },
