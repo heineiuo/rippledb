@@ -9,3 +9,4 @@ flow-coverage
 coverage
 .vscode
 report.*.json
+benchmarks/*.js
