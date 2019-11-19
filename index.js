@@ -13,3 +13,4 @@ module.exports.Options = require('./build/Options').Options
 module.exports.ReadOptions = require('./build/Options').ReadOptions
 module.exports.WriteOptions = require('./build/Options').WriteOptions
 module.exports.IteratorOptions = require('./build/Options').IteratorOptions
+module.exports.Repair = require('./build/Repair').Repair

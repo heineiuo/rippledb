@@ -8,3 +8,4 @@ export {
   WriteOptions,
   IteratorOptions,
 } from './build/Options'
+export { Repair } from './build/Repair'
