@@ -329,7 +329,9 @@ export default class VersionSet {
         this.manifestFileNumber
       )
       edit.nextFileNumber = this.nextFileNumber
-      this.manifestWriter = new LogWriter(this._options, manifestFilename)
+      this.manifestWriter = new LogWriter(
+        await this._options.env.open(manifestFilename, 'a')
+      )
       if (this._options.debug)
         Log(this._options.infoLog, 'DEBUG writeSnapshot starting...')
 
@@ -356,6 +358,7 @@ export default class VersionSet {
     if (await status.ok()) {
       if (!!manifestFilename) {
         await this.manifestWriter.close()
+        delete this.manifestWriter
       }
 
       Log(

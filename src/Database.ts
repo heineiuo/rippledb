@@ -166,8 +166,7 @@ export default class Database {
     edit.nextFileNumber = 2
     edit.lastSequence = 0
     const writer = new LogWriter(
-      this._options,
-      getManifestFilename(this._dbpath, 1)
+      await this._options.env.open(getManifestFilename(this._dbpath, 1), 'a')
     )
     await writer.addRecord(VersionEditRecord.add(edit))
     await writer.close()
@@ -216,8 +215,10 @@ export default class Database {
           await this._log.close()
         }
         this._log = new LogWriter(
-          this._options,
-          getLogFilename(this._dbpath, newLogNumber)
+          await this._options.env.open(
+            getLogFilename(this._dbpath, newLogNumber),
+            'a'
+          )
         )
         this._memtable = new MemTable(this._internalKeyComparator)
         this._memtable.ref()
@@ -350,9 +351,7 @@ export default class Database {
     let status = new Status()
     // Open the log file
     const logFilename = getLogFilename(this._dbpath, logNumber)
-    const reader = new LogReader(
-      await this._options.env.open(logFilename, 'r')
-    )
+    const reader = new LogReader(await this._options.env.open(logFilename, 'r'))
     Log(this._options.infoLog, `Recovering log #${logNumber}`)
     let compactions = 0
     let mem = null
@@ -665,8 +664,10 @@ export default class Database {
           await this._log.close()
         }
         this._log = new LogWriter(
-          this._options,
-          getLogFilename(this._dbpath, newLogNumber)
+          await this._options.env.open(
+            getLogFilename(this._dbpath, newLogNumber),
+            'a'
+          )
         )
         this._immtable = this._memtable
         this._memtable = new MemTable(this._internalKeyComparator)
