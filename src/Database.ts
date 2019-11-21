@@ -213,6 +213,7 @@ export default class Database {
         this._logFileNumber = newLogNumber
         if (!!this._log) {
           await this._log.close()
+          delete this._log
         }
         this._log = new LogWriter(
           await this._options.env.open(
@@ -468,10 +469,10 @@ export default class Database {
             file.refs++
             const tf = (await status.promise) as TableAndFile
             iteratorList.push(
-              IteratorHelper.wrap(tf.table.entryIterator(), () => {
+              IteratorHelper.wrap(tf.table.entryIterator(), async () => {
                 file.refs--
-                tf.file.close()
                 current.unref()
+                await tf.file.close()
               })
             )
           }
@@ -662,6 +663,7 @@ export default class Database {
         const newLogNumber = this._versionSet.getNextFileNumber()
         if (!!this._log) {
           await this._log.close()
+          delete this._log
         }
         this._log = new LogWriter(
           await this._options.env.open(
