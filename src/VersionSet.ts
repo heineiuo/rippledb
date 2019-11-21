@@ -169,8 +169,10 @@ export default class VersionSet {
 
     // Use current to read description file (manifest)
     const reader = new LogReader(
-      this._options,
-      getManifestFilename(this._dbpath, manifestNumber)
+      await this._options.env.open(
+        getManifestFilename(this._dbpath, manifestNumber),
+        'r'
+      )
       // VersionEditRecord
     )
     // read record，apply to versionSet(apply method)

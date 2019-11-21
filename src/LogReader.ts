@@ -9,17 +9,13 @@ import assert from 'assert'
 import Slice from './Slice'
 import { Record, kBlockSize, RecordType, kHeaderSize } from './LogFormat'
 import { FileHandle } from './Env'
-import { Options } from './Options'
 
 export default class LogReader {
-  constructor(options: Options, filename: string) {
-    this._options = options
-    this._filename = filename
+  constructor(file: FileHandle) {
+    this._file = file
   }
 
-  _file!: FileHandle
-  _filename: string
-  _options: Options
+  _file: FileHandle
 
   async close(): Promise<void> {
     if (!!this._file) {
@@ -31,9 +27,6 @@ export default class LogReader {
   }
 
   async *iterator(): AsyncIterableIterator<Slice> {
-    if (!this._file) {
-      this._file = await this._options.env.open(this._filename, 'r')
-    }
     const buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize))
     let blockIndex = -1
     let latestOpBuf = Buffer.alloc(0)
