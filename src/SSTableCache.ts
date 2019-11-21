@@ -98,8 +98,8 @@ export class TableCache {
     const status = await this.findTable(fileNumber, fileSize)
     if (await status.ok()) {
       const tf = (await status.promise) as TableAndFile
-      yield* IteratorHelper.wrap(tf.table.entryIterator(), () => {
-        tf.file.close()
+      yield* IteratorHelper.wrap(tf.table.entryIterator(), async () => {
+        await tf.file.close()
       })
     } else {
       Log(this._options.infoLog, `Open Table file(${fileNumber}) fail.`)

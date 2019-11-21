@@ -138,10 +138,12 @@ export default class SSTableBuilder {
 
   public async close(): Promise<void> {
     if (!this._closed) {
-      try {
-        await this._file.close()
-      } catch (e) {}
+      const file = this._file
       this._closed = true
+      delete this._file
+      try {
+        await file.close()
+      } catch (e) {}
     }
   }
 
