@@ -1,7 +1,7 @@
 {
   "name": "node-level",
   "version": "0.2.2",
-  "main": "index.js",
+  "main": "build/index.js",
   "repository": "https://github.com/heineiuo/node-level",
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
