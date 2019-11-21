@@ -10,40 +10,33 @@ import crc32 from 'buffer-crc32'
 import { kBlockSize, kHeaderSize, RecordType } from './LogFormat'
 import Slice from './Slice'
 import { FileHandle } from './Env'
-import { Options } from './Options'
 
 export default class LogWriter {
-  constructor(options: Options, filename: string) {
-    this._filename = filename
+  constructor(file: FileHandle) {
     this._blockOffset = 0
-    this._options = options
+    this._file = file
   }
 
-  private _options: Options
   private _file!: FileHandle
-  private _filename: string
   private _blockOffset: number
 
   private async appendFile(buf: Buffer): Promise<void> {
-    if (!this._file) {
-      this._file = await this._options.env.open(this._filename, 'a+')
-    }
     await this._file.appendFile(buf, {})
   }
 
-  public async close(): Promise<void> {
-    if (!!this._file) {
-      try {
-        await this._file.close()
-      } catch (e) {}
-      delete this._file
-    }
+  public close = async (): Promise<void> => {
+    assert(!!this._file)
+    const file = this._file
+    delete this._file
+    try {
+      await file.close()
+    } catch (e) {}
   }
 
-  private async emitPhysicalRecord(
+  private emitPhysicalRecord = async (
     record: Buffer,
     type: RecordType
-  ): Promise<void> {
+  ): Promise<void> => {
     const head = Buffer.alloc(kHeaderSize)
     const length = record.length
     head[4] = length & 0xff
@@ -61,7 +54,7 @@ export default class LogWriter {
   /**
    * Not care about record format
    */
-  public async addRecord(recordOp: Slice): Promise<void> {
+  public addRecord = async (recordOp: Slice): Promise<void> => {
     let hasFirstRecordCreated = false
     let left = recordOp.size
     let position = 0
