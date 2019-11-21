@@ -350,7 +350,9 @@ export default class Database {
     let status = new Status()
     // Open the log file
     const logFilename = getLogFilename(this._dbpath, logNumber)
-    const reader = new LogReader(this._options, logFilename)
+    const reader = new LogReader(
+      await this._options.env.open(logFilename, 'r')
+    )
     Log(this._options.infoLog, `Recovering log #${logNumber}`)
     let compactions = 0
     let mem = null
