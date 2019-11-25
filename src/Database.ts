@@ -56,6 +56,7 @@ import { TableCache, TableAndFile } from './SSTableCache'
 import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
 import IteratorMerger from './Merger'
+import { WriterQueue, Writer } from './WriterQueue'
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -116,6 +117,7 @@ export default class Database {
     this._status = new Status(this.recoverWrapper())
   }
 
+  private writers = new WriterQueue()
   private _internalKeyComparator: InternalKeyComparator
   private _backgroundCompactionScheduled: boolean
   private _dbpath: string
@@ -134,8 +136,6 @@ export default class Database {
   private _stats: CompactionStats[]
   private _options: Options
   private _tableCache: TableCache
-  private extraCompactionOk = true
-  private extraCompactionStatus!: Status
 
   private get userComparator(): Comparator {
     return this._internalKeyComparator.userComparator
@@ -598,15 +598,43 @@ export default class Database {
     batch?: WriteBatch
   ): Promise<void> {
     if (!this._ok) await this.ok()
-    const status = await this.makeRoomForWrite(!batch)
+    const writer = new Writer()
+    writer.batch = batch
+    this.writers.push(writer)
+    while (this.writers.front() !== writer && !writer.done) {
+      await writer.wait()
+    }
 
-    if ((await status.ok()) && !!batch) {
+    if (writer.done) {
+      return
+    }
+
+    const status = await this.makeRoomForWrite(!writer.batch)
+
+    // TODO Build Batch Group
+    if ((await status.ok()) && !!writer.batch) {
       let lastSequence = this._versionSet.lastSequence
-      WriteBatch.setSequence(batch, lastSequence + 1)
-      lastSequence += WriteBatch.getCount(batch)
+      WriteBatch.setSequence(writer.batch, lastSequence + 1)
+      lastSequence += WriteBatch.getCount(writer.batch)
       this._versionSet.lastSequence = lastSequence
-      WriteBatch.insert(batch, this._memtable)
-      await this._log.addRecord(new Slice(WriteBatch.getContents(batch)))
+      WriteBatch.insert(writer.batch, this._memtable)
+      await this._log.addRecord(new Slice(WriteBatch.getContents(writer.batch)))
+    }
+
+    while (true) {
+      const front = this.writers.front()
+      this.writers.popFront()
+      if (front !== writer && front) {
+        front.done = true
+        front.signal()
+      } else {
+        break
+      }
+    }
+
+    if (this.writers.length > 0) {
+      const ready = this.writers.front()
+      if (ready) ready.signal()
     }
   }
 
@@ -617,7 +645,6 @@ export default class Database {
     let allowDelay = !force
     let status = new Status()
     while (true) {
-      if (!this.extraCompactionOk) await this.extraCompactionStatus.ok()
       if (this._bgError) {
         status = this._bgError
         break
@@ -664,31 +691,23 @@ export default class Database {
         )
         assert(this._versionSet.prevLogNumber === 0) // no logFile is compaction
 
-        // TODO should find a better way to avoid create log writer conflict
-        this.extraCompactionOk = false
-        this.extraCompactionStatus = new Status(
-          (async (): Promise<void> => {
-            const newLogNumber = this._versionSet.getNextFileNumber()
-            if (!!this._log) {
-              await this._log.close()
-              delete this._log
-            }
-            this._log = new LogWriter(
-              await this._options.env.open(
-                getLogFilename(this._dbpath, newLogNumber),
-                'a'
-              )
-            )
-            this._immtable = this._memtable
-            this._memtable = new MemTable(this._internalKeyComparator)
-            this._memtable.ref()
-            this._logFileNumber = newLogNumber
-            force = false
-            await this.maybeScheduleCompaction()
-            this.extraCompactionOk = true
-          })()
+        const newLogNumber = this._versionSet.getNextFileNumber()
+        if (!!this._log) {
+          await this._log.close()
+          delete this._log
+        }
+        this._log = new LogWriter(
+          await this._options.env.open(
+            getLogFilename(this._dbpath, newLogNumber),
+            'a'
+          )
         )
-        await this.extraCompactionStatus.ok()
+        this._immtable = this._memtable
+        this._memtable = new MemTable(this._internalKeyComparator)
+        this._memtable.ref()
+        this._logFileNumber = newLogNumber
+        force = false
+        await this.maybeScheduleCompaction()
       }
     }
     return status

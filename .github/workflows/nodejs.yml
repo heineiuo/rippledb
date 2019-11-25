@@ -21,8 +21,10 @@ jobs:
       run: |
         yarn
         yarn build
+        yarn build:fixture
+        yarn build:bench
         yarn bench --total=10000 --runner=10
-        yarn test --coverage
+        yarn test src --coverage
       env:
         CI: true
     - name: Coveralls

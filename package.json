@@ -7,8 +7,9 @@
   "license": "MIT",
   "scripts": {
     "test": "jest",
-    "fixture": "babel fixtures -d fixtures --extensions \".ts\"",
-    "bench": "yarn fixture && babel benchmarks -d benchmarks  --extensions \".ts\" && node benchmarks/bench.js",
+    "build:fixture": "babel fixtures -d fixtures --extensions \".ts\"",
+    "build:bench": "babel benchmarks -d benchmarks --extensions \".ts\"",
+    "bench": "node benchmarks/bench_write.js",
     "build": "babel src -d build --ignore 'src/tests' --source-maps --extensions \".ts\" && tsc -d",
     "prepublish": "export NODE_ENV=production && yarn build"
   },
