@@ -12,11 +12,11 @@ const dbpath2 = createDir()
 const dbpath3 = createDir()
 const dbpath4 = createDir()
 afterAll(() => {
-  // cleanup(dbpath)
-  // cleanup(dbpath1)
-  // cleanup(dbpath2)
-  // cleanup(dbpath3)
-  // cleanup(dbpath4)
+  cleanup(dbpath)
+  cleanup(dbpath1)
+  cleanup(dbpath2)
+  cleanup(dbpath3)
+  cleanup(dbpath4)
 })
 
 describe('Database', () => {
