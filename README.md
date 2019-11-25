@@ -48,7 +48,16 @@ For more details, see [documention](./docs)
 
 ## Benchmark
 
-TableBuilder:
+```log
+environment : GitHub Action
+key         : 16 bytes
+value       : 100 bytes
+total       : 10000
+runners     : 10 
+fillrandom  : 1154.48 ms total; 115.45 us/op
+
 ```
-SSTableBuilder 50000 records: 1260.794ms
-```
+
+## License
+
+[MIT License](./LICENSE)
