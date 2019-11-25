@@ -3,6 +3,7 @@ import { random } from '../fixtures/random'
 import { createDir, cleanup } from '../fixtures/dbpath'
 import fs from 'fs'
 import path from 'path'
+import { argv } from 'yargs'
 
 function now(): number {
   return Number(process.hrtime.bigint()) / Math.pow(10, 6)
@@ -48,7 +49,7 @@ async function bench(total: number, runnerCount: number): Promise<void> {
     path.resolve(__dirname, '../bench.log'),
     'a+'
   )
-  await file.appendFile(`
+  const log = `
 time    : ${new Date().toISOString()}
 key     : 16 bytes
 value   : 100 bytes
@@ -58,7 +59,9 @@ speed   : ${totalTime.toFixed(2)} ms total; ${(
     (totalTime / total) *
     1000
   ).toFixed(2)} us/op
-`)
+`
+  console.log(log)
+  await file.appendFile(log)
 }
 
-bench(100000, 5)
+bench(parseInt(argv.total as string), parseInt(argv.runner as string))
