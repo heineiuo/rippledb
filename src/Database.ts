@@ -134,6 +134,8 @@ export default class Database {
   private _stats: CompactionStats[]
   private _options: Options
   private _tableCache: TableCache
+  private extraCompactionOk = true
+  private extraCompactionStatus!: Status
 
   private get userComparator(): Comparator {
     return this._internalKeyComparator.userComparator
@@ -615,6 +617,7 @@ export default class Database {
     let allowDelay = !force
     let status = new Status()
     while (true) {
+      if (!this.extraCompactionOk) await this.extraCompactionStatus.ok()
       if (this._bgError) {
         status = this._bgError
         break
@@ -660,23 +663,32 @@ export default class Database {
           'Attempt to switch to a new memtable and trigger compaction of old'
         )
         assert(this._versionSet.prevLogNumber === 0) // no logFile is compaction
-        const newLogNumber = this._versionSet.getNextFileNumber()
-        if (!!this._log) {
-          await this._log.close()
-          delete this._log
-        }
-        this._log = new LogWriter(
-          await this._options.env.open(
-            getLogFilename(this._dbpath, newLogNumber),
-            'a'
-          )
+
+        // TODO should find a better way to avoid create log writer conflict
+        this.extraCompactionOk = false
+        this.extraCompactionStatus = new Status(
+          (async (): Promise<void> => {
+            const newLogNumber = this._versionSet.getNextFileNumber()
+            if (!!this._log) {
+              await this._log.close()
+              delete this._log
+            }
+            this._log = new LogWriter(
+              await this._options.env.open(
+                getLogFilename(this._dbpath, newLogNumber),
+                'a'
+              )
+            )
+            this._immtable = this._memtable
+            this._memtable = new MemTable(this._internalKeyComparator)
+            this._memtable.ref()
+            this._logFileNumber = newLogNumber
+            force = false
+            await this.maybeScheduleCompaction()
+            this.extraCompactionOk = true
+          })()
         )
-        this._immtable = this._memtable
-        this._memtable = new MemTable(this._internalKeyComparator)
-        this._memtable.ref()
-        this._logFileNumber = newLogNumber
-        force = false
-        await this.maybeScheduleCompaction()
+        await this.extraCompactionStatus.ok()
       }
     }
     return status
