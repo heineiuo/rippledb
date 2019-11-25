@@ -21,6 +21,7 @@ jobs:
       run: |
         yarn
         yarn build
+        yarn bench --total=10000 --runner=10
         yarn test --coverage
       env:
         CI: true
