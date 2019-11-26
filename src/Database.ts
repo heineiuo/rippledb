@@ -613,9 +613,11 @@ export default class Database {
 
     const status = await this.makeRoomForWrite(!writer.batch)
 
+    let lastWriter = writer
     if ((await status.ok()) && !!writer.batch) {
       let lastSequence = this._versionSet.lastSequence
-      const batch = this.buildBatchGroup({ writer })
+      const [lastWriter_, batch] = this.buildBatchGroup()
+      lastWriter = lastWriter_
       WriteBatchInternal.setSequence(batch, lastSequence + 1)
       lastSequence += WriteBatchInternal.getCount(batch)
 
@@ -636,27 +638,28 @@ export default class Database {
         front.done = true
         front.signal()
       }
-      if (front === writer) break
+      if (front === lastWriter) break
     }
 
     if (this.writers.length > 0) {
-      const ready = this.writers.front()
-      if (ready) ready.signal()
+      const front = this.writers.front()
+      if (front) front.signal()
     }
   }
 
-  private buildBatchGroup(lastWriter: { writer: Writer }): WriteBatch {
+  private buildBatchGroup(): [Writer, WriteBatch] {
     const first = this.writers.front()
     if (!first) throw new Error(`writer is empty`)
     let result = first.batch
     if (!result) throw new Error(`first batch is empty`)
     let size = WriteBatchInternal.byteSize(result)
     let maxSize = 1 << 20
-    if (size <= 128 << 10) {
-      maxSize = (size + 128) << 10
+    const limit = 128 << 10
+    if (size <= limit) {
+      maxSize = size + limit
     }
 
-    lastWriter.writer = first
+    let lastWriter = first
 
     // "1": Advance past "first"
     for (const writer of this.writers.iterator(1)) {
@@ -678,9 +681,9 @@ export default class Database {
         }
         WriteBatchInternal.append(result, writer.batch)
       }
-      lastWriter.writer = writer
+      lastWriter = writer
     }
-    return result
+    return [lastWriter, result]
   }
 
   /**
