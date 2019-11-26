@@ -14,7 +14,6 @@ import { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
 import IteratorHelper from './IteratorHelper'
 import {
   ValueType,
-  kMemTableDumpSize,
   Config,
   FileType,
   InternalKeyComparator,
@@ -47,7 +46,7 @@ import {
   getInfoLogFilename,
   getLockFilename,
 } from './Filename'
-import WriteBatch from './WriteBatch'
+import { WriteBatch, WriteBatchInternal } from './WriteBatch'
 import Status from './Status'
 import SSTableBuilder from './SSTableBuilder'
 import { BytewiseComparator, Comparator } from './Comparator'
@@ -118,6 +117,7 @@ export default class Database {
   }
 
   private writers = new WriterQueue()
+  private tmpBatch = new WriteBatch()
   private _internalKeyComparator: InternalKeyComparator
   private _backgroundCompactionScheduled: boolean
   private _dbpath: string
@@ -368,20 +368,22 @@ export default class Database {
       }
 
       const batch = new WriteBatch()
-      WriteBatch.setContents(batch, record.buffer)
+      WriteBatchInternal.setContents(batch, record.buffer)
       if (!mem) {
         mem = new MemTable(this._internalKeyComparator)
         mem.ref()
       }
-      WriteBatch.insert(batch, mem)
+      WriteBatchInternal.insert(batch, mem)
       const lastSeq =
-        WriteBatch.getSequence(batch).value + WriteBatch.getCount(batch) - 1
+        WriteBatchInternal.getSequence(batch).value +
+        WriteBatchInternal.getCount(batch) -
+        1
 
       if (lastSeq > maxSequence.value) {
         maxSequence.value = lastSeq
       }
 
-      if (mem.size > kMemTableDumpSize) {
+      if (mem.size > this._options.writeBufferSize) {
         compactions++
         result.saveManifest = true
         status = await this.writeLevel0Table(mem, edit)
@@ -611,31 +613,74 @@ export default class Database {
 
     const status = await this.makeRoomForWrite(!writer.batch)
 
-    // TODO Build Batch Group
     if ((await status.ok()) && !!writer.batch) {
       let lastSequence = this._versionSet.lastSequence
-      WriteBatch.setSequence(writer.batch, lastSequence + 1)
-      lastSequence += WriteBatch.getCount(writer.batch)
+      const batch = this.buildBatchGroup({ writer })
+      WriteBatchInternal.setSequence(batch, lastSequence + 1)
+      lastSequence += WriteBatchInternal.getCount(batch)
+
+      await this._log.addRecord(
+        new Slice(WriteBatchInternal.getContents(batch))
+      )
+
+      WriteBatchInternal.insert(batch, this._memtable)
+
+      if (batch === this.tmpBatch) this.tmpBatch.clear()
       this._versionSet.lastSequence = lastSequence
-      WriteBatch.insert(writer.batch, this._memtable)
-      await this._log.addRecord(new Slice(WriteBatch.getContents(writer.batch)))
     }
 
     while (true) {
       const front = this.writers.front()
       this.writers.popFront()
-      if (front !== writer && front) {
+      if (front && front !== writer) {
         front.done = true
         front.signal()
-      } else {
-        break
       }
+      if (front === writer) break
     }
 
     if (this.writers.length > 0) {
       const ready = this.writers.front()
       if (ready) ready.signal()
     }
+  }
+
+  private buildBatchGroup(lastWriter: { writer: Writer }): WriteBatch {
+    const first = this.writers.front()
+    if (!first) throw new Error(`writer is empty`)
+    let result = first.batch
+    if (!result) throw new Error(`first batch is empty`)
+    let size = WriteBatchInternal.byteSize(result)
+    let maxSize = 1 << 20
+    if (size <= 128 << 10) {
+      maxSize = (size + 128) << 10
+    }
+
+    lastWriter.writer = first
+
+    // "1": Advance past "first"
+    for (const writer of this.writers.iterator(1)) {
+      if (writer.sync && !first.sync) {
+        // Do not include a sync write into a batch handled by a non-sync write.
+        break
+      }
+      if (!!writer.batch) {
+        size += WriteBatchInternal.byteSize(writer.batch)
+        if (size > maxSize) {
+          // Do not make batch too big
+          break
+        }
+
+        if (result === first.batch) {
+          result = this.tmpBatch
+          assert(WriteBatchInternal.getCount(result) === 0)
+          WriteBatchInternal.append(result, first.batch)
+        }
+        WriteBatchInternal.append(result, writer.batch)
+      }
+      lastWriter.writer = writer
+    }
+    return result
   }
 
   /**
@@ -666,7 +711,10 @@ export default class Database {
         }
         await new Promise(resolve => setTimeout(resolve, 1000))
         allowDelay = false
-      } else if (!force && this._memtable.size <= kMemTableDumpSize) {
+      } else if (
+        !force &&
+        this._memtable.size <= this._options.writeBufferSize
+      ) {
         // There is room in current memtable
         break
       } else if (!!this._immtable) {

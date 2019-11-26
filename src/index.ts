@@ -6,5 +6,5 @@
  */
 
 export { default as Database } from './Database'
-export { default as WriteBatch } from './WriteBatch'
+export { WriteBatch } from './WriteBatch'
 export { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
