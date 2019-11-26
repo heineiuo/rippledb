@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import WriteBatch from './WriteBatch'
+import { WriteBatch } from './WriteBatch'
 
 export class Writer {
   batch!: WriteBatch | void
@@ -42,5 +42,11 @@ export class WriterQueue {
 
   get length(): number {
     return this.list.length
+  }
+
+  *iterator(start = 0): IterableIterator<Writer> {
+    for (let i = start; i < this.list.length; i++) {
+      yield this.list[i]
+    }
   }
 }

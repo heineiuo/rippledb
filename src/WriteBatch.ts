@@ -15,23 +15,16 @@ import { decodeFixed64, encodeFixed32, decodeFixed32 } from './Coding'
 
 // TODO should be separate to two class: WriteBatch and WriteBatchInternal
 
-// Simplified WriteBatch
-// WriteBatch::rep_ :=
-//    sequence: fixed64
-//    count: fixed32
-//    data: record[count]
-// record :=
-//    kTypeValue varstring varstring         |
-//    kTypeDeletion varstring
-// varstring :=
-//    len: varint32
-//    data: uint8[len]
-export default class WriteBatch {
+export class WriteBatchInternal {
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
   static kHeader = 12
 
+  static byteSize(batch: WriteBatch): number {
+    return batch.buffer.length - WriteBatchInternal.kHeader
+  }
+
   static insert(batch: WriteBatch, mem: MemTable): void {
-    const nextSequence = WriteBatch.getSequence(batch)
+    const nextSequence = WriteBatchInternal.getSequence(batch)
     for (const update of batch.iterator()) {
       const { type, key, value } = update
       mem.add(nextSequence, type, key, value)
@@ -44,7 +37,7 @@ export default class WriteBatch {
   }
 
   static setContents(batch: WriteBatch, contents: Buffer): void {
-    assert(contents.length >= WriteBatch.kHeader)
+    assert(contents.length >= WriteBatchInternal.kHeader)
     batch.buffer = contents
   }
 
@@ -65,6 +58,31 @@ export default class WriteBatch {
     return decodeFixed32(batch.buffer.slice(8, 12))
   }
 
+  static append(dst: WriteBatch, src: WriteBatch): void {
+    WriteBatchInternal.setCount(
+      dst,
+      WriteBatchInternal.getCount(src) + WriteBatchInternal.getCount(dst)
+    )
+    assert(src.buffer.length >= WriteBatchInternal.kHeader)
+    dst.buffer = Buffer.concat([
+      dst.buffer,
+      src.buffer.slice(WriteBatchInternal.kHeader),
+    ])
+  }
+}
+
+// Simplified WriteBatch
+// WriteBatch::rep_ :=
+//    sequence: fixed64
+//    count: fixed32
+//    data: record[count]
+// record :=
+//    kTypeValue varstring varstring         |
+//    kTypeDeletion varstring
+// varstring :=
+//    len: varint32
+//    data: uint8[len]
+export class WriteBatch {
   get buffer(): Buffer {
     return this._buffer
   }
@@ -74,7 +92,7 @@ export default class WriteBatch {
   }
 
   constructor() {
-    this._buffer = Buffer.alloc(WriteBatch.kHeader)
+    this._buffer = Buffer.alloc(WriteBatchInternal.kHeader)
   }
 
   private _buffer!: Buffer
@@ -82,17 +100,21 @@ export default class WriteBatch {
   put(key: string | Buffer, value: string | Buffer): void {
     const record = LogRecord.add(new Slice(key), new Slice(value))
     this.buffer = Buffer.concat([this.buffer, record.buffer])
-    WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
+    WriteBatchInternal.setCount(this, WriteBatchInternal.getCount(this) + 1)
   }
 
   del(key: string | Buffer): void {
     const record = LogRecord.del(new Slice(key))
     this.buffer = Buffer.concat([this.buffer, record.buffer])
-    WriteBatch.setCount(this, WriteBatch.getCount(this) + 1)
+    WriteBatchInternal.setCount(this, WriteBatchInternal.getCount(this) + 1)
+  }
+
+  clear(): void {
+    this._buffer = Buffer.alloc(WriteBatchInternal.kHeader)
   }
 
   *iterator(): IterableIterator<EntryRequireType> {
-    let index = WriteBatch.kHeader
+    let index = WriteBatchInternal.kHeader
     while (index < this.buffer.length) {
       const valueType = this.buffer.readUInt8(index)
       index++

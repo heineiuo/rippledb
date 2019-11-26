@@ -2,7 +2,7 @@ import Database from '../Database'
 import { Options } from '../Options'
 import { random } from '../../fixtures/random'
 import { createDir, cleanup } from '../../fixtures/dbpath'
-import WriteBatch from '../WriteBatch'
+import { WriteBatch } from '../WriteBatch'
 
 const dbpath = createDir()
 afterAll(() => {

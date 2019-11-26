@@ -78,7 +78,6 @@ export enum CompressionTypes {
   none = 0x00,
 }
 
-export const kMemTableDumpSize = 4194304 // 4MB
 
 // TODO maybe SequenceNumber should use bigint all time?
 // bigint to buffer:
