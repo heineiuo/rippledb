@@ -4,25 +4,10 @@ import { createDir, cleanup } from '../fixtures/dbpath'
 import fs from 'fs'
 import path from 'path'
 import { argv } from 'yargs'
+import { allocRunner } from '../fixtures/runner'
 
 function now(): number {
   return Number(process.hrtime.bigint()) / Math.pow(10, 6)
-}
-
-async function runner(
-  db: Database,
-  dataset: [string, string][],
-  skip: number,
-  start: number
-): Promise<void> {
-  let current = start
-  const total = dataset.length
-  while (true) {
-    if (current >= total) return
-    const entry = dataset[current]
-    await db.put(entry[0], entry[1])
-    current += skip
-  }
 }
 
 async function bench(total: number, runnerCount: number): Promise<void> {
@@ -36,11 +21,8 @@ async function bench(total: number, runnerCount: number): Promise<void> {
   const db = new Database(dbpath)
 
   const startTime = now()
-  await Promise.all(
-    Array.from({ length: runnerCount }, (v, start) => {
-      return runner(db, dataset, runnerCount, start)
-    })
-  )
+
+  await allocRunner(runnerCount, db, dataset)
 
   const endTime = now()
   const totalTime = endTime - startTime

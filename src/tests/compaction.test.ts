@@ -1,6 +1,7 @@
 import { random } from '../../fixtures/random'
 import Database from '../Database'
 import { createDir, cleanup } from '../../fixtures/dbpath'
+import { allocRunner } from '../../fixtures/runner'
 
 jest.setTimeout(60000 * 10)
 
@@ -32,17 +33,19 @@ describe('Compaction', () => {
     const checkIndex = Math.floor(Math.random() * 1000)
     let randomCheckRecord = []
     const randomCheckIndex = Math.floor(Math.random() * 1000)
+    const dataset: [string | Buffer, string | Buffer][] = []
     for (let i = 0; i < 100000; i++) {
       if (i === checkIndex) {
-        await db.put('foo', 'bar')
+        dataset.push(['foo', 'bar'])
       } else if (i === randomCheckIndex) {
         randomCheckRecord = random()
-        await db.put(randomCheckRecord[0], randomCheckRecord[1])
+        dataset.push([randomCheckRecord[0], randomCheckRecord[1]])
       } else {
-        const [key, value] = random()
-        await db.put(key, value)
+        dataset.push(random())
       }
     }
+
+    await allocRunner(10, db, dataset)
 
     const result = await db.get(checkRecord[0])
     expect(!!result).toBe(true)
