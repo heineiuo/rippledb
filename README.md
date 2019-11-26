@@ -45,6 +45,8 @@ For more details, see [documention](./docs)
 - [x] Version Manager
 - [x] Compaction
 - [x] Top-level API (put, get, del, batch, iterator, compactRange, ok)
+- [ ] Repair
+- [ ] Destroy
 
 ## Benchmark
 
@@ -54,7 +56,8 @@ key         : 16 bytes
 value       : 100 bytes
 total       : 10000
 runners     : 10 
-fillrandom  : 1154.48 ms total; 115.45 us/op
+fillrandom  : 823.87 ms total; 82.39 us/op
+
 
 ```
 
