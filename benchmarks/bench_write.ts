@@ -13,7 +13,8 @@ function now(): number {
 async function bench(total: number, runnerCount: number): Promise<void> {
   const dataset = []
   for (let i = 0; i < total; i++) {
-    dataset.push([random(16), random(100)])
+    const strEntry = random(16, 100)
+    dataset.push([Buffer.from(strEntry[0]), Buffer.from(strEntry[1])])
   }
 
   const dbpath = createDir('bench')
