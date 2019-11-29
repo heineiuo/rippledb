@@ -9,7 +9,8 @@
     "test": "jest",
     "build:fixture": "babel fixtures -d fixtures --extensions \".ts\"",
     "build:bench": "babel benchmarks -d benchmarks --extensions \".ts\"",
-    "bench": "node benchmarks/bench_write.js",
+    "bench": "node --prof benchmarks/bench_write.js",
+    "bench:graph": "node --prof-process --preprocess -j isolate*.log | flamebearer",
     "build": "babel src -d build --ignore 'src/tests' --source-maps --extensions \".ts\" && tsc -d",
     "prepublish": "export NODE_ENV=production && yarn build"
   },
@@ -40,6 +41,7 @@
     "eslint": "^6.5.1",
     "eslint-config-prettier": "^6.4.0",
     "eslint-plugin-prettier": "^3.1.1",
+    "flamebearer": "^1.1.3",
     "jest": "^24.9.0",
     "rimraf": "^3.0.0",
     "typescript": "~3.4",

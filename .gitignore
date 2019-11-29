@@ -11,3 +11,4 @@ coverage
 report.*.json
 benchmarks/*.js
 fixtures/*.js
+flamegraph.html
