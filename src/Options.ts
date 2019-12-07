@@ -127,4 +127,6 @@ export class Options {
   filterPolicy: FilterPolicy = new BloomFilter()
 
   debug = false
+
+  lockfileStale = 5000
 }

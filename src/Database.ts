@@ -178,23 +178,43 @@ export default class Database {
     )
   }
 
-  protected lock(): Promise<void> {
+  private lockFile(filename: string, options: lockfile.Options): Promise<void> {
     return new Promise((resolve, reject) => {
-      lockfile.lock(
-        getLockFilename(this._dbpath),
-        {
-          wait: this._options.debug ? 0 : 60 * 1000,
-          retries: this._options.debug ? 0 : 3,
-        },
-        err => {
-          if (err) {
-            return reject(err)
-          }
-          resolve()
-        }
-      )
+      lockfile.lock(filename, options, err => {
+        if (err) return reject(err)
+        resolve()
+      })
     })
   }
+
+  private unlockFile(filename: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      lockfile.unlock(filename, err => {
+        if (err) return reject(err)
+        resolve()
+      })
+    })
+  }
+
+  private async lock(): Promise<void> {
+    const lockfilename = getLockFilename(this._dbpath)
+    const stale = this._options.lockfileStale
+    await this.lockFile(lockfilename, {
+      stale,
+    })
+    this.refreshLockTimer = setInterval(async () => {
+      try {
+        await this.unlockFile(lockfilename)
+        await this.lockFile(lockfilename, {
+          stale,
+        })
+      } catch (e) {
+        this._ok = false
+      }
+    }, stale - 100)
+  }
+
+  private refreshLockTimer!: NodeJS.Timeout
 
   private async recoverWrapper(): Promise<void> {
     try {
