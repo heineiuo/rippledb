@@ -442,6 +442,11 @@ export default class Database {
     }
   }
 
+  // TODO
+  public async destroy(): Promise<void> {
+    clearInterval(this.refreshLockTimer)
+  }
+
   public async *iterator(
     options: IteratorOptions = new IteratorOptions()
   ): AsyncIterableIterator<{ key: Buffer; value: Buffer }> {
