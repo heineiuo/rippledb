@@ -1,8 +1,8 @@
 {
-  "name": "node-level",
+  "name": "rippledb",
   "version": "0.2.4",
   "main": "build/index.js",
-  "repository": "https://github.com/heineiuo/node-level",
+  "repository": "https://github.com/heineiuo/rippledb",
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
   "scripts": {
