@@ -78,7 +78,6 @@ export enum CompressionTypes {
   none = 0x00,
 }
 
-
 // TODO maybe SequenceNumber should use bigint all time?
 // bigint to buffer:
 //   let bnum = (1n << 56n) - 1n
@@ -220,6 +219,8 @@ export class InternalKeyComparator implements Comparator {
 
   private _userComparator: Comparator
 
+  private oneByte = Buffer.alloc(1)
+
   get userComparator(): Comparator {
     return this._userComparator
   }
@@ -284,13 +285,19 @@ export class InternalKeyComparator implements Comparator {
     const userKey2 = extractUserKey(key2)
     const r = this.userComparator.compare(userKey1, userKey2)
     if (r !== 0) return r
-    const sn1Buf = Buffer.alloc(8)
-    const sn2Buf = Buffer.alloc(8)
-    sn1Buf.fill(key1.buffer.slice(key1.size - 8), 0, 7)
-    sn2Buf.fill(key2.buffer.slice(key2.size - 8), 0, 7)
 
-    const sn1 = decodeFixed64(sn1Buf)
-    const sn2 = decodeFixed64(sn2Buf)
+    const sn1 = decodeFixed64(
+      Buffer.concat([
+        key1.buffer.slice(key1.size - 8, key1.size - 1),
+        this.oneByte,
+      ])
+    )
+    const sn2 = decodeFixed64(
+      Buffer.concat([
+        key2.buffer.slice(key2.size - 8, key2.size - 1),
+        this.oneByte,
+      ])
+    )
     if (sn1 === sn2) return 0
     return sn1 > sn2 ? -1 : 1
   }
