@@ -113,7 +113,7 @@ export class SequenceNumber {
 export function extractUserKey(ikey: Slice): Slice {
   // if ikey.size === 8, userkey is '' (empty)
   assert(ikey.size >= 8)
-  return new Slice(ikey.buffer.slice(0, ikey.size - 8))
+  return new Slice(ikey.buffer, 0, ikey.size - 8)
 }
 
 export class InternalKey extends Slice {

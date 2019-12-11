@@ -25,7 +25,7 @@ export default class Slice {
     return 0
   }
 
-  constructor(value: unknown = Buffer.alloc(0), offset = 0) {
+  constructor(value: unknown = Buffer.alloc(0), offset = 0, length?: number) {
     if (value instanceof Slice) {
       this._buffer = value._buffer
     } else if (Buffer.isBuffer(value)) {
@@ -36,10 +36,12 @@ export default class Slice {
       this._buffer = Buffer.from(JSON.stringify(value))
     }
     this._offset = offset
+    this._length = length
   }
 
   private _buffer: Buffer
   private _offset: number
+  private _length: number | void
 
   get offset(): number {
     return this._offset
@@ -49,6 +51,10 @@ export default class Slice {
     if (this.offset > 0) {
       this._buffer = this._buffer.slice(this.offset)
       this._offset = 0
+    }
+    if (this._length) {
+      this._buffer = this._buffer.slice(0, this._length)
+      delete this._length
     }
     return this._buffer
   }
@@ -62,11 +68,11 @@ export default class Slice {
   }
 
   get length(): number {
-    return this._buffer.length - this.offset
+    return this._length ? this._length : this._buffer.length - this.offset
   }
 
   get size(): number {
-    return this._buffer.length - this.offset
+    return this.length
   }
 
   toString(encoding?: BufferEncoding): string {
@@ -76,6 +82,7 @@ export default class Slice {
   clear(): void {
     this._buffer = Buffer.alloc(0)
     this._offset = 0
+    delete this._length
   }
 
   compare(slice: Slice): number {
