@@ -199,14 +199,17 @@ export default class Database {
   private async lock(): Promise<void> {
     const lockfilename = getLockFilename(this._dbpath)
     const stale = this._options.lockfileStale
+    const retries = this._options.lockfileRetries
     await this.lockFile(lockfilename, {
       stale,
+      retries,
     })
     this.refreshLockTimer = setInterval(async () => {
       try {
         await this.unlockFile(lockfilename)
         await this.lockFile(lockfilename, {
           stale,
+          retries,
         })
       } catch (e) {
         this._ok = false

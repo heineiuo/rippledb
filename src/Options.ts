@@ -129,4 +129,5 @@ export class Options {
   debug = false
 
   lockfileStale = 5000
+  lockfileRetries = 3
 }
