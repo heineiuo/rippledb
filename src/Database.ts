@@ -7,7 +7,6 @@
 
 import path from 'path'
 import assert from 'assert'
-import lockfile from 'lockfile'
 import MemTable from './MemTable'
 import LogWriter from './LogWriter'
 import { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
@@ -56,6 +55,7 @@ import { Snapshot, SnapshotList } from './Snapshot'
 import LogReader from './LogReader'
 import IteratorMerger from './Merger'
 import { WriterQueue, Writer } from './WriterQueue'
+import { Lockfile } from './Lockfile'
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -99,6 +99,7 @@ export default class Database {
 
     options.comparator = this._internalKeyComparator
     this._options = options
+    this.lockfile = new Lockfile(getLockFilename(dbpath), options)
 
     this._tableCache = new TableCache(
       dbpath,
@@ -136,6 +137,7 @@ export default class Database {
   private _stats: CompactionStats[]
   private _options: Options
   private _tableCache: TableCache
+  private lockfile: Lockfile
 
   private get userComparator(): Comparator {
     return this._internalKeyComparator.userComparator
@@ -151,7 +153,7 @@ export default class Database {
       await this._options.env.mkdir(this._dbpath)
     }
 
-    await this.lock()
+    await this.lockfile.lock()
     try {
       await this._options.env.access(currentName)
     } catch (e) {
@@ -177,47 +179,6 @@ export default class Database {
       'MANIFEST-000001\n'
     )
   }
-
-  private lockFile(filename: string, options: lockfile.Options): Promise<void> {
-    return new Promise((resolve, reject) => {
-      lockfile.lock(filename, options, err => {
-        if (err) return reject(err)
-        resolve()
-      })
-    })
-  }
-
-  private unlockFile(filename: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      lockfile.unlock(filename, err => {
-        if (err) return reject(err)
-        resolve()
-      })
-    })
-  }
-
-  private async lock(): Promise<void> {
-    const lockfilename = getLockFilename(this._dbpath)
-    const stale = this._options.lockfileStale
-    const retries = this._options.lockfileRetries
-    await this.lockFile(lockfilename, {
-      stale,
-      retries,
-    })
-    this.refreshLockTimer = setInterval(async () => {
-      try {
-        await this.unlockFile(lockfilename)
-        await this.lockFile(lockfilename, {
-          stale,
-          retries,
-        })
-      } catch (e) {
-        this._ok = false
-      }
-    }, stale - 100)
-  }
-
-  private refreshLockTimer!: NodeJS.Timeout
 
   private async recoverWrapper(): Promise<void> {
     try {
@@ -447,7 +408,7 @@ export default class Database {
 
   // TODO
   public async destroy(): Promise<void> {
-    clearInterval(this.refreshLockTimer)
+    this.lockfile.unlock()
   }
 
   public async *iterator(
