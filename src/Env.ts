@@ -6,6 +6,7 @@
  */
 
 import fs from 'fs'
+import { default as os } from 'os'
 
 // eslint-disable-next-line
 export interface FileHandle extends fs.promises.FileHandle {}
@@ -13,6 +14,7 @@ export interface FileHandle extends fs.promises.FileHandle {}
 export interface Dirent extends fs.Dirent {}
 
 export interface Env {
+  platform(): string
   // get current time
   now(): number
   access(dbpath: string): Promise<void>
@@ -26,7 +28,9 @@ export interface Env {
   readFile(dbpath: string, bufferEncoding: 'utf8'): Promise<string>
   writeFile(dbpath: string, content: Buffer | string): Promise<void>
   open(dbpath: string, flag: string): Promise<FileHandle>
-  unlink(dbpath: string): Promise<void>
+  unlink(filename: string): Promise<void>
+  unlinkSync(filename: string): void
+  fstat(fd: FileHandle): Promise<fs.Stats>
   readdir(dbpath: string): Promise<Dirent[]>
 }
 
@@ -51,6 +55,9 @@ export function Log(infoLog: InfoLog, message: string): Promise<void> {
 }
 
 export class NodeEnv implements Env {
+  platform(): string {
+    return os.platform()
+  }
   /**
    * get current time
    */
@@ -71,6 +78,8 @@ export class NodeEnv implements Env {
   open = fs.promises.open
   rename = fs.promises.rename
   unlink = fs.promises.unlink
+  unlinkSync = fs.unlinkSync
+  fstat = fs.promises.fstat
 
   // eslint-disable-next-line
   readdir(dbpath: string) {

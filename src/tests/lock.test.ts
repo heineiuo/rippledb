@@ -20,7 +20,7 @@ test('lock', async done => {
   const db1 = new Database(dbpath)
   expect(await db1.ok()).toBe(true)
   const db2 = new Database(dbpath, options)
-  await expect(db2.ok()).rejects.toThrowError(/EEXIST/)
+  await expect(db2.ok()).rejects.toThrowError(/Lock fail/)
   await copydb(dbpath, dbpath3)
   const db3 = new Database(dbpath3, options)
   await expect(db3.ok()).resolves.toBe(true)
