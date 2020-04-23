@@ -158,8 +158,8 @@ export default class MemTable {
     }
   }
 
-  *iterator(): IterableIterator<Entry> {
-    for (const value of this._list.iterator()) {
+  *iterator(reverse = false): IterableIterator<Entry> {
+    for (const value of this._list.iterator(reverse)) {
       yield MemTable.getEntryFromMemTableKey(value)
     }
   }
