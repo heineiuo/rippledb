@@ -154,6 +154,7 @@ export default class SSTable {
           this,
           this._options,
           handle,
+          false,
           'datablock'
         )) {
           const entryInternalKey = InternalKey.from(entry.key)
@@ -170,12 +171,19 @@ export default class SSTable {
     return Status.createNotFound()
   }
 
-  async *entryIterator(): AsyncIterableIterator<Entry> {
+  async *entryIterator(reverse = false): AsyncIterableIterator<Entry> {
     for (const handleValue of this._indexBlock.iterator(
-      this._options.comparator
+      this._options.comparator,
+      reverse
     )) {
       const handle = BlockHandle.from(handleValue.value.buffer)
-      yield* this.blockIterator(this, this._options, handle, 'datablock')
+      yield* this.blockIterator(
+        this,
+        this._options,
+        handle,
+        reverse,
+        'datablock'
+      )
     }
   }
 
@@ -185,6 +193,7 @@ export default class SSTable {
     table: SSTable,
     options: Options,
     handle: BlockHandle,
+    reverse = false,
     blockType?: string
   ): AsyncIterableIterator<Entry> {
     const key = Buffer.concat([
@@ -210,6 +219,6 @@ export default class SSTable {
       if (blockType) dataBlock.blockType = blockType
       this._options.blockCache.set(key, dataBlock)
     }
-    yield* dataBlock.iterator(options.comparator)
+    yield* dataBlock.iterator(options.comparator, reverse)
   }
 }
