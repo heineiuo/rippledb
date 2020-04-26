@@ -7,16 +7,19 @@ jest.setTimeout(60000 * 10)
 
 const dbpath = createDir()
 const dbpath2 = createDir()
+const dbpath3 = createDir()
 afterAll(() => {
   cleanup(dbpath)
   cleanup(dbpath2)
+  cleanup(dbpath3)
 })
 
 cleanup(dbpath)
 cleanup(dbpath2)
+cleanup(dbpath3)
 
 describe('Database Iterator', () => {
-  test('iterator with start option', async done => {
+  test('iterator with start option', async (done) => {
     const db = new Database(dbpath)
     let cacheKey = null
     for (let i = 0; i < 1000; i++) {
@@ -58,7 +61,7 @@ describe('Database Iterator', () => {
   test('iterator count', async () => {
     const db = new Database(dbpath2)
     const list = []
-    for (let i = 0; i < 50000; i++) {
+    for (let i = 0; i < 500; i++) {
       list.push(random())
     }
 
@@ -74,5 +77,34 @@ describe('Database Iterator', () => {
     }
 
     expect(count).toBe(list.length)
+  })
+
+  test('reverse iterator', async () => {
+    const db = new Database(dbpath3)
+    const list = []
+    for (let i = 0; i < 10; i++) {
+      list.push(random())
+    }
+    list.sort((a, b) =>
+      Buffer.from(a[0]).compare(Buffer.from(b[0])) < 0 ? -1 : 1
+    )
+
+    for (const entry of list) {
+      await db.put(entry[0], entry[1])
+    }
+
+    const listKeys = []
+    const option = new IteratorOptions()
+    option.reverse = true
+    for await (const entry of db.iterator(option)) {
+      listKeys.push(entry.key.toString())
+    }
+
+    const originalKeys = list
+      .reverse()
+      .map((pair) => pair[0])
+      .join('|')
+
+    expect(listKeys.join('|')).toEqual(originalKeys)
   })
 })
