@@ -36,6 +36,7 @@ export class ReadOptions {
 }
 
 export class IteratorOptions extends ReadOptions {
+  reverse = false
   start: string | Buffer = Buffer.alloc(0)
 }
 

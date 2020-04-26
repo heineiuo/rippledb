@@ -25,7 +25,7 @@ export default class IteratorMerger {
   private _num: number
   private _cache: (IteratorResult<Entry> | null)[]
 
-  public async *iterator(): AsyncIterableIterator<Entry> {
+  public async *iterator(reverse = false): AsyncIterableIterator<Entry> {
     assert(this._num >= 0)
     if (this._num === 0) {
       return
@@ -35,10 +35,37 @@ export default class IteratorMerger {
       return
     }
     while (true) {
-      const smallest = await this.findSmallest()
-      if (!smallest) break
-      yield smallest
+      const current = reverse
+        ? await this.findLargest()
+        : await this.findSmallest()
+      if (!current) break
+      yield current
     }
+  }
+
+  private async findLargest(): Promise<Entry | null> {
+    let largest = null
+    let hit = -1
+
+    for (let i = 0; i < this._num; i++) {
+      const child = this._cache[i] || (await this._list[i].next())
+      this._cache[i] = child
+      if (!child.done) {
+        if (largest === null) {
+          largest = child.value
+          hit = i
+        } else if (this._icmp.compare(child.value.key, largest.key) > 0) {
+          largest = child.value
+          hit = i
+        }
+      }
+    }
+    for (let i = 0; i < this._num; i++) {
+      if (i === hit) {
+        this._cache[i] = null
+      }
+    }
+    return largest
   }
 
   private async findSmallest(): Promise<Entry | null> {

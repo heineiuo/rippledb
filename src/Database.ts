@@ -415,18 +415,20 @@ export default class Database {
     options: IteratorOptions = new IteratorOptions()
   ): AsyncIterableIterator<{ key: Buffer; value: Buffer }> {
     if (!this._ok) await this.ok()
+    const reverse = options.reverse
     const startUserKey = new Slice(options.start)
     const sequence = options.snapshot
       ? new Snapshot(options.snapshot).sequenceNumber
       : new SequenceNumber(this._versionSet.lastSequence)
     const lookupKey = new LookupKey(startUserKey, sequence)
+    let lookupKeyUpdated = false
 
     const iteratorList: AsyncIterableIterator<Entry>[] = []
 
     this._memtable.ref()
     iteratorList.push(
       IteratorHelper.wrap(
-        IteratorHelper.makeAsync(this._memtable.iterator()),
+        IteratorHelper.makeAsync(this._memtable.iterator(reverse)),
         () => {
           this._memtable.unref()
         }
@@ -436,7 +438,7 @@ export default class Database {
       this._immtable.ref()
       iteratorList.push(
         IteratorHelper.wrap(
-          IteratorHelper.makeAsync(this._immtable.iterator()),
+          IteratorHelper.makeAsync(this._immtable.iterator(reverse)),
           () => {
             this._immtable.unref()
           }
@@ -453,16 +455,19 @@ export default class Database {
 
       if (files.length > 0) {
         for (const file of files) {
-          if (
-            this.userComparator.compare(startUserKey, file.largest.userKey) > 0
-          )
-            continue
+          // TODO change compare condition when reserve=true
+          const shouldSkip = reverse
+            ? this.userComparator.compare(startUserKey, file.smallest.userKey) <
+              0
+            : this.userComparator.compare(startUserKey, file.largest.userKey) >
+              0
+          if (shouldSkip) continue
           const status = await tableCache.findTable(file.number, file.fileSize)
           if (await status.ok()) {
             file.refs++
             const tf = (await status.promise) as TableAndFile
             iteratorList.push(
-              IteratorHelper.wrap(tf.table.entryIterator(), async () => {
+              IteratorHelper.wrap(tf.table.entryIterator(reverse), async () => {
                 file.refs--
                 current.unref()
                 await tf.file.close()
@@ -479,13 +484,25 @@ export default class Database {
       iteratorList.length
     )
 
-    for await (const entry of merger.iterator()) {
+    for await (const entry of merger.iterator(reverse)) {
       const iKey = InternalKey.from(entry.key)
       const userKey = iKey.userKey
-      if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
-        lookupKey.userKey = userKey
-        if (iKey.type === ValueType.kTypeDeletion) continue
-        yield { key: userKey.buffer, value: entry.value.buffer }
+      if (reverse) {
+        if (
+          !lookupKeyUpdated ||
+          this.userComparator.compare(userKey, lookupKey.userKey) < 0
+        ) {
+          lookupKeyUpdated = true
+          lookupKey.userKey = userKey
+          if (iKey.type === ValueType.kTypeDeletion) continue
+          yield { key: userKey.buffer, value: entry.value.buffer }
+        }
+      } else {
+        if (this.userComparator.compare(userKey, lookupKey.userKey) > 0) {
+          lookupKey.userKey = userKey
+          if (iKey.type === ValueType.kTypeDeletion) continue
+          yield { key: userKey.buffer, value: entry.value.buffer }
+        }
       }
     }
   }
@@ -701,7 +718,7 @@ export default class Database {
             `DEBUG level0 files >= slowdown trigger, wait 1s.`
           )
         }
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         allowDelay = false
       } else if (
         !force &&
@@ -921,8 +938,9 @@ export default class Database {
         if (!(await status.ok())) {
           Log(
             this._options.infoLog,
-            `Break because finishCompactionOutputFile fail ${status.message() ||
-              '-'}`
+            `Break because finishCompactionOutputFile fail ${
+              status.message() || '-'
+            }`
           )
           break
         }
@@ -991,8 +1009,9 @@ export default class Database {
           if (!(await status.ok())) {
             Log(
               this._options.infoLog,
-              `Break because openCompactionOutputFile fail ${status.message() ||
-                '-'}`
+              `Break because openCompactionOutputFile fail ${
+                status.message() || '-'
+              }`
             )
             break
           }
@@ -1009,8 +1028,9 @@ export default class Database {
           if (!(await status.ok())) {
             Log(
               this._options.infoLog,
-              `Break because finishCompactionOutputFile2 fail ${status.message() ||
-                '-'}`
+              `Break because finishCompactionOutputFile2 fail ${
+                status.message() || '-'
+              }`
             )
             break
           }
@@ -1183,8 +1203,9 @@ export default class Database {
       this._options.infoLog,
       `Compacted ${compact.compaction.numInputFiles(0)}@${
         compact.compaction.level
-      } + ${compact.compaction.numInputFiles(1)}@${compact.compaction.level +
-        1} files => ${compact.totalBytes} bytes"`
+      } + ${compact.compaction.numInputFiles(1)}@${
+        compact.compaction.level + 1
+      } files => ${compact.totalBytes} bytes"`
     )
     // Add compaction outputs
     compact.compaction.addInputDeletions(compact.compaction.edit)

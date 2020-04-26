@@ -77,13 +77,54 @@ export default class Skiplist {
     }
   }
 
-  *iterator(): IterableIterator<Slice> {
-    let current = this.head
+  private findLast(): SkiplistNode {
+    let node = this.head
+    let level = this.level
     while (true) {
-      if (!current) break
-      if (!current.next(0)) break
-      yield current.next(0).key
-      current = current.next(0)
+      const next = node.next(level)
+      if (!next) {
+        if (level === 0) return node
+        level--
+      } else {
+        node = next
+      }
+    }
+  }
+
+  private findLessThan(key: Slice): SkiplistNode {
+    let node = this.head
+    let level = this.level
+    while (true) {
+      assert(node === this.head || this.keyComparator(node.key, key) < 0)
+      const next = node.next(level)
+      if (!next || this.keyComparator(next.key, key) >= 0) {
+        if (level === 0) return node
+        level--
+      } else {
+        node = next
+      }
+    }
+  }
+
+  *iterator(reverse = false): IterableIterator<Slice> {
+    if (!reverse) {
+      let current = this.head
+      while (true) {
+        if (!current) break
+        if (!current.next(0)) break
+        yield current.next(0).key
+        current = current.next(0)
+      }
+    } else {
+      // Instead of using explicit "prev" links, we just search for the
+      // last node that falls before key.
+      let current = this.findLast()
+      while (true) {
+        if (current === this.head) break
+        yield current.key
+        const prev = this.findLessThan(current.key)
+        current = prev
+      }
     }
   }
 

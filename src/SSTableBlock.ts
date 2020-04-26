@@ -15,6 +15,7 @@ interface RestartedEntry {
   entry: Entry
   shared: number
   nonShared: number
+  // rawSize = header(12) + nonshared + valuelength
   rawSize: number
 }
 
@@ -51,8 +52,12 @@ export default class SSTableBlock {
   }
 
   decodeEntry(offset: number, lastKey: Slice): RestartedEntry {
-    const shared = decodeFixed32(this._buffer.slice(offset, offset + 4))
-    const nonShared = decodeFixed32(this._buffer.slice(offset + 4, offset + 8))
+    const shared = decodeFixed32(
+      this._buffer.slice(offset, offset + kSizeOfUInt32)
+    )
+    const nonShared = decodeFixed32(
+      this._buffer.slice(offset + kSizeOfUInt32, offset + 8)
+    )
     const valueLength = decodeFixed32(
       this._buffer.slice(offset + 8, offset + 12)
     )
@@ -80,43 +85,85 @@ export default class SSTableBlock {
     } as RestartedEntry
   }
 
-  *restartPointIterator(): IterableIterator<number> {
-    let currentOffset = this._restartPoint
-    while (true) {
-      if (currentOffset >= this._size - 4) {
-        break
+  *restartPointIterator(reverse = false): IterableIterator<number> {
+    if (reverse) {
+      let currentOffset = this.size - 4
+      while (true) {
+        if (currentOffset <= this._restartPoint) break
+        yield decodeFixed32(
+          this._buffer.slice(currentOffset - kSizeOfUInt32, currentOffset)
+        )
+        currentOffset -= kSizeOfUInt32
       }
-      yield decodeFixed32(this._buffer.slice(currentOffset, currentOffset + 4))
-      currentOffset += 4
+    } else {
+      let currentOffset = this._restartPoint
+      while (true) {
+        if (currentOffset >= this._size - kSizeOfUInt32) {
+          break
+        }
+        yield decodeFixed32(
+          this._buffer.slice(currentOffset, currentOffset + kSizeOfUInt32)
+        )
+        currentOffset += kSizeOfUInt32
+      }
     }
   }
 
-  // eslint-disable-next-line
-  *iterator(comparator: Comparator): IterableIterator<Entry> {
+  *iterator(comparator: Comparator, reverse = false): IterableIterator<Entry> {
     const numRestarts = this.getNumRestarts()
     if (numRestarts === 0) {
       return
     }
 
-    const restartPointIterator = this.restartPointIterator()
+    if (reverse) {
+      const restartPointIterator = this.restartPointIterator(reverse)
+      let rightEdge = this._restartPoint
 
-    let offset = 0
-    let lastKey = new Slice()
-    let currentRestartPointResult = restartPointIterator.next()
-    let currentRestartPoint = currentRestartPointResult.value
+      let point = restartPointIterator.next()
 
-    while (true) {
-      if (offset >= this._restartPoint) break
+      let offset = point.value
+      let lastKey = new Slice()
+      let cache = []
 
-      const currentRestartedEntry = this.decodeEntry(offset, lastKey)
-      yield currentRestartedEntry.entry
-      lastKey = new Slice(currentRestartedEntry.entry.key)
-      offset += currentRestartedEntry.rawSize
+      while (true) {
+        const currentRestartedEntry = this.decodeEntry(offset, lastKey)
+        cache.unshift(currentRestartedEntry.entry)
+        lastKey = new Slice(currentRestartedEntry.entry.key)
+        offset += currentRestartedEntry.rawSize
 
-      if (offset === currentRestartPoint) {
-        lastKey = new Slice()
-        currentRestartPointResult = restartPointIterator.next()
-        currentRestartPoint = currentRestartPointResult.value
+        if (offset === rightEdge) {
+          yield* cache
+          rightEdge = point.value
+          point = restartPointIterator.next()
+          if (!point || !point.value) {
+            break
+          }
+
+          offset = point.value
+          lastKey = new Slice()
+          cache = []
+        }
+      }
+    } else {
+      const restartPointIterator = this.restartPointIterator(reverse)
+      let restartPointIteratorResult = restartPointIterator.next()
+      let currentRestartPoint = restartPointIteratorResult.value
+      let offset = 0
+      let lastKey = new Slice()
+
+      while (true) {
+        if (offset >= this._restartPoint) break
+
+        const currentRestartedEntry = this.decodeEntry(offset, lastKey)
+        yield currentRestartedEntry.entry
+        lastKey = new Slice(currentRestartedEntry.entry.key)
+        offset += currentRestartedEntry.rawSize
+
+        if (offset === currentRestartPoint) {
+          lastKey = new Slice()
+          restartPointIteratorResult = restartPointIterator.next()
+          currentRestartPoint = restartPointIteratorResult.value
+        }
       }
     }
   }
