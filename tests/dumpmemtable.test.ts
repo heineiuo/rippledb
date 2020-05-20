@@ -1,6 +1,5 @@
 import { Database } from "../port/node";
 import { createDir, cleanup } from "../fixtures/dbpath";
-import { Buffer } from "../third_party/buffer";
 
 const dbpath1 = createDir();
 afterAll(() => {
@@ -16,7 +15,7 @@ describe("Dump memtable", () => {
     await db.put("key1", "world1");
     await db.put("key", "world2");
     await db.del("key1");
-    await db.compactRange(Buffer.from("k"), Buffer.from("kc"));
+    await db.compactRange("k", "kc");
     const result = await db.get("key");
     expect(!!result).toBe(true);
     expect(`${result}`).toBe("world2");

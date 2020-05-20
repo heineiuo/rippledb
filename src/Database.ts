@@ -593,8 +593,8 @@ export default class Database {
    * 2. check if this._immtable is not null（transfer memtable to sstable）
    */
   public put(
-    key: string | Buffer,
-    value: string | Buffer,
+    key: string | Uint8Array,
+    value: string | Uint8Array,
     options?: WriteOptions,
   ): Promise<void> {
     const batch = new WriteBatch();
@@ -616,7 +616,7 @@ export default class Database {
   }
 
   private async write(
-    options: WriteOptions,
+    options: Required<WriteOptions>,
     batch?: WriteBatch,
   ): Promise<void> {
     if (!this._ok) await this.ok();

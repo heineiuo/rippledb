@@ -85,13 +85,13 @@ export class WriteBatch {
   buffers: Buffer[] = [];
   head: Buffer = Buffer.alloc(WriteBatchInternal.kHeader);
 
-  put(key: string | Buffer, value: string | Buffer): void {
+  put(key: string | Uint8Array, value: string | Uint8Array): void {
     const record = LogRecord.add(new Slice(key), new Slice(value));
     this.buffers.push(record.buffer);
     WriteBatchInternal.setCount(this, WriteBatchInternal.getCount(this) + 1);
   }
 
-  del(key: string | Buffer): void {
+  del(key: string | Uint8Array): void {
     const record = LogRecord.del(new Slice(key));
     this.buffers.push(record.buffer);
     WriteBatchInternal.setCount(this, WriteBatchInternal.getCount(this) + 1);
