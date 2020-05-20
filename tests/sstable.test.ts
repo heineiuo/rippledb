@@ -1,4 +1,5 @@
 import fs from "fs";
+import { Buffer } from "../third_party/buffer";
 import Slice from "../src/Slice";
 import SSTable from "../src/SSTable";
 import SSTableBuilder from "../src/SSTableBuilder";

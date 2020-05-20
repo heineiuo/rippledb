@@ -102,7 +102,7 @@ export class TableCache {
         await tf.file.close();
       });
     } else {
-      Log(this._options.env.infoLog, `Open Table file(${fileNumber}) fail.`);
+      this._options.log(`Open Table file(${fileNumber}) fail.`);
       throw new Error(`Open Table file(${fileNumber}) fail.`);
     }
   }

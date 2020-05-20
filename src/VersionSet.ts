@@ -26,7 +26,6 @@ import { Options } from "./Options";
 import { TableCache } from "./SSTableCache";
 import Merger from "./Merger";
 import { decodeFixed64 } from "./Coding";
-import { Log } from "./Env";
 
 interface RecoverResult {
   saveManifest?: boolean;
@@ -269,10 +268,7 @@ export default class VersionSet {
       } else {
         const levelBytes = this.getTotalBytes(ver.files[level]);
         if (this._options.debug)
-          Log(
-            this._options.infoLog,
-            `DEBUG level=${level} levelBytes=${levelBytes}`,
-          );
+          this._options.log(`DEBUG level=${level} levelBytes=${levelBytes}`);
         // score >= 1 means size is bigger then limit
         score = levelBytes / getMaxBytesForLevel(level);
       }
@@ -333,7 +329,7 @@ export default class VersionSet {
         await this._options.env.open(manifestFilename, "a"),
       );
       if (this._options.debug)
-        Log(this._options.infoLog, "DEBUG writeSnapshot starting...");
+        this._options.log("DEBUG writeSnapshot starting...");
 
       status = this.writeSnapshot(this.manifestWriter);
     }
@@ -342,8 +338,7 @@ export default class VersionSet {
       const record = VersionEditRecord.add(edit);
       status = new Status(this.manifestWriter.addRecord(record));
     } else {
-      if (this._options.debug)
-        Log(this._options.infoLog, "DEBUG writeSnapshot fail");
+      if (this._options.debug) this._options.log("DEBUG writeSnapshot fail");
     }
 
     // If we just created a new descriptor file, install it by writing a
@@ -361,16 +356,13 @@ export default class VersionSet {
         delete this.manifestWriter;
       }
 
-      Log(
-        this._options.infoLog,
-        "DEBUG LogAndApply success, Install the new version",
-      );
+      this._options.log("DEBUG LogAndApply success, Install the new version");
 
       this.appendVersion(ver);
       this.logNumber = edit.logNumber;
       this.prevLogNumber = edit.prevLogNumber;
     } else {
-      Log(this._options.infoLog, "DEBUG LogAndApply fail, Delete ver");
+      this._options.log("DEBUG LogAndApply fail, Delete ver");
       // delete ver
       if (!!manifestFilename) {
         await this.manifestWriter.close();
@@ -685,8 +677,7 @@ export default class VersionSet {
           newLimit,
         );
         if (expand1.length === c.inputs[1].length) {
-          Log(
-            this._options.infoLog,
+          this._options.log(
             `Expanding@${level} ${c.inputs[0].length}+${c.inputs[1].length}` +
               ` (${input0Size}+${input1Size} bytes) to ${expand0Size}` +
               `+${expand1.length} (${expand0Size}+${input1Size} bytes)`,

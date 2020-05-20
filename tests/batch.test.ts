@@ -1,4 +1,4 @@
-import Database from "../src/Database";
+import { Database } from "../port/node";
 import { random } from "../fixtures/random";
 import { createDir, cleanup } from "../fixtures/dbpath";
 import { WriteBatch } from "../src/WriteBatch";

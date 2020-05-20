@@ -2,6 +2,7 @@ import { InternalDatabase, Env, DatabaseOptions } from "../src";
 import fs from "fs";
 import os from "os";
 import { FileHandle } from "../src/Env";
+import { onExit } from "../third_party/signal-exit";
 
 export class NodeEnv implements Env {
   platform(): string {
@@ -13,6 +14,8 @@ export class NodeEnv implements Env {
   now(): number {
     return Number(process.hrtime.bigint()) / Math.pow(10, 9);
   }
+
+  onExit = onExit;
 
   access(dbpath: string): Promise<void> {
     return fs.promises.access(dbpath, fs.constants.W_OK);

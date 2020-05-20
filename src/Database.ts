@@ -997,8 +997,7 @@ export default class Database {
       //     ? 'this level is not base level for key. '
       //     : ''
       //   const becauseMsg = !drop ? `Because ${snValueBig}${isNotBaseLevel}` : ''
-      //   Log(
-      //     this._options.env.infoLog,
+      //   this._options.log(
       //     `${ikey.userKey} has been delete = ${drop}; ${becauseMsg}`
       //   )
       // }

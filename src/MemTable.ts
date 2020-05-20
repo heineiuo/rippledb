@@ -6,6 +6,7 @@
  */
 
 import assert from "../third_party/assert";
+import { Buffer } from "../third_party/buffer";
 import varint from "../third_party/varint";
 import {
   SequenceNumber,

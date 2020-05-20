@@ -1,8 +1,6 @@
-// npm/buffer-crc32@0.2.13
+const Buffer = require("../buffer").Buffer;
 
-import { Buffer } from "../buffer";
-
-const CRC_TABLE = new Int32Array([
+let CRC_TABLE = [
   0x00000000,
   0x77073096,
   0xee0e612c,
@@ -259,15 +257,13 @@ const CRC_TABLE = new Int32Array([
   0xc30c8ea1,
   0x5a05df1b,
   0x2d02ef8d,
-]);
+];
 
-function newEmptyBuffer(length: number): Buffer {
-  const buffer = new Buffer(length);
-  buffer.fill(0x00);
-  return buffer;
+if (typeof Int32Array !== "undefined") {
+  CRC_TABLE = new Int32Array(CRC_TABLE);
 }
 
-function ensureBuffer(input: Buffer | number | string): Buffer {
+function ensureBuffer(input) {
   if (Buffer.isBuffer(input)) {
     return input;
   }
@@ -276,7 +272,7 @@ function ensureBuffer(input: Buffer | number | string): Buffer {
     typeof Buffer.alloc === "function" && typeof Buffer.from === "function";
 
   if (typeof input === "number") {
-    return hasNewBufferAPI ? Buffer.alloc(input) : newEmptyBuffer(input);
+    return hasNewBufferAPI ? Buffer.alloc(input) : new Buffer(input);
   } else if (typeof input === "string") {
     return hasNewBufferAPI ? Buffer.from(input) : new Buffer(input);
   } else {
@@ -286,16 +282,13 @@ function ensureBuffer(input: Buffer | number | string): Buffer {
   }
 }
 
-function bufferizeInt(num: number): Buffer {
+function bufferizeInt(num) {
   const tmp = ensureBuffer(4);
   tmp.writeInt32BE(num, 0);
   return tmp;
 }
 
-function _crc32(
-  buf: Buffer,
-  previous: Buffer | number = Buffer.alloc(0),
-): number {
+function _crc32(buf, previous) {
   buf = ensureBuffer(buf);
   if (Buffer.isBuffer(previous)) {
     previous = previous.readUInt32BE(0);
@@ -307,15 +300,14 @@ function _crc32(
   return crc ^ -1;
 }
 
-function crc32(...args: [Buffer, (number | Buffer)?]): Buffer {
-  return bufferizeInt(_crc32(...args));
+function crc32() {
+  return bufferizeInt(_crc32.apply(null, arguments));
 }
-
-crc32.signed = function (...args: [Buffer, number | Buffer]): number {
-  return _crc32(...args);
+crc32.signed = function () {
+  return _crc32.apply(null, arguments);
 };
-crc32.unsigned = function (...args: [Buffer, number | Buffer]): number {
-  return _crc32(...args) >>> 0;
+crc32.unsigned = function () {
+  return _crc32.apply(null, arguments) >>> 0;
 };
 
-export default crc32;
+module.exports = crc32;
