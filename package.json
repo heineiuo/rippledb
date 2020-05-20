@@ -9,9 +9,12 @@
     "test": "jest",
     "build:fixture": "babel fixtures -d fixtures --extensions \".ts\"",
     "build:bench": "babel benchmarks -d benchmarks --extensions \".ts\"",
-    "bench": "node --prof benchmarks/bench_write.js",
+    "bench": "node --prof benchmarks/bench_write.js --total=10000 --runners=10",
     "bench:graph": "node --prof-process --preprocess -j isolate*.log | flamebearer",
-    "build": "babel src -d build --ignore 'src/tests' --source-maps --extensions \".ts\" && tsc -d",
+    "build:src": "babel src -d build/src --ignore 'src/tests' --source-maps --extensions \".ts\"",
+    "build:port": "babel port -d build/port --ignore 'src/tests' --source-maps --extensions \".ts\"",
+    "build": "npm run build:src && npm run build:port",
+    "build:tsc": "tsc -d",
     "prepublish": "export NODE_ENV=production && npm run build"
   },
   "files": [
