@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { Buffer } from "../third_party/buffer";
+
 export interface Stats<T = number> {
   isFile(): boolean;
   isDirectory(): boolean;

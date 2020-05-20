@@ -8,6 +8,7 @@
 import varint from "../third_party/varint";
 import Slice from "./Slice";
 import { ValueType } from "./Format";
+import { Buffer } from "../third_party/buffer";
 
 export default class LogRecord {
   static add(key: Slice, value: Slice): Slice {

@@ -6,6 +6,7 @@
  */
 
 import assert from "../third_party/assert";
+import { Buffer } from "../third_party/buffer";
 import Slice from "./Slice";
 import { FileMetaData, BySmallestKey, GetStats } from "./VersionFormat";
 import VersionSet from "./VersionSet";

@@ -6,7 +6,7 @@
  */
 
 import Status from "./Status";
-import { FileHandle, Env, Log } from "./Env";
+import { FileHandle, Env } from "./Env";
 import Table from "./SSTable";
 import { getTableFilename } from "./Filename";
 import { Options, ReadOptions } from "./Options";
