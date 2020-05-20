@@ -24,7 +24,7 @@ describe("Database", () => {
     await db.put("key", "world");
     const result = await db.get("key");
     expect(!!result).toBe(true);
-    expect(`${result}`).toBe("world");
+    expect(String.fromCharCode.apply(null, result)).toBe("world");
     done();
   });
 
@@ -61,7 +61,7 @@ describe("Database", () => {
 
     const result = await db4.get("key");
     expect(!!result).toBe(true);
-    expect(`${result}`).toBe("world");
+    expect(String.fromCharCode.apply(null, result)).toBe("world");
 
     done();
   });

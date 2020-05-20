@@ -5,10 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from "../third_party/buffer";
-import varint from "../third_party/varint";
+import { Buffer } from "./Buffer";
+import { varint, assert } from "./DBHelper";
 import Slice from "./Slice";
-import assert from "../third_party/assert";
 
 const kFixed64MaxValue = (1n << 56n) - 1n;
 

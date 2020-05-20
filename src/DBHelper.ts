@@ -1,8 +1,12 @@
 import { Buffer } from "./Buffer";
 
-export function pathResolve(...pathes: string[]): string {
+function pathResolve(...pathes: string[]): string {
   return pathes.join("/");
 }
+
+export const path = {
+  resolve: pathResolve,
+};
 
 export function assert(bool: boolean, message?: string): void {
   try {
@@ -30,14 +34,11 @@ const N8 = Math.pow(2, 56);
 const N9 = Math.pow(2, 63);
 
 interface Encode {
+  (num: number, out?: number[], offset?: number): number[];
   bytes: number;
 }
 
-const encode: Encode = (
-  num: number,
-  out: Buffer | number[],
-  offset?: number,
-) => {
+const encode: Encode = (num: number, out?: number[], offset?: number) => {
   out = out || [];
   offset = offset || 0;
   const oldOffset = offset;
@@ -82,6 +83,7 @@ function encodingLength(value: number): number {
 }
 
 interface Decode {
+  (buf: Buffer, offset?: number): number;
   bytes: number;
 }
 

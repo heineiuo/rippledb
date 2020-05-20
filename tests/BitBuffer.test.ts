@@ -1,5 +1,5 @@
 import BitBuffer from "../src/BitBuffer";
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "../src/Buffer";
 
 test("BitBuffer", (done) => {
   const arr1 = new BitBuffer(Buffer.alloc(Math.ceil(32 / 8)));

@@ -1,4 +1,4 @@
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "../src/Buffer";
 
 interface Database {
   put: (key: string | Buffer, value: string | Buffer) => Promise<void>;

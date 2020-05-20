@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
-import crc32 from "../third_party/buffer-crc32";
+import { assert } from "./DBHelper";
+import { Buffer } from "./Buffer";
+import { crc32 } from "./Crc32";
 import { kBlockSize, kHeaderSize, RecordType } from "./LogFormat";
 import Slice from "./Slice";
 import { FileHandle } from "./Env";
@@ -43,13 +43,12 @@ export default class LogWriter {
     head[4] = length & 0xff;
     head[5] = length >> 8;
     head[6] = type;
-    const crc = crc32(
-      Buffer.concat([
-        Buffer.from([type]),
-        record,
-        Buffer.from([record.length]),
-      ]),
-    );
+    const merged = Buffer.concat([
+      Buffer.bufferFrom([type]),
+      record,
+      Buffer.bufferFrom([record.length]),
+    ]);
+    const crc = crc32(merged);
     head.fill(crc, 0, 4);
 
     this._blockOffset += record.length + kHeaderSize;

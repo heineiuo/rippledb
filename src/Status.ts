@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
+import { assert } from "./DBHelper";
 
 enum Code {
   kOk = 0,

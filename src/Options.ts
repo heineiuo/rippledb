@@ -13,7 +13,7 @@ import { Env, FileHandle } from "./Env";
 import { SequenceNumber } from "./Format";
 import Block from "./SSTableBlock";
 import Cache from "./Cache";
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "./Buffer";
 
 export interface FilterPolicy {
   name(): string;

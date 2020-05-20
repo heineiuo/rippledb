@@ -5,19 +5,19 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import varint from "../third_party/varint";
+import { varint } from "./DBHelper";
 import Slice from "./Slice";
 import { ValueType } from "./Format";
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "./Buffer";
 
 export default class LogRecord {
   static add(key: Slice, value: Slice): Slice {
     return new Slice(
       Buffer.concat([
-        Buffer.from([ValueType.kTypeValue]),
-        Buffer.from(varint.encode(key.length)),
+        Buffer.bufferFrom([ValueType.kTypeValue]),
+        Buffer.bufferFrom(varint.encode(key.length)),
         key.buffer,
-        Buffer.from(varint.encode(value.length)),
+        Buffer.bufferFrom(varint.encode(value.length)),
         value.buffer,
       ]),
     );
@@ -26,8 +26,8 @@ export default class LogRecord {
   static del(key: Slice): Slice {
     return new Slice(
       Buffer.concat([
-        Buffer.from([ValueType.kTypeDeletion]),
-        Buffer.from(varint.encode(key.length)),
+        Buffer.bufferFrom([ValueType.kTypeDeletion]),
+        Buffer.bufferFrom(varint.encode(key.length)),
         key.buffer,
       ]),
     );

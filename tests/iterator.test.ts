@@ -1,6 +1,7 @@
 import { Database } from "../port/node";
 import { random } from "../fixtures/random";
 import { createDir, cleanup } from "../fixtures/dbpath";
+import { Buffer } from "../src/Buffer";
 
 jest.setTimeout(60000 * 10);
 
@@ -34,8 +35,11 @@ describe("Database Iterator", () => {
         cacheKey2 = `${entry.key}`;
       }
       expect(
-        Buffer.from(`${entry.key}`).compare(Buffer.from(cacheKey)) > 0,
-      ).toBe(true);
+        Buffer.compare(
+          Buffer.bufferFrom(String.fromCharCode.apply(null, entry.key)),
+          Buffer.bufferFrom(cacheKey),
+        ),
+      ).toBe(1);
       count++;
       if (count > 10) break;
     }
@@ -45,7 +49,10 @@ describe("Database Iterator", () => {
 
     for await (const entry of db.iterator({ start: cacheKey })) {
       expect(
-        Buffer.from(`${entry.key}`).compare(Buffer.from(cacheKey2)) !== 0,
+        Buffer.compare(
+          Buffer.bufferFrom(String.fromCharCode.apply(null, entry.key)),
+          Buffer.bufferFrom(cacheKey2),
+        ) !== 0,
       ).toBe(true);
       count++;
       if (count > 10) break;
@@ -81,7 +88,7 @@ describe("Database Iterator", () => {
       list.push(random());
     }
     list.sort((a, b) =>
-      Buffer.from(a[0]).compare(Buffer.from(b[0])) < 0 ? -1 : 1,
+      Buffer.compare(Buffer.bufferFrom(a[0]), Buffer.bufferFrom(b[0])),
     );
 
     for (const entry of list) {
@@ -90,7 +97,7 @@ describe("Database Iterator", () => {
 
     const listKeys = [];
     for await (const entry of db.iterator({ reverse: true })) {
-      listKeys.push(entry.key.toString());
+      listKeys.push(String.fromCharCode.apply(null, entry.key));
     }
 
     const originalKeys = list

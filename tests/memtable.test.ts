@@ -66,7 +66,7 @@ test("memtable reverse iterator", () => {
   const result = [];
 
   for (const entry of memtable.iterator(true)) {
-    result.push(`${entry.value}`);
+    result.push(entry.value.toUTF8String());
   }
 
   expect(result).toStrictEqual([

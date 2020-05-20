@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "./Buffer";
 
 export default class Slice {
   constructor(value: unknown = Buffer.alloc(0)) {
@@ -14,9 +14,9 @@ export default class Slice {
     } else if (Buffer.isBuffer(value)) {
       this._buffer = value;
     } else if (typeof value === "string") {
-      this._buffer = Buffer.from(value);
+      this._buffer = Buffer.bufferFrom(value);
     } else {
-      this._buffer = Buffer.from(JSON.stringify(value));
+      this._buffer = Buffer.bufferFrom(JSON.stringify(value));
     }
   }
 
@@ -38,8 +38,13 @@ export default class Slice {
     return this._buffer.length;
   }
 
-  toString(encoding?: BufferEncoding): string {
-    return this._buffer.toString(encoding);
+  // Deprecated
+  // toString(): string {
+  //   return this._buffer.toString();
+  // }
+
+  toUTF8String(): string {
+    return Buffer.toUTF8String(this._buffer);
   }
 
   clear(): void {
@@ -47,7 +52,7 @@ export default class Slice {
   }
 
   compare(slice: Slice): number {
-    return this._buffer.compare(slice.buffer);
+    return Buffer.compare(this._buffer, slice.buffer);
   }
 
   isEqual(slice: Slice): boolean {

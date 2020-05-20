@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
 import { InternalKeyComparator, InternalKey } from "./Format";
 import { Options } from "./Options";
 

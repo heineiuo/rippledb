@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import path from "../third_party/path";
+import { path } from "./DBHelper";
 import { FileType } from "./Format";
 
 function numberToString(num: number): string {

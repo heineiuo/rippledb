@@ -263,19 +263,17 @@ if (typeof Int32Array !== "undefined") {
   CRC_TABLE = new Int32Array(CRC_TABLE);
 }
 
-function ensureBuffer(input) {
+function ensureBuffer(input: any): Buffer {
   if (Buffer.isBuffer(input)) {
     return input;
   }
 
-  const hasNewBufferAPI =
-    typeof Buffer.alloc === "function" && typeof Buffer.from === "function";
-
   if (typeof input === "number") {
-    return hasNewBufferAPI ? Buffer.alloc(input) : new Buffer(input);
+    return Buffer.alloc(input);
   } else if (typeof input === "string") {
-    return hasNewBufferAPI ? Buffer.from(input) : new Buffer(input);
+    return Buffer.bufferFrom(input);
   } else {
+    console.log("input", input);
     throw new Error(
       "input must be buffer, number, or string, received " + typeof input,
     );

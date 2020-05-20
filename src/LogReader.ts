@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
+import { assert } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import Slice from "./Slice";
 import { Record, kBlockSize, RecordType, kHeaderSize } from "./LogFormat";
 import { FileHandle } from "./Env";
@@ -29,7 +29,7 @@ export default class LogReader {
   }
 
   async *iterator(): AsyncIterableIterator<Slice> {
-    const buf: Buffer = Buffer.from(new ArrayBuffer(kBlockSize));
+    const buf: Buffer = Buffer.bufferFrom(new ArrayBuffer(kBlockSize));
     let blockIndex = -1;
     let latestOpBuf = Buffer.alloc(0);
     let latestType = null;
@@ -54,7 +54,7 @@ export default class LogReader {
 
       // buf may be re-fill, to avoid this, copy it
       const record = this.readPhysicalRecord(
-        Buffer.from(buf.slice(bufHandledPosition)),
+        Buffer.bufferFrom(buf.slice(bufHandledPosition)),
       );
       bufHandledPosition += record.length + kHeaderSize;
       if (record.type === RecordType.kFullType) {

@@ -18,7 +18,7 @@ describe("Dump memtable", () => {
     await db.compactRange("k", "kc");
     const result = await db.get("key");
     expect(!!result).toBe(true);
-    expect(`${result}`).toBe("world2");
+    expect(String.fromCharCode.apply(null, result)).toBe("world2");
     const result2 = await db.get("key1");
     expect(!!result2).toBe(false);
     done();

@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
+import { assert } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import Slice from "./Slice";
 import { FileMetaData, BySmallestKey, GetStats } from "./VersionFormat";
 import VersionSet from "./VersionSet";
@@ -95,7 +95,7 @@ class State {
         return false;
       case SaverState.kCorrupt:
         state.s = Status.createCorruption(
-          `corrupted key for ${state.saver.userKey.toString()}`,
+          `corrupted key for ${state.saver.userKey.toUTF8String()}`,
         );
         state.found = true;
         return false;
@@ -140,8 +140,8 @@ export default class Version {
   ): IterableIterator<FileEntry> {
     for (const file of files) {
       const valueBuf = Buffer.alloc(16);
-      valueBuf.fill(encodeFixed64(file.number), 0, 8);
-      valueBuf.fill(encodeFixed64(file.fileSize), 8, 16);
+      valueBuf.fillBuffer(encodeFixed64(file.number), 0, 8);
+      valueBuf.fillBuffer(encodeFixed64(file.fileSize), 8, 16);
 
       yield {
         key: file.largest,

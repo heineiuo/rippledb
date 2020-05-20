@@ -20,8 +20,8 @@ import {
 } from "./Format";
 import Status from "./Status";
 import { Options, ReadOptions, defaultReadOptions } from "./Options";
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
+import { assert } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import { encodeFixed64 } from "./Coding";
 
 // Reader

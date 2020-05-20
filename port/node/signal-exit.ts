@@ -3,7 +3,7 @@
 // Note: since nyc uses this module to output coverage, any lines
 // that are in the direct sync flow of nyc's outputCoverage are
 // ignored, since we can never get coverage for them.
-import assert from "../../third_party/assert";
+import { assert } from "../../src/DBHelper";
 import EE from "events";
 
 // This is not the set of all possible signals.
@@ -74,9 +74,8 @@ if (!emitter.infinite) {
 }
 
 export function onExit(cb: any, opts?: any) {
-  assert.equal(
-    typeof cb,
-    "function",
+  assert(
+    typeof cb === "function",
     "a callback must be provided for exit handler",
   );
 

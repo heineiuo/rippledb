@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "./Buffer";
 
 export interface Stats<T = number> {
   isFile(): boolean;
@@ -227,7 +227,7 @@ export interface FileHandle {
 }
 
 export interface Env {
-  onExit?<T = unknown>(callback: T): void;
+  onExit<T = unknown>(callback: T): void;
 
   platform(): string;
   // get current time

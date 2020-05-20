@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import LRUCache from "../third_party/lru-cache";
+import LRUCache from "./LRUCache";
 
 export default class Cache<K, V> extends LRUCache<K, V> {
   constructor(options?: LRUCache.Options<K, V>) {

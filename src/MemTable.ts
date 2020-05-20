@@ -5,9 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
-import varint from "../third_party/varint";
+import { assert, varint } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import {
   SequenceNumber,
   ValueType,

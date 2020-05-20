@@ -5,9 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from "../third_party/buffer";
-import assert from "../third_party/assert";
-import varint from "../third_party/varint";
+import { Buffer } from "./Buffer";
+import { assert, varint } from "./DBHelper";
 import Slice from "./Slice";
 import MemTable from "./MemTable";
 import LogRecord from "./LogRecord";
@@ -43,7 +42,7 @@ export class WriteBatchInternal {
 
   // sequence must be lastSequence + 1
   static setSequence(batch: WriteBatch, sequence: number): void {
-    batch.head.fill(new SequenceNumber(sequence).toFixed64Buffer(), 0, 7);
+    batch.head.fillBuffer(new SequenceNumber(sequence).toFixed64Buffer(), 0, 7);
   }
 
   static getSequence(batch: WriteBatch): SequenceNumber {
@@ -51,7 +50,7 @@ export class WriteBatchInternal {
   }
 
   static setCount(batch: WriteBatch, count: number): void {
-    batch.head.fill(encodeFixed32(count), 8, 11);
+    batch.head.fillBuffer(encodeFixed32(count), 8, 11);
   }
 
   static getCount(batch: WriteBatch): number {

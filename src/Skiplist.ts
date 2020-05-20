@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
+import { assert } from "./DBHelper";
 import Slice from "./Slice";
 import SkiplistNode from "./SkiplistNode";
 

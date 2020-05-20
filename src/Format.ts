@@ -5,9 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
-import varint from "../third_party/varint";
+import { assert, varint } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import Slice from "./Slice";
 import { Comparator } from "./Comparator";
 import { decodeFixed64, encodeFixed64, decodeFixed32 } from "./Coding";
@@ -82,7 +81,7 @@ export enum CompressionTypes {
 // TODO maybe SequenceNumber should use bigint all time?
 // bigint to buffer:
 //   let bnum = (1n << 56n) - 1n
-//   Buffer.from(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
+//   Buffer.bufferFrom(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
 //  buf to bigint:
 //   let bnum = BigInt(`0x${buf.toString('hex')}`)
 export class SequenceNumber {
@@ -102,7 +101,7 @@ export class SequenceNumber {
   }
 
   toBuffer(): Buffer {
-    return Buffer.from(varint.encode(this._value));
+    return Buffer.bufferFrom(varint.encode(this._value));
   }
 
   public toFixed64Buffer = (): Buffer => {
@@ -155,7 +154,7 @@ export class InternalKey extends Slice {
 
   get sequence(): number {
     const sequenceBuf = Buffer.alloc(8);
-    sequenceBuf.fill(this.buffer.slice(this.buffer.length - 8), 0, 7);
+    sequenceBuf.fillBuffer(this.buffer.slice(this.buffer.length - 8), 0, 7);
     return decodeFixed32(sequenceBuf);
   }
 
@@ -234,7 +233,7 @@ export class InternalKeyComparator implements Comparator {
     // Attempt to shorten the user portion of the key
     const userStart = extractUserKey(start);
     const userLimit = extractUserKey(limit);
-    const tmp = new Slice(Buffer.from(userStart.buffer));
+    const tmp = new Slice(Buffer.bufferFrom(userStart.buffer));
     this.userComparator.findShortestSeparator(tmp, userLimit);
 
     if (
@@ -257,7 +256,7 @@ export class InternalKeyComparator implements Comparator {
 
   findShortSuccessor(key: Slice): void {
     const userKey = extractUserKey(key);
-    const tmp = new Slice(Buffer.from(userKey.buffer));
+    const tmp = new Slice(Buffer.bufferFrom(userKey.buffer));
     this._userComparator.findShortSuccessor(tmp);
     if (
       tmp.size < userKey.size &&
@@ -315,7 +314,7 @@ export function parseInternalKey(
   try {
     ikey.userKey = extractUserKey(internalKey);
     const snBuf = Buffer.alloc(8);
-    snBuf.fill(internalKey.buffer.slice(internalKey.length - 8), 0, 7);
+    snBuf.fillBuffer(internalKey.buffer.slice(internalKey.length - 8), 0, 7);
     ikey.sn = new SequenceNumber(decodeFixed64(snBuf));
     ikey.valueType = internalKey.buffer[internalKey.length - 1];
     return true;
@@ -334,9 +333,14 @@ export class LookupKey {
   // The suffix starting with "userkey" can be used as an InternalKey.
   constructor(userKey: Slice, sequence: SequenceNumber) {
     this._userKeyBuf = userKey.buffer;
-    this._internalKeySizeBuf = Buffer.from(varint.encode(userKey.size + 8));
+    this._internalKeySizeBuf = Buffer.bufferFrom(
+      varint.encode(userKey.size + 8),
+    );
     this._sequenceBuf = sequence.toFixed64Buffer();
-    this._sequenceBuf.fill(Buffer.from(varint.encode(kValueTypeForSeek)), 7);
+    this._sequenceBuf.fillBuffer(
+      Buffer.bufferFrom(varint.encode(kValueTypeForSeek)),
+      7,
+    );
   }
 
   private _internalKeySizeBuf: Buffer;
@@ -365,7 +369,9 @@ export class LookupKey {
 
   set userKey(userKey: Slice) {
     this._userKeyBuf = userKey.buffer;
-    this._internalKeySizeBuf = Buffer.from(varint.encode(userKey.size + 8));
+    this._internalKeySizeBuf = Buffer.bufferFrom(
+      varint.encode(userKey.size + 8),
+    );
   }
 }
 
@@ -398,8 +404,8 @@ export class BlockHandle {
     assert(typeof this.offset === "number");
     assert(typeof this.size === "number");
     return Buffer.concat([
-      Buffer.from(varint.encode(this.offset)),
-      Buffer.from(varint.encode(this.size)),
+      Buffer.bufferFrom(varint.encode(this.offset)),
+      Buffer.bufferFrom(varint.encode(this.size)),
     ]);
   }
 }

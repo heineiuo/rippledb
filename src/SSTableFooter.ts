@@ -5,9 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import varint from "../third_party/varint";
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
+import { varint, assert } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import { BlockHandle } from "./Format";
 
 /**
@@ -118,10 +117,10 @@ export default class TableFooter {
     indexSize: number;
   }): void {
     const handlers = Buffer.concat([
-      Buffer.from(varint.encode(data.metaIndexOffset)),
-      Buffer.from(varint.encode(data.metaIndexSize)),
-      Buffer.from(varint.encode(data.indexOffset)),
-      Buffer.from(varint.encode(data.indexSize)),
+      Buffer.fromArrayLike(varint.encode(data.metaIndexOffset)),
+      Buffer.fromArrayLike(varint.encode(data.metaIndexSize)),
+      Buffer.fromArrayLike(varint.encode(data.indexOffset)),
+      Buffer.fromArrayLike(varint.encode(data.indexSize)),
     ]);
     const paddingBuf = Buffer.alloc(40 - handlers.length);
     this._buffer = Buffer.concat([handlers, paddingBuf, Buffer.alloc(8)]);

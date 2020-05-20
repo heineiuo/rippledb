@@ -5,10 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import crc32 from "../third_party/buffer-crc32";
-import { Buffer } from "../third_party/buffer";
-import assert from "../third_party/assert";
-import varint from "../third_party/varint";
+import { crc32 } from "./Crc32";
+import { Buffer } from "./Buffer";
+import { assert, varint } from "./DBHelper";
 import Slice from "./Slice";
 import { InternalKey, VersionEditTag } from "./Format";
 import VersionEdit from "./VersionEdit";
@@ -28,52 +27,58 @@ export default class VersionEditRecord {
   static add(edit: VersionEdit): Slice {
     const bufList: Buffer[] = [];
     if (edit.hasComparator) {
-      bufList.push(Buffer.from([VersionEditTag.kComparator]));
-      bufList.push(Buffer.from(varint.encode(edit.comparator.length)));
-      bufList.push(Buffer.from(edit.comparator));
+      bufList.push(Buffer.fromArrayLike([VersionEditTag.kComparator]));
+      bufList.push(Buffer.fromArrayLike(varint.encode(edit.comparator.length)));
+      bufList.push(Buffer.bufferFrom(edit.comparator));
     }
     if (edit.hasLogNumber) {
-      bufList.push(Buffer.from([VersionEditTag.kLogNumber]));
-      bufList.push(Buffer.from(varint.encode(edit.logNumber)));
+      bufList.push(Buffer.fromArrayLike([VersionEditTag.kLogNumber]));
+      bufList.push(Buffer.fromArrayLike(varint.encode(edit.logNumber)));
     }
     if (edit.hasPrevLogNumber) {
-      bufList.push(Buffer.from([VersionEditTag.kPrevLogNumber]));
-      bufList.push(Buffer.from(varint.encode(edit.prevLogNumber)));
+      bufList.push(Buffer.fromArrayLike([VersionEditTag.kPrevLogNumber]));
+      bufList.push(Buffer.fromArrayLike(varint.encode(edit.prevLogNumber)));
     }
     if (edit.hasNextFileNumber) {
-      bufList.push(Buffer.from([VersionEditTag.kNextFileNumber]));
-      bufList.push(Buffer.from(varint.encode(edit.nextFileNumber)));
+      bufList.push(Buffer.fromArrayLike([VersionEditTag.kNextFileNumber]));
+      bufList.push(Buffer.fromArrayLike(varint.encode(edit.nextFileNumber)));
     }
     if (edit.hasLastSequence) {
-      bufList.push(Buffer.from([VersionEditTag.kLastSequence]));
-      bufList.push(Buffer.from(varint.encode(edit.lastSequence)));
+      bufList.push(Buffer.fromArrayLike([VersionEditTag.kLastSequence]));
+      bufList.push(Buffer.fromArrayLike(varint.encode(edit.lastSequence)));
     }
     edit.compactPointers.forEach(
       (pointer: { level: number; internalKey: Slice }) => {
-        bufList.push(Buffer.from([VersionEditTag.kCompactPointer]));
-        bufList.push(Buffer.from(varint.encode(pointer.level)));
-        bufList.push(Buffer.from(varint.encode(pointer.internalKey.length)));
+        bufList.push(Buffer.fromArrayLike([VersionEditTag.kCompactPointer]));
+        bufList.push(Buffer.fromArrayLike(varint.encode(pointer.level)));
+        bufList.push(
+          Buffer.fromArrayLike(varint.encode(pointer.internalKey.length)),
+        );
         bufList.push(pointer.internalKey.buffer);
       },
     );
 
     edit.deletedFiles.forEach((file: { level: number; fileNum: number }) => {
-      bufList.push(Buffer.from([VersionEditTag.kDeletedFile]));
-      bufList.push(Buffer.from(varint.encode(file.level)));
-      bufList.push(Buffer.from(varint.encode(file.fileNum)));
+      bufList.push(Buffer.fromArrayLike([VersionEditTag.kDeletedFile]));
+      bufList.push(Buffer.fromArrayLike(varint.encode(file.level)));
+      bufList.push(Buffer.fromArrayLike(varint.encode(file.fileNum)));
     });
 
     edit.newFiles.forEach((file: NewFile) => {
-      bufList.push(Buffer.from([VersionEditTag.kNewFile]));
-      bufList.push(Buffer.from(varint.encode(file.level)));
-      bufList.push(Buffer.from(varint.encode(file.fileMetaData.number)));
-      bufList.push(Buffer.from(varint.encode(file.fileMetaData.fileSize)));
+      bufList.push(Buffer.fromArrayLike([VersionEditTag.kNewFile]));
+      bufList.push(Buffer.fromArrayLike(varint.encode(file.level)));
       bufList.push(
-        Buffer.from(varint.encode(file.fileMetaData.smallest.length)),
+        Buffer.fromArrayLike(varint.encode(file.fileMetaData.number)),
+      );
+      bufList.push(
+        Buffer.fromArrayLike(varint.encode(file.fileMetaData.fileSize)),
+      );
+      bufList.push(
+        Buffer.fromArrayLike(varint.encode(file.fileMetaData.smallest.length)),
       );
       bufList.push(file.fileMetaData.smallest.buffer);
       bufList.push(
-        Buffer.from(varint.encode(file.fileMetaData.largest.length)),
+        Buffer.fromArrayLike(varint.encode(file.fileMetaData.largest.length)),
       );
       bufList.push(file.fileMetaData.largest.buffer);
     });
@@ -192,11 +197,10 @@ export default class VersionEditRecord {
   type: VersionEditTag;
 
   get buffer(): Buffer {
-    const lengthBuf = Buffer.from(
+    const lengthBuf = Buffer.fromHex(
       createHexStringFromDecimal(this.data.length),
-      "hex",
     );
-    const typeBuf = Buffer.from([this.type]);
+    const typeBuf = Buffer.fromArrayLike([this.type]);
     const sum = crc32(Buffer.concat([typeBuf, this.data.buffer]));
     return Buffer.concat([sum, lengthBuf, typeBuf, this.data.buffer]);
   }

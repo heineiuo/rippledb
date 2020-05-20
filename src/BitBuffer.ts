@@ -1,5 +1,5 @@
 // https://github.com/wiedi/node-bitbuffer
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "./Buffer";
 
 export default class BitBuffer {
   /**

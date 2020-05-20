@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import varint from "../third_party/varint";
-import { Buffer } from "../third_party/buffer";
+import { varint } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import Slice from "./Slice";
 import { FilterPolicy } from "./Options";
 import { decodeFixed32 } from "./Coding";

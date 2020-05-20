@@ -1,20 +1,38 @@
-const revLookup: number[] = [];
-
 export class Buffer extends Uint8Array {
-  // ArrayBuffer or Uint8Array objects from other contexts (i.e. iframes) do not pass
-  // the `instanceof` check but they should be treated as of that type.
-  // See: https://github.com/feross/buffer/issues/166
-  static isInstance(obj: any, type: any): boolean {
-    return (
-      obj instanceof type ||
-      (obj != null &&
-        obj.constructor != null &&
-        obj.constructor.name != null &&
-        obj.constructor.name === type.name)
+  static kMaxLength = 0x7fffffff;
+
+  static bufferFrom(
+    value: string | Uint8Array | Buffer | ArrayBuffer | { length: number },
+    encodingOrOffset?: number | string,
+    length?: number,
+  ): Buffer {
+    if (Buffer.isBuffer(value)) return value;
+
+    if (typeof value === "string") {
+      return Buffer.fromUTF8(value);
+    }
+
+    if (Array.isArray(value)) {
+      return Buffer.fromArrayLike(value);
+    }
+
+    if (Buffer.isArrayBuffer(value)) {
+      if (typeof encodingOrOffset === "number") {
+        return Buffer.fromArrayBuffer(value, encodingOrOffset, length);
+      } else {
+        return Buffer.fromArrayBuffer(value, 0);
+      }
+    }
+
+    if (typeof value.length === "number") {
+      return Buffer.createBuffer(value.length);
+    }
+
+    throw new TypeError(
+      "The first argument must be one of type string, Buffer, ArrayBuffer, Array. Received type " +
+        typeof value,
     );
   }
-
-  static kMaxLength = 0x7fffffff;
 
   static checkInt(
     buf: Buffer,
@@ -78,154 +96,32 @@ export class Buffer extends Uint8Array {
   }
 
   static isBuffer(obj: any): obj is Buffer {
-    // so Buffer.isBuffer(Buffer.prototype) will be false
-    return obj != null && obj._isBuffer === true && obj !== Buffer.prototype;
+    return obj instanceof Buffer;
   }
 
-  static byteLength(
-    string: ArrayBuffer | Buffer | string,
-    encoding?: string,
-    mustMatch?: boolean,
-  ): number {
-    if (Buffer.isBuffer(string)) {
-      return string.length;
-    }
-
-    if (ArrayBuffer.isView(string)) {
-      return string.byteLength;
-    }
-    if (typeof string !== "string") {
-      throw new TypeError(
-        'The "string" argument must be one of type string, Buffer, or ArrayBuffer. ' +
-          "Received type " +
-          typeof string,
+  static checked(length: number): number {
+    // Note: cannot use `length < K_MAX_LENGTH` here because that fails when
+    // length is NaN (which is otherwise coerced to zero.)
+    if (length >= Buffer.kMaxLength) {
+      throw new RangeError(
+        "Attempt to allocate Buffer larger than maximum " +
+          "size: 0x" +
+          Buffer.kMaxLength.toString(16) +
+          " bytes",
       );
     }
-
-    const len = string.length;
-    if (!mustMatch && len === 0) return 0;
-
-    // Use a for loop to avoid recursion
-    let loweredCase = false;
-    for (;;) {
-      switch (encoding) {
-        case "ascii":
-        case "latin1":
-        case "binary":
-          return len;
-        case "utf8":
-        case "utf-8":
-          return Buffer.utf8ToBytes(string).length;
-        case "ucs2":
-        case "ucs-2":
-        case "utf16le":
-        case "utf-16le":
-          return len * 2;
-        case "hex":
-          return len >>> 1;
-        case "base64":
-          return Buffer.base64ToBytes(string).length;
-        default:
-          if (loweredCase) {
-            return mustMatch ? -1 : Buffer.utf8ToBytes(string).length; // assume utf8
-          }
-          encoding = ("" + encoding).toLowerCase();
-          loweredCase = true;
-      }
-    }
+    return length | 0;
   }
 
-  static INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g;
-
-  static base64clean(str: string): string {
-    // Node takes equal signs as end of the Base64 encoding
-    str = str.split("=")[0];
-    // Node strips out invalid characters like \n and \t from the string, base64-js does not
-    str = str.trim().replace(Buffer.INVALID_BASE64_RE, "");
-    // Node converts strings with length < 2 to ''
-    if (str.length < 2) return "";
-    // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
-    while (str.length % 4 !== 0) {
-      str = str + "=";
-    }
-    return str;
-  }
-
-  static getLens(b64: string): [number, number] {
-    const len = b64.length;
-
-    if (len % 4 > 0) {
-      throw new Error("Invalid string. Length must be a multiple of 4");
-    }
-
-    // Trim off extra bytes after placeholder bytes are found
-    // See: https://github.com/beatgammit/base64-js/issues/42
-    let validLen = b64.indexOf("=");
-    if (validLen === -1) validLen = len;
-
-    const placeHoldersLen = validLen === len ? 0 : 4 - (validLen % 4);
-
-    return [validLen, placeHoldersLen];
-  }
-
-  static base64ToBytes(str: string): Uint8Array {
-    const b64 = Buffer.base64clean(str);
-
-    let tmp;
-    const lens = Buffer.getLens(b64);
-    const validLen = lens[0];
-    const placeHoldersLen = lens[1];
-
-    const b64ByteLength =
-      ((validLen + placeHoldersLen) * 3) / 4 - placeHoldersLen;
-
-    const arr = new Uint8Array(b64ByteLength);
-
-    let curByte = 0;
-
-    // if there are placeholders, only get up to the last complete 4 chars
-    const len = placeHoldersLen > 0 ? validLen - 4 : validLen;
-
-    let i;
-    for (i = 0; i < len; i += 4) {
-      tmp =
-        (revLookup[b64.charCodeAt(i)] << 18) |
-        (revLookup[b64.charCodeAt(i + 1)] << 12) |
-        (revLookup[b64.charCodeAt(i + 2)] << 6) |
-        revLookup[b64.charCodeAt(i + 3)];
-      arr[curByte++] = (tmp >> 16) & 0xff;
-      arr[curByte++] = (tmp >> 8) & 0xff;
-      arr[curByte++] = tmp & 0xff;
-    }
-
-    if (placeHoldersLen === 2) {
-      tmp =
-        (revLookup[b64.charCodeAt(i)] << 2) |
-        (revLookup[b64.charCodeAt(i + 1)] >> 4);
-      arr[curByte++] = tmp & 0xff;
-    }
-
-    if (placeHoldersLen === 1) {
-      tmp =
-        (revLookup[b64.charCodeAt(i)] << 10) |
-        (revLookup[b64.charCodeAt(i + 1)] << 4) |
-        (revLookup[b64.charCodeAt(i + 2)] >> 2);
-      arr[curByte++] = (tmp >> 8) & 0xff;
-      arr[curByte++] = tmp & 0xff;
-    }
-
-    return arr;
-  }
-
-  static utf8ToBytes(string: string, units?: number): number[] {
+  static utf8ToBytes(str: string, units?: number): number[] {
     units = units || Infinity;
     let codePoint;
-    const length = string.length;
+    const length = str.length;
     let leadSurrogate = null;
-    const bytes = [];
+    const bytes: number[] = [];
 
     for (let i = 0; i < length; ++i) {
-      codePoint = string.charCodeAt(i);
+      codePoint = str.charCodeAt(i);
 
       // is surrogate component
       if (codePoint > 0xd7ff && codePoint < 0xe000) {
@@ -295,37 +191,103 @@ export class Buffer extends Uint8Array {
     return bytes;
   }
 
-  static isEncoding(encoding: string): boolean {
-    switch (String(encoding).toLowerCase()) {
-      case "hex":
-      case "utf8":
-      case "utf-8":
-      case "ascii":
-      case "latin1":
-      case "binary":
-      case "base64":
-      case "ucs2":
-      case "ucs-2":
-      case "utf16le":
-      case "utf-16le":
-        return true;
-      default:
-        return false;
+  static toUTF8String(buf: Buffer, start = 0, end?: number): string {
+    end = Math.min(buf.length, end || buf.length);
+    const res = [];
+
+    let i = start;
+    while (i < end) {
+      const firstByte = buf[i];
+      let codePoint = null;
+      let bytesPerSequence =
+        firstByte > 0xef ? 4 : firstByte > 0xdf ? 3 : firstByte > 0xbf ? 2 : 1;
+
+      if (i + bytesPerSequence <= end) {
+        let secondByte, thirdByte, fourthByte, tempCodePoint;
+
+        switch (bytesPerSequence) {
+          case 1:
+            if (firstByte < 0x80) {
+              codePoint = firstByte;
+            }
+            break;
+          case 2:
+            secondByte = buf[i + 1];
+            if ((secondByte & 0xc0) === 0x80) {
+              tempCodePoint = ((firstByte & 0x1f) << 0x6) | (secondByte & 0x3f);
+              if (tempCodePoint > 0x7f) {
+                codePoint = tempCodePoint;
+              }
+            }
+            break;
+          case 3:
+            secondByte = buf[i + 1];
+            thirdByte = buf[i + 2];
+            if ((secondByte & 0xc0) === 0x80 && (thirdByte & 0xc0) === 0x80) {
+              tempCodePoint =
+                ((firstByte & 0xf) << 0xc) |
+                ((secondByte & 0x3f) << 0x6) |
+                (thirdByte & 0x3f);
+              if (
+                tempCodePoint > 0x7ff &&
+                (tempCodePoint < 0xd800 || tempCodePoint > 0xdfff)
+              ) {
+                codePoint = tempCodePoint;
+              }
+            }
+            break;
+          case 4:
+            secondByte = buf[i + 1];
+            thirdByte = buf[i + 2];
+            fourthByte = buf[i + 3];
+            if (
+              (secondByte & 0xc0) === 0x80 &&
+              (thirdByte & 0xc0) === 0x80 &&
+              (fourthByte & 0xc0) === 0x80
+            ) {
+              tempCodePoint =
+                ((firstByte & 0xf) << 0x12) |
+                ((secondByte & 0x3f) << 0xc) |
+                ((thirdByte & 0x3f) << 0x6) |
+                (fourthByte & 0x3f);
+              if (tempCodePoint > 0xffff && tempCodePoint < 0x110000) {
+                codePoint = tempCodePoint;
+              }
+            }
+        }
+      }
+
+      if (codePoint === null) {
+        // we did not generate a valid codePoint so insert a
+        // replacement char (U+FFFD) and advance only 1 byte
+        codePoint = 0xfffd;
+        bytesPerSequence = 1;
+      } else if (codePoint > 0xffff) {
+        // encode to utf16 (surrogate pair dance)
+        codePoint -= 0x10000;
+        res.push(((codePoint >>> 10) & 0x3ff) | 0xd800);
+        codePoint = 0xdc00 | (codePoint & 0x3ff);
+      }
+
+      res.push(codePoint);
+      i += bytesPerSequence;
     }
+
+    return String.fromCharCode.apply(null, res);
   }
 
-  static checked(length: number): number {
-    // Note: cannot use `length < K_MAX_LENGTH` here because that fails when
-    // length is NaN (which is otherwise coerced to zero.)
-    if (length >= Buffer.kMaxLength) {
-      throw new RangeError(
-        "Attempt to allocate Buffer larger than maximum " +
-          "size: 0x" +
-          Buffer.kMaxLength.toString(16) +
-          " bytes",
-      );
+  static blitBuffer(
+    src: number[],
+    dst: Buffer,
+    offset: number,
+    length: number,
+  ): number {
+    let i = 0;
+    for (i = 0; i < length; ++i) {
+      if (i + offset >= dst.length || i >= src.length) break;
+      dst[i + offset] = src[i];
     }
-    return length | 0;
+    return i;
   }
 
   static fromArrayLike(arr: number[]): Buffer {
@@ -337,9 +299,29 @@ export class Buffer extends Uint8Array {
     return buf;
   }
 
+  static fromUTF8(utf8String: string): Buffer {
+    const bytes = Buffer.utf8ToBytes(utf8String);
+    const length = bytes.length;
+    const buf = Buffer.alloc(length);
+    Buffer.blitBuffer(bytes, buf, 0, length);
+    return buf;
+  }
+
+  static fromHex(hexString: string): Buffer {
+    const len = Math.floor(hexString.length / 2);
+    const buf = Buffer.alloc(len);
+    for (let i = 0; i < len; ++i) {
+      const parsed = parseInt(hexString.substr(i * 2, 2), 16);
+      if (isNaN(parsed)) return buf;
+      buf[i] = parsed;
+    }
+
+    return buf;
+  }
+
   static fromArrayBuffer(
     array: ArrayBuffer,
-    byteOffset: number,
+    byteOffset = 0,
     length?: number,
   ): Buffer {
     if (byteOffset < 0 || array.byteLength < byteOffset) {
@@ -360,6 +342,32 @@ export class Buffer extends Uint8Array {
     }
 
     return new Buffer(buf);
+  }
+
+  // a<b: -1
+  static compare(a: Buffer, b: Buffer): 0 | -1 | 1 {
+    if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b)) {
+      throw new TypeError(
+        'The "a", "b" arguments must be one of type Buffer or Uint8Array',
+      );
+    }
+
+    if (a === b) return 0;
+
+    let x = a.length;
+    let y = b.length;
+
+    for (let i = 0, len = Math.min(x, y); i < len; ++i) {
+      if (a[i] !== b[i]) {
+        x = a[i];
+        y = b[i];
+        break;
+      }
+    }
+
+    if (x < y) return -1;
+    if (y < x) return 1;
+    return 0;
   }
 
   static isArrayBuffer(value: any): value is ArrayBuffer {
@@ -392,7 +400,7 @@ export class Buffer extends Uint8Array {
     return Buffer.createBuffer(size < 0 ? 0 : Buffer.checked(size) | 0);
   }
 
-  concat(list: Buffer[], length?: number): Buffer {
+  static concat(list: Buffer[], length?: number): Buffer {
     if (!Array.isArray(list)) {
       throw new TypeError('"list" argument must be an Array of Buffers');
     }
@@ -478,10 +486,63 @@ export class Buffer extends Uint8Array {
     return len;
   }
 
+  fillBuffer(val: Buffer, start = 0, end?: number): Buffer {
+    end = end || this.length;
+    if (start < 0 || this.length < start || this.length < end) {
+      throw new RangeError("Out of range index");
+    }
+
+    if (end <= start) {
+      return this;
+    }
+
+    start = start >>> 0;
+    end = end === undefined ? this.length : end >>> 0;
+
+    const len = val.length;
+    if (len === 0) {
+      throw new TypeError(
+        'The value "' + val + '" is invalid for argument "value"',
+      );
+    }
+
+    for (let i = 0; i < end - start; ++i) {
+      this[i + start] = val[i % len];
+    }
+
+    return this;
+  }
+
+  fillInt(val: number, start = 0, end?: number): Buffer {
+    val = val & 255;
+    end = end || this.length;
+
+    if (start < 0 || this.length < start || this.length < end) {
+      throw new RangeError("Out of range index");
+    }
+
+    if (end <= start) {
+      return this;
+    }
+
+    start = start >>> 0;
+    end = end === undefined ? this.length : end >>> 0;
+
+    if (!val) val = 0;
+
+    if (typeof val === "number") {
+      for (let i = start; i < end; ++i) {
+        this[i] = val;
+      }
+    }
+
+    return this;
+  }
+
   slice(start = 0, end?: number): Buffer {
     const len = this.length;
     start = ~~start;
-    end = end === undefined ? len : ~~end;
+    end = typeof end === "undefined" ? len : ~~end;
 
     if (start < 0) {
       start += len;
@@ -499,7 +560,7 @@ export class Buffer extends Uint8Array {
 
     if (end < start) end = start;
 
-    return new Buffer(this.subarray(start, end));
+    return Buffer.fromArrayBuffer(this.subarray(start, end));
   }
 
   readUInt8(offset = 0, noAssert = false): number {
@@ -641,46 +702,4 @@ export class Buffer extends Uint8Array {
     buf[offset++] = hi;
     return offset;
   }
-}
-
-function str2ab(str: string): ArrayBuffer {
-  const buf = new ArrayBuffer(str.length * 2); // 2 bytes for each char
-  const bufView = new Uint16Array(buf);
-  for (let i = 0, strLen = str.length; i < strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
-
-export function bufferFrom(
-  value: string | Uint8Array | Buffer | ArrayBuffer | { length: number },
-  encodingOrOffset?: number | string,
-  length?: number,
-): Buffer {
-  if (Buffer.isBuffer(value)) return value;
-
-  if (typeof value === "string") {
-    return Buffer.fromArrayBuffer(str2ab(value), 0);
-  }
-
-  if (Array.isArray(value)) {
-    return Buffer.fromArrayLike(value);
-  }
-
-  if (Buffer.isArrayBuffer(value)) {
-    if (typeof encodingOrOffset === "number") {
-      return Buffer.fromArrayBuffer(value, encodingOrOffset, length);
-    } else {
-      return Buffer.fromArrayBuffer(value, 0);
-    }
-  }
-
-  if (typeof value.length === "number") {
-    return Buffer.createBuffer(value.length);
-  }
-
-  throw new TypeError(
-    "The first argument must be one of type string, Buffer, ArrayBuffer, Array. Received type " +
-      typeof value,
-  );
 }

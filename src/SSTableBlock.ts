@@ -9,8 +9,8 @@ import { Comparator } from "./Comparator";
 import { decodeFixed32 } from "./Coding";
 import { BlockContents, kSizeOfUInt32, Entry } from "./Format";
 import Slice from "./Slice";
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
+import { assert } from "./DBHelper";
+import { Buffer } from "./Buffer";
 
 interface RestartedEntry {
   entry: Entry;

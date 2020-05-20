@@ -1,5 +1,5 @@
 import fs from "fs";
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "../src/Buffer";
 import Slice from "../src/Slice";
 import SSTable from "../src/SSTable";
 import SSTableBuilder from "../src/SSTableBuilder";
@@ -31,7 +31,9 @@ test("sstable", async () => {
   }
   i = 0;
   list.sort((a, b) =>
-    Buffer.from(a[0]).compare(Buffer.from(b[0])) < 0 ? -1 : 1,
+    Buffer.compare(Buffer.bufferFrom(a[0]), Buffer.bufferFrom(b[0])) < 0
+      ? -1
+      : 1,
   );
 
   while (i < count) {
@@ -54,8 +56,8 @@ test("sstable", async () => {
   const listValues = [];
   for await (const entry of table.entryIterator()) {
     const ikey = InternalKey.from(entry.key);
-    listKeys.push(ikey.userKey.toString());
-    listValues.push(entry.value.toString());
+    listKeys.push(ikey.userKey.toUTF8String());
+    listValues.push(entry.value.toUTF8String());
   }
 
   expect(list.map((pair) => pair[0]).join("|")).toEqual(listKeys.join("|"));
@@ -76,7 +78,7 @@ test("sstable reverse iterator", async () => {
   }
   i = 0;
   list.sort((a, b) =>
-    Buffer.from(a[0]).compare(Buffer.from(b[0])) < 0 ? -1 : 1,
+    Buffer.compare(Buffer.bufferFrom(a[0]), Buffer.bufferFrom(b[0])),
   );
 
   while (i < count) {
@@ -99,8 +101,8 @@ test("sstable reverse iterator", async () => {
   const listValues = [];
   for await (const entry of table.entryIterator(true)) {
     const ikey = InternalKey.from(entry.key);
-    listKeys.push(ikey.userKey.toString());
-    listValues.push(entry.value.toString());
+    listKeys.push(ikey.userKey.toUTF8String());
+    listValues.push(entry.value.toUTF8String());
   }
 
   const original = list

@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import varint from "../third_party/varint/index";
+import { varint } from "./DBHelper";
 import BitBuffer from "./BitBuffer";
 import BloomHash from "./MurmurHash";
 import Slice from "./Slice";
-import { Buffer } from "../third_party/buffer";
+import { Buffer } from "./Buffer";
 import { FilterPolicy } from "./Options";
 
 /**
@@ -26,7 +26,7 @@ export default class BloomFilter implements FilterPolicy {
     const k = Math.round(bitsPerKey * 0.69);
 
     if (!buffer || buffer.length === 0) {
-      this._buffer = Buffer.from(varint.encode(k));
+      this._buffer = Buffer.bufferFrom(varint.encode(k));
       this._bitBuffer = new BitBuffer(Buffer.alloc(Math.ceil(k / 8)));
       this._kNumber = k;
     } else {
@@ -39,7 +39,7 @@ export default class BloomFilter implements FilterPolicy {
         this._kNumber = k;
         this._buffer = Buffer.concat([
           this._buffer.slice(0, this._buffer.length - 1),
-          Buffer.from(varint.encode(k)),
+          Buffer.bufferFrom(varint.encode(k)),
         ]);
         this._bitBuffer.resizeBits(k);
       }
@@ -105,7 +105,7 @@ export default class BloomFilter implements FilterPolicy {
     for (let i = 0; i < n; i++) {
       // Use double-hashing to generate a sequence of hash values.
       // See analysis in [Kirsch,Mitzenmacher 2006].
-      let h = BloomHash(keys[i].toString());
+      let h = BloomHash(keys[i].toUTF8String());
       const delta = (h >> 17) | (h << 15);
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits;
@@ -127,7 +127,7 @@ export default class BloomFilter implements FilterPolicy {
     const filter = new BloomFilter(bloomFilter.buffer);
 
     if (filter.kNumber > 30) return true;
-    let h = BloomHash(key.toString());
+    let h = BloomHash(key.toUTF8String());
     const delta = (h >> 17) | (h << 15);
     for (let j = 0; j < filter.kNumber; j++) {
       const bitPosition = h % filter._bitBuffer.bits;

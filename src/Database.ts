@@ -5,9 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import path from "../third_party/path";
-import assert from "../third_party/assert";
-import { Buffer } from "../third_party/buffer";
+import { path, assert } from "./DBHelper";
+import { Buffer } from "./Buffer";
 import MemTable from "./MemTable";
 import LogWriter from "./LogWriter";
 import {
@@ -424,7 +423,7 @@ export default class Database {
 
   public async *iterator(
     options: IteratorOptions = {},
-  ): AsyncIterableIterator<{ key: Buffer; value: Buffer }> {
+  ): AsyncIterableIterator<{ key: Uint8Array; value: Uint8Array }> {
     if (!this._ok) await this.ok();
 
     const sequence = options.snapshot
@@ -530,9 +529,9 @@ export default class Database {
    * table.get
    */
   public async get(
-    userKey: string | Buffer,
+    userKey: string | Uint8Array,
     options: ReadOptions = {},
-  ): Promise<Buffer | void> {
+  ): Promise<Uint8Array | void> {
     if (!this._ok) await this.ok();
     const slicedUserKey = new Slice(userKey);
     const sequence = options.snapshot
@@ -547,7 +546,7 @@ export default class Database {
 
     let hasStatUpdate = false;
     const stats = {} as GetStats;
-    let result: Buffer | void = undefined;
+    let result: Uint8Array | void = undefined;
     while (true) {
       const memResult = this._memtable.get(lookupKey);
       if (!!memResult) {
@@ -603,7 +602,7 @@ export default class Database {
     return this.write(writeOptions, batch);
   }
 
-  public del(key: string | Buffer, options?: WriteOptions): Promise<void> {
+  public del(key: string | Uint8Array, options?: WriteOptions): Promise<void> {
     const batch = new WriteBatch();
     batch.del(key);
     const writeOptions = { ...defaultWriteOptions, ...options };
@@ -1234,8 +1233,8 @@ export default class Database {
    * manually compact
    */
   public async compactRange(
-    begin: Buffer | string,
-    end: Buffer | string,
+    begin: Uint8Array | string,
+    end: Uint8Array | string,
   ): Promise<void> {
     if (!this._ok) await this.ok();
     const sliceBegin = new Slice(begin);

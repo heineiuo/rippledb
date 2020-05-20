@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import crc32 from "../third_party/buffer-crc32";
-import { Buffer } from "../third_party/buffer";
-import assert from "../third_party/assert";
+import { crc32 } from "./Crc32";
+import { Buffer } from "./Buffer";
+import { assert } from "./DBHelper";
 import Slice from "./Slice";
 import BloomFilter from "./BloomFilter";
 import Footer from "./SSTableFooter";
@@ -125,7 +125,7 @@ export default class SSTableBuilder {
     const trailer = Buffer.alloc(kBlockTrailerSize);
     trailer[0] = type;
     const crc32buffer = crc32(
-      Buffer.concat([blockContent.buffer, Buffer.from([type])]),
+      Buffer.concat([blockContent.buffer, Buffer.bufferFrom([type])]),
     );
     trailer.fill(crc32buffer, 1, 5);
     await this.appendFile(trailer);
@@ -273,7 +273,7 @@ class BlockBuilder {
         key.buffer.slice(shared),
       ]),
     );
-    assert(this._lastKey.buffer.compare(key.buffer) === 0);
+    assert(Buffer.compare(this._lastKey.buffer, key.buffer) === 0);
   }
 
   public isEmpty(): boolean {
@@ -394,7 +394,7 @@ class FilterBlockBuilder {
     this._result = Buffer.concat([
       this._result,
       encodeFixed32(arrayOffset),
-      Buffer.from([FilterBlockBuilder.kFilterBaseLg]), // Save encoding parameter in result
+      Buffer.bufferFrom([FilterBlockBuilder.kFilterBaseLg]), // Save encoding parameter in result
     ]);
 
     return new Slice(this._result);

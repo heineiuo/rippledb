@@ -10,7 +10,7 @@ import Version from "./Version";
 import VersionEdit from "./VersionEdit";
 import { Config } from "./Format";
 import { FileMetaData, BySmallestKey, FileSet } from "./VersionFormat";
-import assert from "../third_party/assert";
+import { assert } from "./DBHelper";
 
 export default class VersionBuilder {
   constructor(versionSet: VersionSet, base: Version) {
