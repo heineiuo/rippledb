@@ -1,40 +1,40 @@
-import IteratorHelper from '../IteratorHelper'
+import IteratorHelper from "../src/IteratorHelper";
 
-test('iterator helper', async done => {
-  let asyncNumbersState = 'none'
-  let numbersState = 'none'
+test("iterator helper", async (done) => {
+  let asyncNumbersState = "none";
+  let numbersState = "none";
 
   async function* asyncNumbers(): AsyncIterableIterator<number> {
-    asyncNumbersState = 'started'
+    asyncNumbersState = "started";
     for (let i = 0; i < 100; i++) {
-      yield i
+      yield i;
     }
-    asyncNumbersState = 'done'
+    asyncNumbersState = "done";
   }
 
   function* numbers(): IterableIterator<number> {
-    numbersState = 'started'
+    numbersState = "started";
     for (let i = 0; i < 100; i++) {
-      yield i
+      yield i;
     }
-    numbersState = 'done'
+    numbersState = "done";
   }
 
   for await (const i of IteratorHelper.wrap(asyncNumbers(), () => {
-    asyncNumbersState = 'break'
+    asyncNumbersState = "break";
   })) {
-    if (i > 10) break
+    if (i > 10) break;
   }
 
-  expect(asyncNumbersState).toBe('break')
+  expect(asyncNumbersState).toBe("break");
 
   for (const i of IteratorHelper.wrap(numbers(), () => {
-    numbersState = 'break'
+    numbersState = "break";
   })) {
-    if (i > 10) break
+    if (i > 10) break;
   }
 
-  expect(numbersState).toBe('break')
+  expect(numbersState).toBe("break");
 
-  done()
-})
+  done();
+});

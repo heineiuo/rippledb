@@ -1,9 +1,9 @@
-import { InternalDatabase, Env, Options } from "../src";
+import { InternalDatabase, Env, DatabaseOptions } from "../src";
 import fs from "fs";
 import os from "os";
 import { FileHandle } from "../src/Env";
 
-class NodeEnv implements Env {
+export class NodeEnv implements Env {
   platform(): string {
     return os.platform();
   }
@@ -41,8 +41,8 @@ class NodeEnv implements Env {
   }
 }
 
-export default class Database extends InternalDatabase {
-  constructor(dbpath: string, options: Options) {
+export class Database extends InternalDatabase {
+  constructor(dbpath: string, options: DatabaseOptions = {}) {
     if (!options.env) options.env = new NodeEnv();
     super(dbpath, options);
   }

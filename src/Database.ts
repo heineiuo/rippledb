@@ -93,7 +93,7 @@ function getTableCacheSize(sanitizedOptions: Options): number {
 }
 
 export default class Database {
-  constructor(dbpath: string, options: DatabaseOptions) {
+  constructor(dbpath: string, options: DatabaseOptions = {}) {
     if (!options.env) throw new Error("env required");
     const env = options.env;
     this._backgroundCompactionScheduled = false;

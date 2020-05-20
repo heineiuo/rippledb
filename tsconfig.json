@@ -30,7 +30,7 @@
     "third_party"
   ],
   "exclude": [
-    "src/tests",
+    "tests",
     "node_modules"
   ]
 }

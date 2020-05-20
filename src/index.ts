@@ -7,5 +7,11 @@
 
 export { default as InternalDatabase } from "./Database";
 export { WriteBatch } from "./WriteBatch";
-export { Options, ReadOptions, WriteOptions, IteratorOptions } from "./Options";
+export {
+  Options,
+  ReadOptions,
+  DatabaseOptions,
+  WriteOptions,
+  IteratorOptions,
+} from "./Options";
 export { Env } from "./Env";
