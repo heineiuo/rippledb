@@ -1,8 +1,8 @@
-import { InternalDatabase, Env, DatabaseOptions } from "../src";
+import { InternalDatabase, Env, DatabaseOptions } from "../../src";
 import fs from "fs";
 import os from "os";
-import { FileHandle } from "../src/Env";
-import { onExit } from "../third_party/signal-exit";
+import { FileHandle } from "../../src/Env";
+import { onExit } from "./signal-exit";
 
 export class NodeEnv implements Env {
   platform(): string {

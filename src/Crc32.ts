@@ -1,4 +1,4 @@
-const Buffer = require("../buffer").Buffer;
+import { Buffer } from "./Buffer";
 
 let CRC_TABLE = [
   0x00000000,
@@ -300,14 +300,13 @@ function _crc32(buf, previous) {
   return crc ^ -1;
 }
 
-function crc32() {
+export function crc32(): Buffer {
   return bufferizeInt(_crc32.apply(null, arguments));
 }
+
 crc32.signed = function () {
   return _crc32.apply(null, arguments);
 };
 crc32.unsigned = function () {
   return _crc32.apply(null, arguments) >>> 0;
 };
-
-module.exports = crc32;

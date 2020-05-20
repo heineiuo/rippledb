@@ -35,7 +35,7 @@ describe("Compaction", () => {
     let randomCheckRecord = [];
     const randomCheckIndex = Math.floor(Math.random() * 1000);
     const dataset: [string | Buffer, string | Buffer][] = [];
-    for (let i = 0; i < 100000; i++) {
+    for (let i = 0; i < 10000; i++) {
       if (i === checkIndex) {
         dataset.push(["foo", "bar"]);
       } else if (i === randomCheckIndex) {

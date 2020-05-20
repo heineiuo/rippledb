@@ -1,24 +1,277 @@
-/*!
- * The buffer module from node.js, for the browser.
- *
- * @author   Feross Aboukhadijeh <https://feross.org>
- * @license  MIT
- */
-/* eslint-disable no-proto */
+// npm/base64-js@1.3.1
 
-"use strict";
+const lookup = [];
+const revLookup = [];
+const Arr = typeof Uint8Array !== "undefined" ? Uint8Array : Array;
 
-import base64 from "../base64-js";
-import ieee754 from "../ieee754";
+const code = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+for (let i = 0, len = code.length; i < len; ++i) {
+  lookup[i] = code[i];
+  revLookup[code.charCodeAt(i)] = i;
+}
+
+// Support decoding URL-safe base64 strings, as Node.js does.
+// See: https://en.wikipedia.org/wiki/Base64#URL_applications
+revLookup["-".charCodeAt(0)] = 62;
+revLookup["_".charCodeAt(0)] = 63;
+
+function getLens(b64) {
+  const len = b64.length;
+
+  if (len % 4 > 0) {
+    throw new Error("Invalid string. Length must be a multiple of 4");
+  }
+
+  // Trim off extra bytes after placeholder bytes are found
+  // See: https://github.com/beatgammit/base64-js/issues/42
+  let validLen = b64.indexOf("=");
+  if (validLen === -1) validLen = len;
+
+  const placeHoldersLen = validLen === len ? 0 : 4 - (validLen % 4);
+
+  return [validLen, placeHoldersLen];
+}
+
+// base64 is 4/3 + up to two characters of the original data
+function byteLengthBase64(b64) {
+  const lens = getLens(b64);
+  const validLen = lens[0];
+  const placeHoldersLen = lens[1];
+  return ((validLen + placeHoldersLen) * 3) / 4 - placeHoldersLen;
+}
+
+function _byteLength(b64, validLen, placeHoldersLen) {
+  return ((validLen + placeHoldersLen) * 3) / 4 - placeHoldersLen;
+}
+
+function toByteArray(b64) {
+  let tmp;
+  const lens = getLens(b64);
+  const validLen = lens[0];
+  const placeHoldersLen = lens[1];
+
+  const arr = new Arr(_byteLength(b64, validLen, placeHoldersLen));
+
+  let curByte = 0;
+
+  // if there are placeholders, only get up to the last complete 4 chars
+  const len = placeHoldersLen > 0 ? validLen - 4 : validLen;
+
+  let i;
+  for (i = 0; i < len; i += 4) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 18) |
+      (revLookup[b64.charCodeAt(i + 1)] << 12) |
+      (revLookup[b64.charCodeAt(i + 2)] << 6) |
+      revLookup[b64.charCodeAt(i + 3)];
+    arr[curByte++] = (tmp >> 16) & 0xff;
+    arr[curByte++] = (tmp >> 8) & 0xff;
+    arr[curByte++] = tmp & 0xff;
+  }
+
+  if (placeHoldersLen === 2) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 2) |
+      (revLookup[b64.charCodeAt(i + 1)] >> 4);
+    arr[curByte++] = tmp & 0xff;
+  }
+
+  if (placeHoldersLen === 1) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 10) |
+      (revLookup[b64.charCodeAt(i + 1)] << 4) |
+      (revLookup[b64.charCodeAt(i + 2)] >> 2);
+    arr[curByte++] = (tmp >> 8) & 0xff;
+    arr[curByte++] = tmp & 0xff;
+  }
+
+  return arr;
+}
+
+function tripletToBase64(num) {
+  return (
+    lookup[(num >> 18) & 0x3f] +
+    lookup[(num >> 12) & 0x3f] +
+    lookup[(num >> 6) & 0x3f] +
+    lookup[num & 0x3f]
+  );
+}
+
+function encodeChunk(uint8, start, end) {
+  let tmp;
+  const output = [];
+  for (let i = start; i < end; i += 3) {
+    tmp =
+      ((uint8[i] << 16) & 0xff0000) +
+      ((uint8[i + 1] << 8) & 0xff00) +
+      (uint8[i + 2] & 0xff);
+    output.push(tripletToBase64(tmp));
+  }
+  return output.join("");
+}
+
+function fromByteArray(uint8) {
+  let tmp;
+  const len = uint8.length;
+  const extraBytes = len % 3; // if we have 1 byte left, pad 2 bytes
+  const parts = [];
+  const maxChunkLength = 16383; // must be multiple of 3
+
+  // go through the array every three bytes, we'll deal with trailing stuff later
+  for (let i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
+    parts.push(
+      encodeChunk(
+        uint8,
+        i,
+        i + maxChunkLength > len2 ? len2 : i + maxChunkLength,
+      ),
+    );
+  }
+
+  // pad the end with zeros, but make sure to not forget the extra bytes
+  if (extraBytes === 1) {
+    tmp = uint8[len - 1];
+    parts.push(lookup[tmp >> 2] + lookup[(tmp << 4) & 0x3f] + "==");
+  } else if (extraBytes === 2) {
+    tmp = (uint8[len - 2] << 8) + uint8[len - 1];
+    parts.push(
+      lookup[tmp >> 10] +
+        lookup[(tmp >> 4) & 0x3f] +
+        lookup[(tmp << 2) & 0x3f] +
+        "=",
+    );
+  }
+
+  return parts.join("");
+}
+
+const base64 = {
+  byteLength: byteLengthBase64,
+  toByteArray,
+  fromByteArray,
+};
+
+// ieee754
+const read = function (
+  buffer: Buffer,
+  offset: number,
+  isLE: boolean,
+  mLen: number,
+  nBytes: number,
+): number {
+  let e, m;
+  const eLen = nBytes * 8 - mLen - 1;
+  const eMax = (1 << eLen) - 1;
+  const eBias = eMax >> 1;
+  let nBits = -7;
+  let i = isLE ? nBytes - 1 : 0;
+  const d = isLE ? -1 : 1;
+  let s = buffer[offset + i];
+
+  i += d;
+
+  e = s & ((1 << -nBits) - 1);
+  s >>= -nBits;
+  nBits += eLen;
+  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+  m = e & ((1 << -nBits) - 1);
+  e >>= -nBits;
+  nBits += mLen;
+  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+  if (e === 0) {
+    e = 1 - eBias;
+  } else if (e === eMax) {
+    return m ? NaN : (s ? -1 : 1) * Infinity;
+  } else {
+    m = m + Math.pow(2, mLen);
+    e = e - eBias;
+  }
+  return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
+};
+
+const write = function (
+  buffer: Buffer,
+  value: number,
+  offset: number,
+  isLE: boolean,
+  mLen: number,
+  nBytes: number,
+): void {
+  let e, m, c;
+  let eLen = nBytes * 8 - mLen - 1;
+  const eMax = (1 << eLen) - 1;
+  const eBias = eMax >> 1;
+  const rt = mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0;
+  let i = isLE ? 0 : nBytes - 1;
+  const d = isLE ? 1 : -1;
+  const s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0;
+
+  value = Math.abs(value);
+
+  if (isNaN(value) || value === Infinity) {
+    m = isNaN(value) ? 1 : 0;
+    e = eMax;
+  } else {
+    e = Math.floor(Math.log(value) / Math.LN2);
+    if (value * (c = Math.pow(2, -e)) < 1) {
+      e--;
+      c *= 2;
+    }
+    if (e + eBias >= 1) {
+      value += rt / c;
+    } else {
+      value += rt * Math.pow(2, 1 - eBias);
+    }
+    if (value * c >= 2) {
+      e++;
+      c /= 2;
+    }
+
+    if (e + eBias >= eMax) {
+      m = 0;
+      e = eMax;
+    } else if (e + eBias >= 1) {
+      m = (value * c - 1) * Math.pow(2, mLen);
+      e = e + eBias;
+    } else {
+      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen);
+      e = 0;
+    }
+  }
+
+  for (
+    ;
+    mLen >= 8;
+    buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8
+  ) {}
+
+  e = (e << mLen) | m;
+  eLen += mLen;
+  for (
+    ;
+    eLen > 0;
+    buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8
+  ) {}
+
+  buffer[offset + i - d] |= s * 128;
+};
+
+const ieee754 = {
+  read,
+  write,
+};
+
 const customInspectSymbol =
   typeof Symbol === "function" && typeof Symbol.for === "function"
     ? Symbol.for("nodejs.util.inspect.custom")
     : null;
 
-exports.INSPECT_MAX_BYTES = 50;
-
 const K_MAX_LENGTH = 0x7fffffff;
-exports.kMaxLength = K_MAX_LENGTH;
+
+Buffer.INSPECT_MAX_BYTES = 50;
+Buffer.kMaxLength = K_MAX_LENGTH;
 
 /**
  * If `Buffer.TYPED_ARRAY_SUPPORT`:
@@ -448,7 +701,7 @@ function byteLength(string, encoding) {
   if (Buffer.isBuffer(string)) {
     return string.length;
   }
-  if (ArrayBuffer.isView(string) || isInstance(string, ArrayBuffer)) {
+  if (ArrayBuffer.isView(string) || Buffer.isInstance(string, ArrayBuffer)) {
     return string.byteLength;
   }
   if (typeof string !== "string") {
@@ -632,7 +885,7 @@ Buffer.prototype.equals = function equals(b) {
 
 Buffer.prototype.inspect = function inspect() {
   let str = "";
-  const max = exports.INSPECT_MAX_BYTES;
+  const max = Buffer.INSPECT_MAX_BYTES;
   str = this.toString("hex", 0, max)
     .replace(/(.{2})/g, "$1 ")
     .trim();
@@ -1566,9 +1819,9 @@ Buffer.prototype.writeUInt16BE = function writeUInt16BE(
 };
 
 Buffer.prototype.writeUInt32LE = function writeUInt32LE(
-  value,
-  offset,
-  noAssert,
+  value: number,
+  offset: number,
+  noAssert?: boolean,
 ) {
   value = +value;
   offset = offset >>> 0;

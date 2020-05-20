@@ -1,6 +1,6 @@
-// npm/varint@5.0.0
+// source from npm/varint@5.0.0
 
-import { Buffer } from "../buffer";
+import { Buffer } from "./buffer";
 
 const MSB = 0x80;
 const REST = 0x7f;
