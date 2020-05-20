@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import varint from 'varint'
-import Slice from './Slice'
-import { ValueType } from './Format'
+import varint from "../third_party/varint";
+import Slice from "./Slice";
+import { ValueType } from "./Format";
 
 export default class LogRecord {
   static add(key: Slice, value: Slice): Slice {
@@ -18,8 +18,8 @@ export default class LogRecord {
         key.buffer,
         Buffer.from(varint.encode(value.length)),
         value.buffer,
-      ])
-    )
+      ]),
+    );
   }
 
   static del(key: Slice): Slice {
@@ -28,8 +28,8 @@ export default class LogRecord {
         Buffer.from([ValueType.kTypeDeletion]),
         Buffer.from(varint.encode(key.length)),
         key.buffer,
-      ])
-    )
+      ]),
+    );
   }
 
   // static decode(op: Slice): { type: ValueType; key: Slice; value?: Slice } {

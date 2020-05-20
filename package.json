@@ -1,7 +1,7 @@
 {
   "name": "rippledb",
   "version": "0.3.1",
-  "main": "build/index.js",
+  "main": "build/port/node.js",
   "repository": "https://github.com/heineiuo/rippledb",
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
@@ -12,7 +12,7 @@
     "bench": "node --prof benchmarks/bench_write.js",
     "bench:graph": "node --prof-process --preprocess -j isolate*.log | flamebearer",
     "build": "babel src -d build --ignore 'src/tests' --source-maps --extensions \".ts\" && tsc -d",
-    "prepublish": "export NODE_ENV=production && yarn build"
+    "prepublish": "export NODE_ENV=production && npm run build"
   },
   "files": [
     "build",
@@ -47,12 +47,6 @@
     "rimraf": "^3.0.0",
     "typescript": "~3.4",
     "yargs": "^15.0.2"
-  },
-  "dependencies": {
-    "buffer-crc32": "^0.2.13",
-    "lru-cache": "^5.1.1",
-    "signal-exit": "^3.0.2",
-    "varint": "^5.0.0"
   },
   "jest": {
     "moduleFileExtensions": [

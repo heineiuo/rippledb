@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-export { default as Database } from './Database'
-export { WriteBatch } from './WriteBatch'
-export { Options, ReadOptions, WriteOptions, IteratorOptions } from './Options'
+export { default as InternalDatabase } from "./Database";
+export { WriteBatch } from "./WriteBatch";
+export { Options, ReadOptions, WriteOptions, IteratorOptions } from "./Options";
+export { Env } from "./Env";

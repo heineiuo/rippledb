@@ -25,7 +25,9 @@
     "noEmit": false
   },
   "include": [
-    "src"
+    "src",
+    "port",
+    "third_party"
   ],
   "exclude": [
     "src/tests",

@@ -5,11 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import varint from 'varint'
-import BitBuffer from './BitBuffer'
-import BloomHash from './MurmurHash'
-import Slice from './Slice'
-import { FilterPolicy } from './Options'
+import varint from "../third_party/varint/index";
+import BitBuffer from "./BitBuffer";
+import BloomHash from "./MurmurHash";
+import Slice from "./Slice";
+import { Buffer } from "../third_party/buffer";
+import { FilterPolicy } from "./Options";
 
 /**
  * time of hash is main effect
@@ -20,55 +21,57 @@ import { FilterPolicy } from './Options'
  */
 export default class BloomFilter implements FilterPolicy {
   constructor(buffer?: Buffer, bitsPerKey = 10) {
-    this._offset = 0
-    this._bitsPerKey = bitsPerKey
-    const k = Math.round(bitsPerKey * 0.69)
+    this._offset = 0;
+    this._bitsPerKey = bitsPerKey;
+    const k = Math.round(bitsPerKey * 0.69);
 
     if (!buffer || buffer.length === 0) {
-      this._buffer = Buffer.from(varint.encode(k))
-      this._bitBuffer = new BitBuffer(Buffer.alloc(Math.ceil(k / 8)))
-      this._kNumber = k
+      this._buffer = Buffer.from(varint.encode(k));
+      this._bitBuffer = new BitBuffer(Buffer.alloc(Math.ceil(k / 8)));
+      this._kNumber = k;
     } else {
-      this._buffer = buffer
-      this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 1))
-      this._kNumber = varint.decode(this._buffer.slice(this._buffer.length - 1))
+      this._buffer = buffer;
+      this._bitBuffer = new BitBuffer(buffer.slice(0, buffer.length - 1));
+      this._kNumber = varint.decode(
+        this._buffer.slice(this._buffer.length - 1),
+      );
       if (this._kNumber !== k) {
-        this._kNumber = k
+        this._kNumber = k;
         this._buffer = Buffer.concat([
           this._buffer.slice(0, this._buffer.length - 1),
           Buffer.from(varint.encode(k)),
-        ])
-        this._bitBuffer.resizeBits(k)
+        ]);
+        this._bitBuffer.resizeBits(k);
       }
     }
-    this._size = this._buffer.length
+    this._size = this._buffer.length;
   }
 
-  private _buffer: Buffer
-  private _offset: number
-  private _size: number
-  private _kNumber: number
-  private _bitBuffer: BitBuffer
-  private _bitsPerKey: number
+  private _buffer: Buffer;
+  private _offset: number;
+  private _size: number;
+  private _kNumber: number;
+  private _bitBuffer: BitBuffer;
+  private _bitsPerKey: number;
 
   get bitsPerKey(): number {
-    return this._bitsPerKey
+    return this._bitsPerKey;
   }
 
   get bitBuffer(): BitBuffer {
-    return this._bitBuffer
+    return this._bitBuffer;
   }
 
   get buffer(): Buffer {
-    return this._buffer
+    return this._buffer;
   }
 
   get size(): number {
-    return this._size
+    return this._size;
   }
 
   get kNumber(): number {
-    return this._kNumber
+    return this._kNumber;
   }
 
   // Return the name of this policy.  Note that if the filter encoding
@@ -76,7 +79,7 @@ export default class BloomFilter implements FilterPolicy {
   // must be changed.  Otherwise, old incompatible filters may be
   // passed to methods of this type.
   public name(): string {
-    return 'leveldb.BuiltinBloomFilter2'
+    return "leveldb.BuiltinBloomFilter2";
   }
 
   // keys[0,n-1] contains a list of keys (potentially with duplicates)
@@ -87,50 +90,50 @@ export default class BloomFilter implements FilterPolicy {
   // append the newly constructed filter to *dst.
   public putKeys(keys: Slice[], n: number): void {
     // Compute bloom filter size (in both bits and bytes)
-    let bits = this.bitsPerKey * n
+    let bits = this.bitsPerKey * n;
 
     // For small n, we can see a very high false positive rate.  Fix it
     // by enforcing a minimum bloom filter length.
-    if (bits < 64) bits = 64
+    if (bits < 64) bits = 64;
 
-    const bytes = (bits + 7) / 8
-    bits = bytes * 8
+    const bytes = (bits + 7) / 8;
+    bits = bytes * 8;
 
-    this._bitBuffer.resizeBits(bits)
-    bits = this._bitBuffer.bits
+    this._bitBuffer.resizeBits(bits);
+    bits = this._bitBuffer.bits;
 
     for (let i = 0; i < n; i++) {
       // Use double-hashing to generate a sequence of hash values.
       // See analysis in [Kirsch,Mitzenmacher 2006].
-      let h = BloomHash(keys[i].toString())
-      const delta = (h >> 17) | (h << 15)
+      let h = BloomHash(keys[i].toString());
+      const delta = (h >> 17) | (h << 15);
       for (let j = 0; j < this.kNumber; j++) {
-        const bitPosition = h % bits
-        this._bitBuffer.set(bitPosition, true)
-        h += delta
+        const bitPosition = h % bits;
+        this._bitBuffer.set(bitPosition, true);
+        h += delta;
       }
     }
     this._buffer = Buffer.concat([
       this._bitBuffer.buffer,
       this._buffer.slice(
         this._offset + this._size - 1,
-        this._offset + this._size
+        this._offset + this._size,
       ),
-    ])
-    this._size = this._buffer.length
+    ]);
+    this._size = this._buffer.length;
   }
 
   public keyMayMatch(key: Slice, bloomFilter: Slice): boolean {
-    const filter = new BloomFilter(bloomFilter.buffer)
+    const filter = new BloomFilter(bloomFilter.buffer);
 
-    if (filter.kNumber > 30) return true
-    let h = BloomHash(key.toString())
-    const delta = (h >> 17) | (h << 15)
+    if (filter.kNumber > 30) return true;
+    let h = BloomHash(key.toString());
+    const delta = (h >> 17) | (h << 15);
     for (let j = 0; j < filter.kNumber; j++) {
-      const bitPosition = h % filter._bitBuffer.bits
-      if (!filter._bitBuffer.get(bitPosition)) return false
-      h += delta
+      const bitPosition = h % filter._bitBuffer.bits;
+      if (!filter._bitBuffer.get(bitPosition)) return false;
+      h += delta;
     }
-    return true
+    return true;
   }
 }
