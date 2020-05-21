@@ -14,8 +14,8 @@
     "bench:log-clean": "rm -rf ./isolate-*.log",
     "bench:graph": "node --prof-process --preprocess -j isolate*.log | flamebearer",
     "build:src": "babel src -d build/src --ignore 'src/tests' --source-maps --extensions \".ts\"",
-    "build:port": "babel port -d build/port --ignore 'src/tests' --source-maps --extensions \".ts\"",
-    "build": "npm run build:src && npm run build:port",
+    "build:port-node": "babel port/node -d build/port/node --ignore 'src/tests' --source-maps --extensions \".ts\"",
+    "build": "npm run build:src && npm run build:port-node",
     "build:tsc": "tsc -d",
     "prepublish": "export NODE_ENV=production && npm run build"
   },

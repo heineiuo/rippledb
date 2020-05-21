@@ -5,10 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import LRUCache from "./LRUCache";
+import { LRUCache, LRUCacheOptions } from "./LRUCache";
 
 export default class Cache<K, V> extends LRUCache<K, V> {
-  constructor(options?: LRUCache.Options<K, V>) {
+  constructor(options?: LRUCacheOptions<K, V>) {
     super(options);
   }
 

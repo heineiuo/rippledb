@@ -50,12 +50,7 @@ if (process.platform === "linux") {
 
 const isWin = /^win/i.test(process.platform);
 
-/* istanbul ignore if */
-if (typeof EE !== "function") {
-  EE = EE.EventEmitter;
-}
-
-let emitter;
+let emitter: EE;
 if (process.__signal_exit_emitter__) {
   emitter = process.__signal_exit_emitter__;
 } else {
@@ -73,7 +68,7 @@ if (!emitter.infinite) {
   emitter.infinite = true;
 }
 
-export function onExit(cb: any, opts?: any) {
+export function onExit(cb: any, opts?: any): void {
   assert(
     typeof cb === "function",
     "a callback must be provided for exit handler",
@@ -151,9 +146,9 @@ signals.forEach(function (sig) {
   };
 });
 
-var loaded = false;
+let loaded = false;
 
-function load() {
+function load(): void {
   if (loaded) {
     return;
   }
@@ -178,7 +173,7 @@ function load() {
   process.reallyExit = processReallyExit;
 }
 
-var originalProcessReallyExit = process.reallyExit;
+const originalProcessReallyExit = process.reallyExit;
 function processReallyExit(code) {
   process.exitCode = code || 0;
   emit("exit", process.exitCode, null);
