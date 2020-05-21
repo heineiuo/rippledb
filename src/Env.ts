@@ -227,7 +227,7 @@ export interface FileHandle {
 }
 
 export interface Env {
-  onExit<T = unknown>(callback: T): void;
+  onExit(callback: () => void): void;
 
   platform(): string;
   // get current time
@@ -238,7 +238,7 @@ export interface Env {
   readFile(dbpath: string): Promise<Buffer>;
   readFile(
     dbpath: string,
-    options: { encoding: string },
+    options?: { encoding?: string },
   ): Promise<string | Buffer>;
   readFile(dbpath: string, bufferEncoding: "utf8"): Promise<string>;
   writeFile(dbpath: string, content: Buffer | string): Promise<void>;
