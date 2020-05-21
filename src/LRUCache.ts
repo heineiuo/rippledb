@@ -100,15 +100,11 @@ class Entry<K, V> {
 // cache is a Map (or PseudoMap) that matches the keys to
 // the Yallist.Node object.
 export class LRUCache<K, V> {
-  constructor(options: LRUCacheOptions<K, V>) {
-    if (typeof options === "number") options = { max: options };
-
-    if (!options) options = {};
-
+  constructor(options: LRUCacheOptions<K, V> = {}) {
     if (options.max && (typeof options.max !== "number" || options.max < 0))
       throw new TypeError("max must be a non-negative number");
     // Kind of weird to have a default max of Infinity, but oh well.
-    const max = (this[MAX] = options.max || Infinity);
+    this[MAX] = options.max || Infinity;
 
     const lc = options.length || naiveLength;
     this[LENGTH_CALCULATOR] = typeof lc !== "function" ? naiveLength : lc;
