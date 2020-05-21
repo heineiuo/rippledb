@@ -21,7 +21,7 @@ cleanup(dbpath);
 
 const options = { ...defaultOptions, env: new NodeEnv() };
 
-test("sstable", async () => {
+test("sstable", async (done) => {
   await fs.promises.mkdir(dbpath, { recursive: true });
   const fd1 = await fs.promises.open(getTableFilename(dbpath, 1), "w");
   const builder = new SSTableBuilder(options, fd1);
@@ -66,9 +66,12 @@ test("sstable", async () => {
 
   expect(list.map((pair) => pair[0]).join("|")).toEqual(listKeys.join("|"));
   expect(list.map((pair) => pair[1]).join("|")).toEqual(listValues.join("|"));
+
+  await fd.close();
+  done();
 });
 
-test("sstable reverse iterator", async () => {
+test("sstable reverse iterator", async (done) => {
   await fs.promises.mkdir(dbpath, { recursive: true });
   const fd1 = await fs.promises.open(getTableFilename(dbpath, 2), "w");
   const builder = new SSTableBuilder(options, fd1);
@@ -117,4 +120,6 @@ test("sstable reverse iterator", async () => {
   // console.log(original)
   // console.log(listValues.join('|'))
   expect(listValues.join("|")).toEqual(original);
+  await fd.close();
+  done();
 });
