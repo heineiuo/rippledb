@@ -5,39 +5,38 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import assert from 'assert'
-import { InternalKeyComparator, InternalKey } from './Format'
-import { Options } from './Options'
+import { InternalKeyComparator, InternalKey } from "./Format";
+import { Options } from "./Options";
 
 export class FileMetaData {
   // reference count
-  refs: number
+  refs: number;
   // if seeks > allowedSeeks, trigger compaction
-  allowedSeeks: number
-  fileSize: number
-  number!: number
-  smallest!: InternalKey
-  largest!: InternalKey
+  allowedSeeks: number;
+  fileSize: number;
+  number!: number;
+  smallest!: InternalKey;
+  largest!: InternalKey;
 
   constructor() {
-    this.refs = 0
-    this.allowedSeeks = 1 << 30
-    this.fileSize = 0
+    this.refs = 0;
+    this.allowedSeeks = 1 << 30;
+    this.fileSize = 0;
   }
 }
 
 export class BySmallestKey {
-  internalComparator!: InternalKeyComparator
+  internalComparator!: InternalKeyComparator;
 
   constructor(cmp?: InternalKeyComparator) {
-    if (cmp) this.internalComparator = cmp
+    if (cmp) this.internalComparator = cmp;
   }
 
   // if file1 < file2 then true
   operator(file1: FileMetaData, file2: FileMetaData): boolean {
-    const r = this.internalComparator.compare(file1.smallest, file2.smallest)
-    if (r === 0) return file1.number < file2.number
-    return r < 0
+    const r = this.internalComparator.compare(file1.smallest, file2.smallest);
+    if (r === 0) return file1.number < file2.number;
+    return r < 0;
   }
 }
 
@@ -45,31 +44,31 @@ export class BySmallestKey {
 // is equal then compare file number
 // TODO not copy inserted value here, just reference, should copy?
 export class FileSet {
-  _set: FileMetaData[]
-  compare: BySmallestKey
+  _set: FileMetaData[];
+  compare: BySmallestKey;
 
   constructor(cmp: BySmallestKey) {
-    this.compare = cmp
-    this._set = []
+    this.compare = cmp;
+    this._set = [];
   }
 
   add(file: FileMetaData): void {
-    if (this._set.find(item => item.number === file.number)) {
-      return
+    if (this._set.find((item) => item.number === file.number)) {
+      return;
     }
-    const setLength = this._set.length
+    const setLength = this._set.length;
     if (setLength === 0) {
-      this._set.push(file)
+      this._set.push(file);
     } else {
       for (let i = 0; i < setLength; i++) {
-        const file1 = this._set[i]
-        const b = this.compare.operator(file, file1)
+        const file1 = this._set[i];
+        const b = this.compare.operator(file, file1);
         if (b) {
-          this._set.splice(i, 0, file)
-          return
+          this._set.splice(i, 0, file);
+          return;
         }
       }
-      this._set.push(file)
+      this._set.push(file);
     }
   }
 
@@ -108,52 +107,52 @@ export class FileSet {
   // }
 
   *iterator(): IterableIterator<FileMetaData> {
-    const setLength = this._set.length
+    const setLength = this._set.length;
     for (let i = 0; i < setLength; i++) {
-      yield this._set[i]
+      yield this._set[i];
     }
   }
 }
 
 export type FileMetaDataLeveldb = {
-  fileNum: number
-  fileSize: number
-  smallestKey: InternalKey
-  largestKey: InternalKey
-}
+  fileNum: number;
+  fileSize: number;
+  smallestKey: InternalKey;
+  largestKey: InternalKey;
+};
 
 export type CompactPointer = {
-  level: number
-  internalKey: InternalKey
-}
+  level: number;
+  internalKey: InternalKey;
+};
 
 export type DeletedFile = {
-  level: number
-  fileNum: number
-}
+  level: number;
+  fileNum: number;
+};
 
 export type NewFile = {
-  level: number
-  fileMetaData: FileMetaData
-}
+  level: number;
+  fileMetaData: FileMetaData;
+};
 
 export function getMaxBytesForLevel(level: number): number {
   // Note: the result for level zero is not really used since we set
   // the level-0 compaction threshold based on number of files.
   // Result for both level-0 and level-1
-  let result = 10.0 * 1048576.0
+  let result = 10.0 * 1048576.0;
   while (level > 1) {
-    result *= 10
-    level--
+    result *= 10;
+    level--;
   }
-  return result
+  return result;
 }
 
 export function getExpandedCompactionByteSizeLimit(options: Options): number {
-  return 25 * options.maxFileSize
+  return 25 * options.maxFileSize;
 }
 
 export interface GetStats {
-  seekFile: FileMetaData
-  seekFileLevel: number
+  seekFile: FileMetaData;
+  seekFileLevel: number;
 }

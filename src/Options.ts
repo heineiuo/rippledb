@@ -5,42 +5,57 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { BytewiseComparator } from './Comparator'
-import BloomFilter from './BloomFilter'
-import { Comparator } from './Comparator'
-import Slice from './Slice'
-import { Env, NodeEnv, InfoLog } from './Env'
-import { SequenceNumber } from './Format'
-import Block from './SSTableBlock'
-import Cache from './Cache'
+import { BytewiseComparator } from "./Comparator";
+import BloomFilter from "./BloomFilter";
+import { Comparator } from "./Comparator";
+import Slice from "./Slice";
+import { Env, FileHandle } from "./Env";
+import { SequenceNumber } from "./Format";
+import Block from "./SSTableBlock";
+import Cache from "./Cache";
+import { Buffer } from "./Buffer";
 
 export interface FilterPolicy {
-  name(): string
-  keyMayMatch(key: Slice, filter: Slice): boolean
+  name(): string;
+  keyMayMatch(key: Slice, filter: Slice): boolean;
 }
 
-export class ReadOptions {
+export interface ReadOptions {
   // If true, all data read from underlying storage will be
   // verified against corresponding checksums.
-  verifyChecksums = false
+  verifyChecksums?: boolean;
 
   // Should the data read for this iteration be cached in memory?
   // Callers may wish to set this field to false for bulk scans.
-  fillCache = true
+  fillCache?: boolean;
 
   // If "snapshot" is non-null, read as of the supplied snapshot
   // (which must belong to the DB that is being read and which must
   // not have been released).  If "snapshot" is null, use an implicit
   // snapshot of the state at the beginning of this read operation.
-  snapshot!: SequenceNumber
+  snapshot?: SequenceNumber;
 }
 
-export class IteratorOptions extends ReadOptions {
-  reverse = false
-  start: string | Buffer = Buffer.alloc(0)
+export const defaultReadOptions: Omit<Required<ReadOptions>, "snapshot"> = {
+  verifyChecksums: false,
+  fillCache: true,
+};
+
+export interface IteratorOptions extends ReadOptions {
+  reverse?: boolean;
+  start?: string | Buffer;
 }
 
-export class WriteOptions {
+export const defaultIteratorOptions: Omit<
+  Required<IteratorOptions>,
+  "snapshot"
+> = {
+  reverse: false,
+  start: Buffer.alloc(0),
+  ...defaultReadOptions,
+};
+
+export interface WriteOptions {
   // If true, the write will be flushed from the operating system
   // buffer cache (by calling WritableFile::Sync()) before the write
   // is considered complete.  If this flag is true, writes will be
@@ -55,17 +70,21 @@ export class WriteOptions {
   // crash semantics as the "write()" system call.  A DB write
   // with sync==true has similar crash semantics to a "write()"
   // system call followed by "fsync()".
-  sync = false
+  sync?: boolean;
 }
 
-export class Options {
+export const defaultWriteOptions: Required<WriteOptions> = {
+  sync: false,
+};
+
+export interface DatabaseOptions {
   // Comparator used to define the order of keys in the table.
   // Default: a comparator that uses lexicographic byte-wise ordering
   //
   // REQUIRES: The client must ensure that the comparator supplied
   // here has the same name and orders keys *exactly* the same as the
   // comparator provided to previous open calls on the same DB.
-  comparator: Comparator = new BytewiseComparator()
+  comparator?: Comparator;
 
   // Amount of data to build up in memory (backed by an unsorted log
   // on disk) before converting to a sorted on-disk file.
@@ -75,7 +94,7 @@ export class Options {
   // so you may wish to adjust this parameter to control memory usage.
   // Also, a larger write buffer will result in a longer recovery time
   // the next time the database is opened.
-  writeBufferSize = 4 * 1024 * 1024
+  writeBufferSize?: number;
 
   // Leveldb will write up to this amount of bytes to a file before
   // switching to a new one.
@@ -85,49 +104,65 @@ export class Options {
   // compactions and hence longer latency/performance hiccups.
   // Another reason to increase this parameter might be when you are
   // initially populating a large database.
-  maxFileSize = 2 * 1024 * 1024
+  maxFileSize?: number;
 
   // Number of open files that can be used by the DB.  You may need to
   // increase this if your database has a large working set (budget
   // one open file per 2MB of working set).
-  maxOpenFiles = 1000
+  maxOpenFiles?: number;
 
   // automatically create and use an 8MB internal cache.
   // 8MB = 2048 * blockSize(4096B)
-  blockCache = new Cache<Buffer, Block>({
-    max: 2048,
-  })
+  blockCache?: Cache<Buffer, Block>;
 
   // Approximate size of user data packed per block.  Note that the
   // block size specified here corresponds to uncompressed data.  The
   // actual size of the unit read from disk may be smaller if
   // compression is enabled.  This parameter can be changed dynamically.
-  blockSize = 4 * 1024
+  blockSize?: number;
 
   // Number of keys between restart points for delta encoding of keys.
   // This parameter can be changed dynamically.  Most clients should
   // leave this parameter alone.
-  blockRestartInterval = 16
-
-  // Use the specified object to interact with the environment,
-  // e.g. to read/write files, schedule background work, etc.
-  // Default: Env::Default()
-  env: Env = new NodeEnv()
-
-  // Any internal progress/error information generated by the db will
-  // be written to info_log if it is non-null, or to a file stored
-  // in the same directory as the DB contents if info_log is null.
-  infoLog!: InfoLog
+  blockRestartInterval?: number;
 
   // EXPERIMENTAL: If true, append to existing MANIFEST and log files
   // when a database is opened.  This can significantly speed up open.
   //
   // Default: currently false, but may become true later.
-  reuseLogs = false
+  reuseLogs?: boolean;
 
-  filterPolicy: FilterPolicy = new BloomFilter()
+  filterPolicy?: FilterPolicy;
 
-  debug = false
+  debug?: boolean;
 
-  lockfileStale = 10000
+  lockfileStale?: number;
+
+  env?: Env;
+
+  log?: (message: string) => Promise<void>;
+
+  infoLog?: FileHandle | null;
 }
+
+export type Options = Required<DatabaseOptions>;
+
+export const defaultOptions: Omit<Required<Options>, "env"> = {
+  comparator: new BytewiseComparator(),
+  writeBufferSize: 4 * 1024 * 1024,
+  maxFileSize: 2 * 1024 * 1024,
+  maxOpenFiles: 1000,
+  blockCache: new Cache<Buffer, Block>({
+    max: 2048,
+  }),
+  blockSize: 4 * 1024,
+  blockRestartInterval: 16,
+  reuseLogs: false,
+  filterPolicy: new BloomFilter(),
+  debug: false,
+  lockfileStale: 10000,
+  infoLog: null,
+  async log(message: string): Promise<void> {
+    if (this.infoLog) await this.infoLog.appendFile(message);
+  },
+};

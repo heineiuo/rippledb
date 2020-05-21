@@ -25,10 +25,11 @@
     "noEmit": false
   },
   "include": [
-    "src"
+    "src",
+    "port/node",
   ],
   "exclude": [
-    "src/tests",
+    "tests",
     "node_modules"
   ]
 }

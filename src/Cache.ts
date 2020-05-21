@@ -5,16 +5,16 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import LRUCache from 'lru-cache'
+import { LRUCache, LRUCacheOptions } from "./LRUCache";
 
 export default class Cache<K, V> extends LRUCache<K, V> {
-  constructor(options?: LRUCache.Options<K, V>) {
-    super(options)
+  constructor(options?: LRUCacheOptions<K, V>) {
+    super(options);
   }
 
-  private _id = 0n
+  private _id = 0n;
 
   newId(): bigint {
-    return ++this._id
+    return ++this._id;
   }
 }
