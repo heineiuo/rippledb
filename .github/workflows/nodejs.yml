@@ -36,7 +36,7 @@ jobs:
 
       - name: Test
         run: |
-          npm test tests --coverage
+          npx jest tests --coverage
         env:
           CI: true
 
