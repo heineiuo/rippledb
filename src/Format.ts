@@ -81,7 +81,7 @@ export enum CompressionTypes {
 // TODO maybe SequenceNumber should use bigint all time?
 // bigint to buffer:
 //   let bnum = (1n << 56n) - 1n
-//   Buffer.bufferFrom(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
+//   Buffer.fromUnknown(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
 //  buf to bigint:
 //   let bnum = BigInt(`0x${buf.toString('hex')}`)
 export class SequenceNumber {
@@ -101,7 +101,7 @@ export class SequenceNumber {
   }
 
   toBuffer(): Buffer {
-    return Buffer.bufferFrom(varint.encode(this._value));
+    return Buffer.fromUnknown(varint.encode(this._value));
   }
 
   public toFixed64Buffer = (): Buffer => {
@@ -233,7 +233,7 @@ export class InternalKeyComparator implements Comparator {
     // Attempt to shorten the user portion of the key
     const userStart = extractUserKey(start);
     const userLimit = extractUserKey(limit);
-    const tmp = new Slice(Buffer.bufferFrom(userStart.buffer));
+    const tmp = new Slice(Buffer.fromUnknown(userStart.buffer));
     this.userComparator.findShortestSeparator(tmp, userLimit);
 
     if (
@@ -256,7 +256,7 @@ export class InternalKeyComparator implements Comparator {
 
   findShortSuccessor(key: Slice): void {
     const userKey = extractUserKey(key);
-    const tmp = new Slice(Buffer.bufferFrom(userKey.buffer));
+    const tmp = new Slice(Buffer.fromUnknown(userKey.buffer));
     this._userComparator.findShortSuccessor(tmp);
     if (
       tmp.size < userKey.size &&
@@ -333,12 +333,12 @@ export class LookupKey {
   // The suffix starting with "userkey" can be used as an InternalKey.
   constructor(userKey: Slice, sequence: SequenceNumber) {
     this._userKeyBuf = userKey.buffer;
-    this._internalKeySizeBuf = Buffer.bufferFrom(
+    this._internalKeySizeBuf = Buffer.fromUnknown(
       varint.encode(userKey.size + 8),
     );
     this._sequenceBuf = sequence.toFixed64Buffer();
     this._sequenceBuf.fillBuffer(
-      Buffer.bufferFrom(varint.encode(kValueTypeForSeek)),
+      Buffer.fromUnknown(varint.encode(kValueTypeForSeek)),
       7,
     );
   }
@@ -369,7 +369,7 @@ export class LookupKey {
 
   set userKey(userKey: Slice) {
     this._userKeyBuf = userKey.buffer;
-    this._internalKeySizeBuf = Buffer.bufferFrom(
+    this._internalKeySizeBuf = Buffer.fromUnknown(
       varint.encode(userKey.size + 8),
     );
   }
@@ -404,8 +404,8 @@ export class BlockHandle {
     assert(typeof this.offset === "number");
     assert(typeof this.size === "number");
     return Buffer.concat([
-      Buffer.bufferFrom(varint.encode(this.offset)),
-      Buffer.bufferFrom(varint.encode(this.size)),
+      Buffer.fromUnknown(varint.encode(this.offset)),
+      Buffer.fromUnknown(varint.encode(this.size)),
     ]);
   }
 }

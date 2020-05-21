@@ -26,7 +26,7 @@ export default class BloomFilter implements FilterPolicy {
     const k = Math.round(bitsPerKey * 0.69);
 
     if (!buffer || buffer.length === 0) {
-      this._buffer = Buffer.bufferFrom(varint.encode(k));
+      this._buffer = Buffer.fromUnknown(varint.encode(k));
       this._bitBuffer = new BitBuffer(Buffer.alloc(Math.ceil(k / 8)));
       this._kNumber = k;
     } else {
@@ -39,7 +39,7 @@ export default class BloomFilter implements FilterPolicy {
         this._kNumber = k;
         this._buffer = Buffer.concat([
           this._buffer.slice(0, this._buffer.length - 1),
-          Buffer.bufferFrom(varint.encode(k)),
+          Buffer.fromUnknown(varint.encode(k)),
         ]);
         this._bitBuffer.resizeBits(k);
       }

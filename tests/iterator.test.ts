@@ -39,8 +39,8 @@ describe("Database Iterator", () => {
       }
       expect(
         Buffer.compare(
-          Buffer.bufferFrom(String.fromCharCode.apply(null, entry.key)),
-          Buffer.bufferFrom(cacheKey),
+          Buffer.fromUnknown(String.fromCharCode.apply(null, entry.key)),
+          Buffer.fromUnknown(cacheKey),
         ),
       ).toBe(1);
       count++;
@@ -53,8 +53,8 @@ describe("Database Iterator", () => {
     for await (const entry of db.iterator({ start: cacheKey })) {
       expect(
         Buffer.compare(
-          Buffer.bufferFrom(String.fromCharCode.apply(null, entry.key)),
-          Buffer.bufferFrom(cacheKey2),
+          Buffer.fromUnknown(String.fromCharCode.apply(null, entry.key)),
+          Buffer.fromUnknown(cacheKey2),
         ) !== 0,
       ).toBe(true);
       count++;
@@ -91,7 +91,7 @@ describe("Database Iterator", () => {
       list.push(random());
     }
     list.sort((a, b) =>
-      Buffer.compare(Buffer.bufferFrom(a[0]), Buffer.bufferFrom(b[0])),
+      Buffer.compare(Buffer.fromUnknown(a[0]), Buffer.fromUnknown(b[0])),
     );
 
     for (const entry of list) {

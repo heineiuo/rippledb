@@ -35,7 +35,7 @@ test("sstable", async () => {
   }
   i = 0;
   list.sort((a, b) =>
-    Buffer.compare(Buffer.bufferFrom(a[0]), Buffer.bufferFrom(b[0])) < 0
+    Buffer.compare(Buffer.fromUnknown(a[0]), Buffer.fromUnknown(b[0])) < 0
       ? -1
       : 1,
   );
@@ -82,7 +82,7 @@ test("sstable reverse iterator", async () => {
   }
   i = 0;
   list.sort((a, b) =>
-    Buffer.compare(Buffer.bufferFrom(a[0]), Buffer.bufferFrom(b[0])),
+    Buffer.compare(Buffer.fromUnknown(a[0]), Buffer.fromUnknown(b[0])),
   );
 
   while (i < count) {

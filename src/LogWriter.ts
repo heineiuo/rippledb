@@ -44,9 +44,9 @@ export default class LogWriter {
     head[5] = length >> 8;
     head[6] = type;
     const merged = Buffer.concat([
-      Buffer.bufferFrom([type]),
+      Buffer.fromUnknown([type]),
       record,
-      Buffer.bufferFrom([record.length]),
+      Buffer.fromUnknown([record.length]),
     ]);
     const crc = crc32(merged);
     head.fill(crc, 0, 4);

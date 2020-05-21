@@ -14,9 +14,9 @@ export default class Slice {
     } else if (Buffer.isBuffer(value)) {
       this._buffer = value;
     } else if (typeof value === "string") {
-      this._buffer = Buffer.bufferFrom(value);
+      this._buffer = Buffer.fromUnknown(value);
     } else {
-      this._buffer = Buffer.bufferFrom(JSON.stringify(value));
+      this._buffer = Buffer.fromUnknown(JSON.stringify(value));
     }
   }
 

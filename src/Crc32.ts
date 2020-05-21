@@ -271,7 +271,7 @@ function ensureBuffer(input: any): Buffer {
   if (typeof input === "number") {
     return Buffer.alloc(input);
   } else if (typeof input === "string") {
-    return Buffer.bufferFrom(input);
+    return Buffer.fromUnknown(input);
   } else {
     console.log("input", input);
     throw new Error(

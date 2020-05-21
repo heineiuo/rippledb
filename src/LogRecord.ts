@@ -14,10 +14,10 @@ export default class LogRecord {
   static add(key: Slice, value: Slice): Slice {
     return new Slice(
       Buffer.concat([
-        Buffer.bufferFrom([ValueType.kTypeValue]),
-        Buffer.bufferFrom(varint.encode(key.length)),
+        Buffer.fromUnknown([ValueType.kTypeValue]),
+        Buffer.fromUnknown(varint.encode(key.length)),
         key.buffer,
-        Buffer.bufferFrom(varint.encode(value.length)),
+        Buffer.fromUnknown(varint.encode(value.length)),
         value.buffer,
       ]),
     );
@@ -26,8 +26,8 @@ export default class LogRecord {
   static del(key: Slice): Slice {
     return new Slice(
       Buffer.concat([
-        Buffer.bufferFrom([ValueType.kTypeDeletion]),
-        Buffer.bufferFrom(varint.encode(key.length)),
+        Buffer.fromUnknown([ValueType.kTypeDeletion]),
+        Buffer.fromUnknown(varint.encode(key.length)),
         key.buffer,
       ]),
     );

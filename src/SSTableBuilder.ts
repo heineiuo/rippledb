@@ -125,7 +125,7 @@ export default class SSTableBuilder {
     const trailer = Buffer.alloc(kBlockTrailerSize);
     trailer[0] = type;
     const crc32buffer = crc32(
-      Buffer.concat([blockContent.buffer, Buffer.bufferFrom([type])]),
+      Buffer.concat([blockContent.buffer, Buffer.fromUnknown([type])]),
     );
     trailer.fill(crc32buffer, 1, 5);
     await this.appendFile(trailer);
@@ -394,7 +394,7 @@ class FilterBlockBuilder {
     this._result = Buffer.concat([
       this._result,
       encodeFixed32(arrayOffset),
-      Buffer.bufferFrom([FilterBlockBuilder.kFilterBaseLg]), // Save encoding parameter in result
+      Buffer.fromUnknown([FilterBlockBuilder.kFilterBaseLg]), // Save encoding parameter in result
     ]);
 
     return new Slice(this._result);

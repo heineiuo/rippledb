@@ -29,7 +29,7 @@ export default class VersionEditRecord {
     if (edit.hasComparator) {
       bufList.push(Buffer.fromArrayLike([VersionEditTag.kComparator]));
       bufList.push(Buffer.fromArrayLike(varint.encode(edit.comparator.length)));
-      bufList.push(Buffer.bufferFrom(edit.comparator));
+      bufList.push(Buffer.fromUnknown(edit.comparator));
     }
     if (edit.hasLogNumber) {
       bufList.push(Buffer.fromArrayLike([VersionEditTag.kLogNumber]));

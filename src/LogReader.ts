@@ -29,7 +29,7 @@ export default class LogReader {
   }
 
   async *iterator(): AsyncIterableIterator<Slice> {
-    const buf: Buffer = Buffer.bufferFrom(new ArrayBuffer(kBlockSize));
+    const buf: Buffer = Buffer.fromUnknown(new ArrayBuffer(kBlockSize));
     let blockIndex = -1;
     let latestOpBuf = Buffer.alloc(0);
     let latestType = null;
@@ -54,7 +54,7 @@ export default class LogReader {
 
       // buf may be re-fill, to avoid this, copy it
       const record = this.readPhysicalRecord(
-        Buffer.bufferFrom(buf.slice(bufHandledPosition)),
+        Buffer.fromUnknown(buf.slice(bufHandledPosition)),
       );
       bufHandledPosition += record.length + kHeaderSize;
       if (record.type === RecordType.kFullType) {
