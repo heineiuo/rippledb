@@ -16,8 +16,8 @@ async function bench(total: number, runnerCount: number): Promise<void> {
   for (let i = 0; i < total; i++) {
     const strEntry = random(16, 100);
     dataset.push([
-      Buffer.bufferFrom(strEntry[0]),
-      Buffer.bufferFrom(strEntry[1]),
+      Buffer.fromUnknown(strEntry[0]),
+      Buffer.fromUnknown(strEntry[1]),
     ]);
   }
 

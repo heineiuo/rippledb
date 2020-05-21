@@ -49,7 +49,7 @@ export default class LogWriter {
       Buffer.fromUnknown([record.length]),
     ]);
     const crc = crc32(merged);
-    head.fill(crc, 0, 4);
+    head.fillBuffer(crc, 0, 4);
 
     this._blockOffset += record.length + kHeaderSize;
     await this.appendFile(Buffer.concat([head, record]));

@@ -102,9 +102,11 @@ export default class MemTable {
     const keySize = key.length;
     const valueSize = !value ? 0 : value.length;
     const internalKeySize = keySize + 8; // sequence=7bytes, type = 1byte
-    const valueSizeBuf = Buffer.from(varint.encode(valueSize));
+    const valueSizeBuf = Buffer.fromUnknown(varint.encode(valueSize));
     let encodedLength = internalKeySize + valueSize + varint.encode.bytes;
-    const internalKeySizeBuf = Buffer.from(varint.encode(internalKeySize));
+    const internalKeySizeBuf = Buffer.fromUnknown(
+      varint.encode(internalKeySize),
+    );
     encodedLength += varint.encode.bytes;
 
     /**
@@ -114,7 +116,7 @@ export default class MemTable {
      * 3. User key: key
      */
     const sequenceBuf = sequence.toFixed64Buffer();
-    sequenceBuf.fill(valueType, 7, 8);
+    sequenceBuf.fillInt(valueType, 7, 8);
     const buf = new Slice(
       Buffer.concat([
         internalKeySizeBuf,

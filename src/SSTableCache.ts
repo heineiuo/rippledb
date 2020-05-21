@@ -36,10 +36,17 @@ export class TableCache {
     });
   }
 
+  _destroyed = false;
   _env: Env;
   _dbpath: string;
   _options: Options;
   _cache: Cache<number, TableAndFile>;
+
+  async destroy(): Promise<void> {
+    this._destroyed = true;
+    this._cache.reset();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 
   public async get(
     options: ReadOptions,

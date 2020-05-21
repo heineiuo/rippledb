@@ -60,10 +60,12 @@ describe("Database Iterator", () => {
       count++;
       if (count > 10) break;
     }
+    await db.destroy();
+
     done();
   });
 
-  test("iterator count", async () => {
+  test("iterator count", async (done) => {
     const db = new Database(dbpath2);
     const list = [];
     for (let i = 0; i < 500; i++) {
@@ -80,11 +82,13 @@ describe("Database Iterator", () => {
         count++;
       }
     }
+    await db.destroy();
 
     expect(count).toBe(list.length);
+    done();
   });
 
-  test("reverse iterator", async () => {
+  test("reverse iterator", async (done) => {
     const db = new Database(dbpath3);
     const list = [];
     for (let i = 0; i < 10; i++) {
@@ -109,5 +113,7 @@ describe("Database Iterator", () => {
       .join("|");
 
     expect(listKeys.join("|")).toEqual(originalKeys);
+    await db.destroy();
+    done();
   });
 });

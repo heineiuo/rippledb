@@ -27,6 +27,7 @@ describe("Database", () => {
     const result = await db.get("key");
     expect(!!result).toBe(true);
     expect(String.fromCharCode.apply(null, result)).toBe("world");
+    await db.destroy();
     done();
   });
 
@@ -35,6 +36,7 @@ describe("Database", () => {
     const db = new Database(dbpath, debugOptions);
     await db.ok();
     await db.put("key", "world");
+    await db.destroy();
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     await copydb(dbpath, dbpath2);
@@ -42,6 +44,7 @@ describe("Database", () => {
     const db2 = new Database(dbpath2, debugOptions);
     await db2.ok();
     await db2.put("key", "world");
+    await db2.destroy();
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     await copydb(dbpath2, dbpath3);
@@ -53,6 +56,7 @@ describe("Database", () => {
       await db3.put(key, value);
     }
     await db3.put("key", "world");
+    await db3.destroy();
 
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await copydb(dbpath3, dbpath4);
@@ -60,6 +64,7 @@ describe("Database", () => {
     const db4 = new Database(dbpath4, debugOptions);
     await db4.ok();
     await db4.put("key", "world");
+    await db4.destroy();
 
     const result = await db4.get("key");
     expect(!!result).toBe(true);

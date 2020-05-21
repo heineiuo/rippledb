@@ -127,7 +127,7 @@ export default class SSTableBuilder {
     const crc32buffer = crc32(
       Buffer.concat([blockContent.buffer, Buffer.fromUnknown([type])]),
     );
-    trailer.fill(crc32buffer, 1, 5);
+    trailer.fillBuffer(crc32buffer, 1, 5);
     await this.appendFile(trailer);
     this._offset += blockContent.size + kBlockTrailerSize;
   }

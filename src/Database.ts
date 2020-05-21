@@ -418,7 +418,14 @@ export default class Database {
 
   // TODO
   public async destroy(): Promise<void> {
-    this.lockfile.unlock();
+    await this.lockfile.unlock();
+    if (this._options.infoLog) {
+      await this._options.infoLog.close();
+    }
+    if (this._log) {
+      this._log.close();
+    }
+    await this._tableCache.destroy();
   }
 
   public async *iterator(

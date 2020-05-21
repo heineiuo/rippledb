@@ -1,6 +1,6 @@
 import { Buffer } from "./Buffer";
 
-let CRC_TABLE = [
+const CRC_TABLE = new Int32Array([
   0x00000000,
   0x77073096,
   0xee0e612c,
@@ -257,11 +257,7 @@ let CRC_TABLE = [
   0xc30c8ea1,
   0x5a05df1b,
   0x2d02ef8d,
-];
-
-if (typeof Int32Array !== "undefined") {
-  CRC_TABLE = new Int32Array(CRC_TABLE);
-}
+]);
 
 function ensureBuffer(input: any): Buffer {
   if (Buffer.isBuffer(input)) {
@@ -280,16 +276,22 @@ function ensureBuffer(input: any): Buffer {
   }
 }
 
-function bufferizeInt(num) {
+function bufferizeInt(num: number): Buffer {
   const tmp = ensureBuffer(4);
   tmp.writeInt32BE(num, 0);
   return tmp;
 }
 
-function _crc32(buf, previous) {
-  buf = ensureBuffer(buf);
-  if (Buffer.isBuffer(previous)) {
-    previous = previous.readUInt32BE(0);
+function signed(source: unknown, previous1?: number | Buffer): number {
+  const buf = ensureBuffer(source);
+
+  let previous = 0;
+  if (previous1) {
+    if (typeof previous1 === "number") {
+      previous = previous1;
+    } else {
+      previous = previous1.readUInt32BE(0);
+    }
   }
   let crc = ~~previous ^ -1;
   for (let n = 0; n < buf.length; n++) {
@@ -298,13 +300,10 @@ function _crc32(buf, previous) {
   return crc ^ -1;
 }
 
-export function crc32(): Buffer {
-  return bufferizeInt(_crc32.apply(null, arguments));
-}
+// function unsigned(source: unknown, previous1?: number | Buffer): number {
+//   return signed(source, previous1) >>> 0;
+// }
 
-crc32.signed = function () {
-  return _crc32.apply(null, arguments);
-};
-crc32.unsigned = function () {
-  return _crc32.apply(null, arguments) >>> 0;
-};
+export function crc32(source: unknown, previous1?: number | Buffer): Buffer {
+  return bufferizeInt(signed(source, previous1));
+}

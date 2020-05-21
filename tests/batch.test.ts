@@ -31,6 +31,8 @@ describe("WriteBatch", () => {
     expect(!!(await db.get(getKey))).toBe(true);
     expect(!!(await db.get(delKey))).toBe(false);
 
+    await db.destroy();
+
     done();
   });
 });

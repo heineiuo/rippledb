@@ -15,7 +15,10 @@ export class Lockfile {
     this.stale = options.lockfileStale;
 
     this.options.env.onExit(() => {
-      this.options.env.unlinkSync(this.filename);
+      // if db has been destoryed manully, unlink will fail.
+      try {
+        this.options.env.unlinkSync(this.filename);
+      } catch (e) {}
     });
   }
 
@@ -31,7 +34,10 @@ export class Lockfile {
   }
 
   public async unlock(): Promise<void> {
-    await this.options.env.unlink(this.filename);
+    try {
+      // if db has been destoryed manully, unlink will fail.
+      await this.options.env.unlink(this.filename);
+    } catch (e) {}
     this._locked = false;
     clearInterval(this.refreshLockTimer);
   }

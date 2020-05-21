@@ -4,7 +4,7 @@ function bufferFromArrayBuffer(number: number, times: number): Buffer {
   let i = 0;
   let buf;
   while (i < times) {
-    buf = Buffer.bufferFrom(new ArrayBuffer(number));
+    buf = Buffer.fromUnknown(new ArrayBuffer(number));
     i++;
   }
   return buf;

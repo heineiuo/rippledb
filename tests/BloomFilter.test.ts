@@ -1,6 +1,6 @@
 import BloomFilter from "../src/BloomFilter";
 import Slice from "../src/Slice";
-import { TextEncoder, TextDecoder } from "util";
+import { TextEncoder } from "util";
 
 // @ts-ignore make jest happy
 global.TextEncoder = require("util").TextEncoder;

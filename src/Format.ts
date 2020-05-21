@@ -58,7 +58,7 @@ function packSequenceAndType(seq: number | bigint, t: ValueType): bigint {
 // Append the serialization of "key" to *result.
 function appendInternalKey(buf: Buffer, key: ParsedInternalKey): Buffer {
   const sequenceBuf = key.sn.toFixed64Buffer();
-  sequenceBuf.fill(key.valueType, 7, 8);
+  sequenceBuf.fillInt(key.valueType, 7, 8);
   return Buffer.concat([buf, key.userKey.buffer, sequenceBuf]);
 }
 
@@ -177,7 +177,7 @@ export class InternalKeyBuilder {
      * 3. User key: key
      */
     const sequenceBuf = sequence.toFixed64Buffer();
-    sequenceBuf.fill(valueType, 7, 8);
+    sequenceBuf.fillInt(valueType, 7, 8);
     const slice = new Slice(Buffer.concat([key.buffer, sequenceBuf]));
     return new InternalKey(slice);
   }
