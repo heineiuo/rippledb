@@ -1,4 +1,4 @@
-import { Buffer } from "../build/Buffer";
+import { Buffer } from "../build/src/Buffer";
 
 function bufferFromArrayBuffer(number: number, times: number): Buffer {
   let i = 0;
