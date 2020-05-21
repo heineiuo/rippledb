@@ -4,7 +4,6 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     strategy:
@@ -12,22 +11,22 @@ jobs:
         node-version: [12.x]
 
     steps:
-    - uses: actions/checkout@v1
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
-    - name: yarn, build, and test
-      run: |
-        yarn
-        yarn build
-        yarn build:fixture
-        yarn build:bench
-        yarn bench --total=10000 --runner=10
-        yarn test src --coverage
-      env:
-        CI: true
-    - name: Coveralls
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.github_token }}
+      - uses: actions/checkout@v1
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: yarn, build, and test
+        run: |
+          yarn
+          yarn build
+          yarn build:fixture
+          yarn build:bench
+          yarn bench --total=10000 --runner=10
+          yarn test tests --coverage
+        env:
+          CI: true
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.github_token }}
