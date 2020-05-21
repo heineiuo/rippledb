@@ -12,20 +12,34 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: yarn, build, and test
+
+      - name: Build
         run: |
-          yarn
-          yarn build
-          yarn build:fixture
-          yarn build:bench
-          yarn bench --total=10000 --runner=10
-          yarn test tests --coverage
+          npm install
+          npm run build
+          npm run build:tsc
+          npm run build:fixture
+          npm run build:bench
         env:
           CI: true
+
+      - name: Benchmarks
+        run: |
+          npm run bench --total=10000 --runner=10
+        env:
+          CI: true
+
+      - name: Test
+        run: |
+          npm test tests --coverage
+        env:
+          CI: true
+
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
