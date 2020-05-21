@@ -105,7 +105,7 @@ export default class BloomFilter implements FilterPolicy {
     for (let i = 0; i < n; i++) {
       // Use double-hashing to generate a sequence of hash values.
       // See analysis in [Kirsch,Mitzenmacher 2006].
-      let h = BloomHash(keys[i].toUTF8String());
+      let h = BloomHash(keys[i].toString());
       const delta = (h >> 17) | (h << 15);
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits;
@@ -127,7 +127,7 @@ export default class BloomFilter implements FilterPolicy {
     const filter = new BloomFilter(bloomFilter.buffer);
 
     if (filter.kNumber > 30) return true;
-    let h = BloomHash(key.toUTF8String());
+    let h = BloomHash(key.toString());
     const delta = (h >> 17) | (h << 15);
     for (let j = 0; j < filter.kNumber; j++) {
       const bitPosition = h % filter._bitBuffer.bits;

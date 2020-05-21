@@ -1,6 +1,8 @@
 import { Database } from "../port/node";
 import { createDir, cleanup } from "../fixtures/dbpath";
 import { copydb } from "../fixtures/copydb";
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
 
 jest.setTimeout(60000 * 10);
 

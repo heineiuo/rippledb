@@ -3,6 +3,10 @@ import { Database } from "../port/node";
 import { createDir, cleanup } from "../fixtures/dbpath";
 import { allocRunner } from "../fixtures/runner";
 import { Buffer } from "../src/Buffer";
+import { TextEncoder, TextDecoder } from "util";
+
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
 
 jest.setTimeout(60000 * 10);
 
@@ -50,7 +54,9 @@ describe("Compaction", () => {
 
     const result = await db.get(checkRecord[0]);
     expect(!!result).toBe(true);
-    expect(Buffer.toUTF8String(result)).toBe(checkRecord[1]);
+    if (result) {
+      expect(new TextDecoder().decode(result)).toBe(checkRecord[1]);
+    }
 
     await db.compactRange(
       Buffer.alloc(16).fill(0x00),
@@ -59,11 +65,14 @@ describe("Compaction", () => {
 
     const result2 = await db.get(checkRecord[0]);
     expect(!!result2).toBe(true);
-    expect(Buffer.toUTF8String(result2)).toBe(checkRecord[1]);
+    if (result2) {
+      expect(new TextDecoder().decode(result2)).toBe(checkRecord[1]);
+    }
 
     const result3 = await db.get(randomCheckRecord[0]);
     expect(!!result3).toBe(true);
-    expect(String.fromCharCode.apply(null, result3)).toBe(randomCheckRecord[1]);
+    if (result3)
+      expect(new TextDecoder().decode(result3)).toBe(randomCheckRecord[1]);
     done();
   });
 });

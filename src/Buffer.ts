@@ -9,7 +9,7 @@ export class Buffer extends Uint8Array {
     if (Buffer.isBuffer(value)) return value;
 
     if (typeof value === "string") {
-      return Buffer.fromUTF8(value);
+      return Buffer.fromString(value);
     }
 
     if (Array.isArray(value)) {
@@ -95,7 +95,7 @@ export class Buffer extends Uint8Array {
     return new Buffer(length);
   }
 
-  static isBuffer(obj: any): obj is Buffer {
+  static isBuffer(obj: unknown): obj is Buffer {
     return obj instanceof Buffer;
   }
 
@@ -191,105 +191,6 @@ export class Buffer extends Uint8Array {
     return bytes;
   }
 
-  static toUTF8String(buf: Buffer, start = 0, end?: number): string {
-    end = Math.min(buf.length, end || buf.length);
-    const res = [];
-
-    let i = start;
-    while (i < end) {
-      const firstByte = buf[i];
-      let codePoint = null;
-      let bytesPerSequence =
-        firstByte > 0xef ? 4 : firstByte > 0xdf ? 3 : firstByte > 0xbf ? 2 : 1;
-
-      if (i + bytesPerSequence <= end) {
-        let secondByte, thirdByte, fourthByte, tempCodePoint;
-
-        switch (bytesPerSequence) {
-          case 1:
-            if (firstByte < 0x80) {
-              codePoint = firstByte;
-            }
-            break;
-          case 2:
-            secondByte = buf[i + 1];
-            if ((secondByte & 0xc0) === 0x80) {
-              tempCodePoint = ((firstByte & 0x1f) << 0x6) | (secondByte & 0x3f);
-              if (tempCodePoint > 0x7f) {
-                codePoint = tempCodePoint;
-              }
-            }
-            break;
-          case 3:
-            secondByte = buf[i + 1];
-            thirdByte = buf[i + 2];
-            if ((secondByte & 0xc0) === 0x80 && (thirdByte & 0xc0) === 0x80) {
-              tempCodePoint =
-                ((firstByte & 0xf) << 0xc) |
-                ((secondByte & 0x3f) << 0x6) |
-                (thirdByte & 0x3f);
-              if (
-                tempCodePoint > 0x7ff &&
-                (tempCodePoint < 0xd800 || tempCodePoint > 0xdfff)
-              ) {
-                codePoint = tempCodePoint;
-              }
-            }
-            break;
-          case 4:
-            secondByte = buf[i + 1];
-            thirdByte = buf[i + 2];
-            fourthByte = buf[i + 3];
-            if (
-              (secondByte & 0xc0) === 0x80 &&
-              (thirdByte & 0xc0) === 0x80 &&
-              (fourthByte & 0xc0) === 0x80
-            ) {
-              tempCodePoint =
-                ((firstByte & 0xf) << 0x12) |
-                ((secondByte & 0x3f) << 0xc) |
-                ((thirdByte & 0x3f) << 0x6) |
-                (fourthByte & 0x3f);
-              if (tempCodePoint > 0xffff && tempCodePoint < 0x110000) {
-                codePoint = tempCodePoint;
-              }
-            }
-        }
-      }
-
-      if (codePoint === null) {
-        // we did not generate a valid codePoint so insert a
-        // replacement char (U+FFFD) and advance only 1 byte
-        codePoint = 0xfffd;
-        bytesPerSequence = 1;
-      } else if (codePoint > 0xffff) {
-        // encode to utf16 (surrogate pair dance)
-        codePoint -= 0x10000;
-        res.push(((codePoint >>> 10) & 0x3ff) | 0xd800);
-        codePoint = 0xdc00 | (codePoint & 0x3ff);
-      }
-
-      res.push(codePoint);
-      i += bytesPerSequence;
-    }
-
-    return String.fromCharCode.apply(null, res);
-  }
-
-  static blitBuffer(
-    src: number[],
-    dst: Buffer,
-    offset: number,
-    length: number,
-  ): number {
-    let i = 0;
-    for (i = 0; i < length; ++i) {
-      if (i + offset >= dst.length || i >= src.length) break;
-      dst[i + offset] = src[i];
-    }
-    return i;
-  }
-
   static fromArrayLike(arr: number[]): Buffer {
     const length = arr.length < 0 ? 0 : Buffer.checked(arr.length) | 0;
     const buf = Buffer.createBuffer(length);
@@ -299,12 +200,9 @@ export class Buffer extends Uint8Array {
     return buf;
   }
 
-  static fromUTF8(utf8String: string): Buffer {
-    const bytes = Buffer.utf8ToBytes(utf8String);
-    const length = bytes.length;
-    const buf = Buffer.alloc(length);
-    Buffer.blitBuffer(bytes, buf, 0, length);
-    return buf;
+  static fromString(str: string): Buffer {
+    const ab = new TextEncoder().encode(str);
+    return Buffer.fromArrayBuffer(ab);
   }
 
   static fromHex(hexString: string): Buffer {
@@ -370,7 +268,7 @@ export class Buffer extends Uint8Array {
     return 0;
   }
 
-  static isArrayBuffer(value: any): value is ArrayBuffer {
+  static isArrayBuffer(value: unknown): value is ArrayBuffer {
     return (
       value instanceof ArrayBuffer ||
       toString.call(value) === "[object ArrayBuffer]"

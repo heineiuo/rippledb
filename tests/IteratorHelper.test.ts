@@ -1,4 +1,6 @@
 import IteratorHelper from "../src/IteratorHelper";
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
 
 test("iterator helper", async (done) => {
   let asyncNumbersState = "none";

@@ -1,4 +1,6 @@
 import Status from "../src/Status";
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
 
 test("status", async () => {
   const status1 = new Status(

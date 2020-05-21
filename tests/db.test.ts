@@ -4,6 +4,8 @@ import { createDir, cleanup } from "../fixtures/dbpath";
 import { copydb } from "../fixtures/copydb";
 
 jest.setTimeout(60000 * 10);
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
 
 const dbpath = createDir();
 const dbpath1 = createDir();

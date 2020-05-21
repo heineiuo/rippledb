@@ -7,6 +7,10 @@ import {
   InternalKeyComparator,
 } from "../src/Format";
 import { BytewiseComparator } from "../src/Comparator";
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
+// @ts-ignore make jest happy
+global.TextDecoder = require("util").TextDecoder;
 
 test("memtable add and get", () => {
   const memtable = new MemTable(
@@ -66,7 +70,7 @@ test("memtable reverse iterator", () => {
   const result = [];
 
   for (const entry of memtable.iterator(true)) {
-    result.push(entry.value.toUTF8String());
+    result.push(new TextDecoder().decode(entry.value.buffer));
   }
 
   expect(result).toStrictEqual([

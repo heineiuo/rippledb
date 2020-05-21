@@ -1,5 +1,8 @@
 import MurmurHash from "../src/MurmurHash";
 
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
+
 test("filter", () => {
   const seed1 = Math.floor(Math.random() * 2e32);
   expect(MurmurHash("kadff", 1) % 15).toBe(2);

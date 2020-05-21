@@ -5,6 +5,9 @@ import { Buffer } from "../src/Buffer";
 
 jest.setTimeout(60000 * 10);
 
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
+
 const dbpath = createDir();
 const dbpath2 = createDir();
 const dbpath3 = createDir();

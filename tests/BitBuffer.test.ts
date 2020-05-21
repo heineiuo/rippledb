@@ -1,5 +1,7 @@
 import BitBuffer from "../src/BitBuffer";
 import { Buffer } from "../src/Buffer";
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
 
 test("BitBuffer", (done) => {
   const arr1 = new BitBuffer(Buffer.alloc(Math.ceil(32 / 8)));

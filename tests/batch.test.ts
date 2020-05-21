@@ -2,6 +2,8 @@ import { Database } from "../port/node";
 import { random } from "../fixtures/random";
 import { createDir, cleanup } from "../fixtures/dbpath";
 import { WriteBatch } from "../src/WriteBatch";
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
 
 const dbpath = createDir();
 afterAll(() => {

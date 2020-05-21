@@ -6,6 +6,9 @@ afterAll(() => {
   cleanup(dbpath1);
 });
 
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
+
 cleanup(dbpath1);
 
 describe("Dump memtable", () => {

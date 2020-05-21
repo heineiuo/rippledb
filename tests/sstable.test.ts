@@ -9,6 +9,10 @@ import { random } from "../fixtures/random";
 import { InternalKey, SequenceNumber, ValueType } from "../src/Format";
 import { defaultOptions } from "../src/Options";
 import { NodeEnv } from "../port/node";
+// @ts-ignore make jest happy
+global.TextEncoder = require("util").TextEncoder;
+// @ts-ignore make jest happy
+global.TextDecoder = require("util").TextDecoder;
 
 const dbpath = createDir();
 afterAll(() => cleanup(dbpath));
@@ -56,8 +60,8 @@ test("sstable", async () => {
   const listValues = [];
   for await (const entry of table.entryIterator()) {
     const ikey = InternalKey.from(entry.key);
-    listKeys.push(ikey.userKey.toUTF8String());
-    listValues.push(entry.value.toUTF8String());
+    listKeys.push(new TextDecoder().decode(ikey.userKey.buffer));
+    listValues.push(new TextDecoder().decode(entry.value.buffer));
   }
 
   expect(list.map((pair) => pair[0]).join("|")).toEqual(listKeys.join("|"));
@@ -101,8 +105,8 @@ test("sstable reverse iterator", async () => {
   const listValues = [];
   for await (const entry of table.entryIterator(true)) {
     const ikey = InternalKey.from(entry.key);
-    listKeys.push(ikey.userKey.toUTF8String());
-    listValues.push(entry.value.toUTF8String());
+    listKeys.push(new TextDecoder().decode(ikey.userKey.buffer));
+    listValues.push(new TextDecoder().decode(entry.value.buffer));
   }
 
   const original = list

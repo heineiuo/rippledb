@@ -38,13 +38,8 @@ export default class Slice {
     return this._buffer.length;
   }
 
-  // Deprecated
-  // toString(): string {
-  //   return this._buffer.toString();
-  // }
-
-  toUTF8String(): string {
-    return Buffer.toUTF8String(this._buffer);
+  toString(): string {
+    return this._buffer.toString();
   }
 
   clear(): void {

@@ -95,7 +95,7 @@ class State {
         return false;
       case SaverState.kCorrupt:
         state.s = Status.createCorruption(
-          `corrupted key for ${state.saver.userKey.toUTF8String()}`,
+          `corrupted key for ${state.saver.userKey.toString()}`,
         );
         state.found = true;
         return false;
