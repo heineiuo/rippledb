@@ -46,7 +46,7 @@ For more details, see [documention](./docs)
 - [x] Compaction
 - [x] Top-level API (put, get, del, batch, iterator, compactRange, ok)
 - [ ] Repair
-- [ ] Destroy
+- [x] Destroy
 
 ## Benchmark
 
