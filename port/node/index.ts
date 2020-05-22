@@ -26,15 +26,11 @@ export class NodeEnv implements Env {
   }
 
   writeFile = fs.promises.writeFile;
-  // @ts-ignore
-
   readFile = fs.promises.readFile;
-  // @ts-ignore
   open = fs.promises.open;
   rename = fs.promises.rename;
   unlink = fs.promises.unlink;
   unlinkSync = fs.unlinkSync;
-  // @ts-ignore
   fstat = fs.promises.fstat;
 
   // eslint-disable-next-line
@@ -50,7 +46,6 @@ export class NodeEnv implements Env {
 
 export class Database extends InternalDatabase {
   constructor(dbpath: string, options: DatabaseOptions = {}) {
-    // @ts-ignore
     if (!options.env) options.env = new NodeEnv();
     super(dbpath, options);
   }

@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Buffer } from "./Buffer";
-
 export interface Stats<T = number> {
   isFile(): boolean;
   isDirectory(): boolean;
@@ -119,7 +117,7 @@ export interface FileHandle {
    */
   readFile(
     options?: { encoding?: null; flag?: string | number } | null,
-  ): Promise<Buffer>;
+  ): Promise<Uint8Array>;
 
   /**
    * Asynchronously reads the entire contents of a file. The underlying file will _not_ be closed automatically.
@@ -144,7 +142,7 @@ export interface FileHandle {
       | { encoding?: string | null; flag?: string | number }
       | string
       | null,
-  ): Promise<string | Buffer>;
+  ): Promise<string | Uint8Array>;
 
   /**
    * Asynchronous fstat(2) - Get file status.
@@ -235,13 +233,13 @@ export interface Env {
   access(dbpath: string): Promise<void>;
   mkdir(dbpath: string): Promise<void>;
   rename(oldpath: string, newpath: string): Promise<void>;
-  readFile(dbpath: string): Promise<Buffer>;
+  readFile(dbpath: string): Promise<Uint8Array>;
   readFile(
     dbpath: string,
     options?: { encoding?: string },
-  ): Promise<string | Buffer>;
+  ): Promise<string | Uint8Array>;
   readFile(dbpath: string, bufferEncoding: "utf8"): Promise<string>;
-  writeFile(dbpath: string, content: Buffer | string): Promise<void>;
+  writeFile(dbpath: string, content: Uint8Array | string): Promise<void>;
   open(dbpath: string, flag: string): Promise<FileHandle>;
   unlink(filename: string): Promise<void>;
   unlinkSync(filename: string): void;
