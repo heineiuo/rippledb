@@ -7,15 +7,19 @@
 
 import { varint } from "./DBHelper";
 import BitBuffer from "./BitBuffer";
-import BloomHash from "./MurmurHash";
+import { hash } from "./Hash";
 import Slice from "./Slice";
 import { Buffer } from "./Buffer";
 import { FilterPolicy } from "./Options";
 
+function bloomHash(key: Slice): number {
+  return hash(key.buffer, 0xbc9f1d34);
+}
+
 /**
  * time of hash is main effect
- * best time of hash = bits number / elements bumber x ln2(≈0.69)
- * elements bumber and ln2 is predictable
+ * best time of hash = bits number / elements number x ln2(≈0.69)
+ * elements number and ln2 is predictable
  * bits number is configable
  * from past experience, bitsPerKey = 10 is best
  */
@@ -105,7 +109,8 @@ export default class BloomFilter implements FilterPolicy {
     for (let i = 0; i < n; i++) {
       // Use double-hashing to generate a sequence of hash values.
       // See analysis in [Kirsch,Mitzenmacher 2006].
-      let h = BloomHash(keys[i].toString());
+      let h = bloomHash(keys[i]);
+
       const delta = (h >> 17) | (h << 15);
       for (let j = 0; j < this.kNumber; j++) {
         const bitPosition = h % bits;
@@ -127,7 +132,7 @@ export default class BloomFilter implements FilterPolicy {
     const filter = new BloomFilter(bloomFilter.buffer);
 
     if (filter.kNumber > 30) return true;
-    let h = BloomHash(key.toString());
+    let h = bloomHash(key);
     const delta = (h >> 17) | (h << 15);
     for (let j = 0; j < filter.kNumber; j++) {
       const bitPosition = h % filter._bitBuffer.bits;
