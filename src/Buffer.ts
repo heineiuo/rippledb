@@ -106,35 +106,12 @@ export class Buffer extends Uint8Array {
     return buf;
   }
 
-  static fromArrayBuffer(
-    array: ArrayBuffer,
-    byteOffset = 0,
-    length?: number,
-  ): Buffer {
-    if (byteOffset < 0 || array.byteLength < byteOffset) {
-      throw new RangeError('"offset" is outside of buffer bounds');
-    }
-
-    if (array.byteLength < byteOffset + (length || 0)) {
-      throw new RangeError('"length" is outside of buffer bounds');
-    }
-
-    let buf;
-    if (byteOffset === undefined && length === undefined) {
-      buf = new Uint8Array(array);
-    } else if (length === undefined) {
-      buf = new Uint8Array(array, byteOffset);
-    } else {
-      buf = new Uint8Array(array, byteOffset, length);
-    }
-
-    return new Buffer(buf);
+  static fromArrayBuffer(array: ArrayBuffer): Buffer {
+    return new Buffer(array);
   }
 
   static fromUnknown(
     value: string | Uint8Array | Buffer | ArrayBuffer | { length: number },
-    encodingOrOffset?: number | string,
-    length?: number,
   ): Buffer {
     if (Buffer.isBuffer(value)) return value;
 
@@ -147,11 +124,7 @@ export class Buffer extends Uint8Array {
     }
 
     if (Buffer.isArrayBuffer(value)) {
-      if (typeof encodingOrOffset === "number") {
-        return Buffer.fromArrayBuffer(value, encodingOrOffset, length);
-      } else {
-        return Buffer.fromArrayBuffer(value, 0);
-      }
+      return Buffer.fromArrayBuffer(value);
     }
 
     if (typeof value.length === "number") {
