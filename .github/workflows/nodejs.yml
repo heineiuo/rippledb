@@ -28,6 +28,21 @@ jobs:
         env:
           CI: true
 
+      - name: Post Ripple Deno
+        if: |
+          github.ref == 'refs/heads/master'
+        env:
+          RIPPLEDBBOT_PAT: ${{ secrets.RIPPLEDBBOT_PAT }}
+        run: |
+          git clone --depth 1 https://${RIPPLEDBBOT_PAT}@github.com/heineiuo/rippledb-deno.git rippledb-deno
+          npm run build:deno
+          cd rippledb-deno
+          git config user.email "heineiuo@gmail.com"
+          git config user.name "heineiuo"
+          git add .
+          git commit --message "Update Rippledb Deno"
+          git push origin master
+
       - name: Benchmarks
         run: |
           npm run bench --total=10000 --runner=10
