@@ -11,4 +11,6 @@ coverage
 report.*.json
 benchmarks/*.js
 fixtures/*.js
+scripts/*.js
 flamegraph.html
+rippledb-deno

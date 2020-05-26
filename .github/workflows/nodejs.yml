@@ -35,6 +35,7 @@ jobs:
           RIPPLEDBBOT_PAT: ${{ secrets.RIPPLEDBBOT_PAT }}
         run: |
           git clone --depth 1 https://${RIPPLEDBBOT_PAT}@github.com/heineiuo/rippledb-deno.git rippledb-deno
+          npm run build:scripts
           npm run build:deno
           cd rippledb-deno
           git config user.email "heineiuo@gmail.com"
