@@ -17,6 +17,7 @@
     "build:port-node": "babel port/node -d build/port/node --ignore 'src/tests' --source-maps --extensions \".ts\"",
     "build": "npm run build:src && npm run build:port-node",
     "build:tsc": "tsc -d",
+    "build:deno": "node-ts-script transform src rippledb-deno",
     "prepublish": "export NODE_ENV=production && npm run build"
   },
   "files": [
@@ -49,6 +50,7 @@
     "express": "^4.17.1",
     "flamebearer": "^1.1.3",
     "jest": "^26.0.1",
+    "node-ts-scripts": "^0.10.0-alpha.9",
     "rimraf": "^3.0.0",
     "typescript": "^3.9.3",
     "yargs": "^15.0.2"
