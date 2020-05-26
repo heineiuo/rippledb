@@ -17,7 +17,7 @@
     "build:port-node": "babel port/node -d build/port/node --ignore 'src/tests' --source-maps --extensions \".ts\"",
     "build": "npm run build:src && npm run build:port-node",
     "build:tsc": "tsc -d",
-    "build:deno": "node-ts-script transform src rippledb-deno",
+    "build:deno": "node-ts-scripts transform src rippledb-deno",
     "prepublish": "export NODE_ENV=production && npm run build"
   },
   "files": [
