@@ -17,6 +17,15 @@ const addExtTransformer = <T extends ts.Node>(
         return node2;
       }
 
+      if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+        const node2 = ts.getMutableClone(node);
+        let text = node2.moduleSpecifier.getText().trim();
+        text = text.substr(1, text.length - 2);
+        if (text.endsWith(".ts")) return node2;
+        node2.moduleSpecifier = ts.createStringLiteral(text + ".ts");
+        return node2;
+      }
+
       return ts.visitEachChild(node, visitor, ctx);
     };
     return visitor;
