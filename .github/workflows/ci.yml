@@ -1,6 +1,6 @@
-name: Node CI
+name: Rippledb CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -43,6 +43,7 @@ jobs:
           git add .
           git commit --message "Update Rippledb Deno"
           git push origin master
+          cd ..
 
       - name: Benchmarks
         run: |
@@ -50,7 +51,7 @@ jobs:
         env:
           CI: true
 
-      - name: Test
+      - name: Tests
         run: |
           npx jest tests --coverage
         env:
@@ -60,3 +61,42 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.github_token }}
+
+      - name: Create Changelogs
+        if: |
+          github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        id: changelog
+        uses: heineiuo/create-changelogs@master
+
+      - name: Tag rippledb-deno
+        if: |
+          github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        run: |
+          cd ripple-deno
+          git tag ${TAG_NAME}
+          git push --tags
+          cd ..
+        env:
+          TAG_NAME: ${{ steps.changelog.outputs.tag_name }}
+
+      - name: Publish to NPM
+        if: |
+          github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        run: |
+          echo '//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}' > ~/.npmrc
+          npm publish
+
+      - name: Create Release
+        if: |
+          github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: ${{ steps.changelog.outputs.changelogs }}
+          draft: false
+          prerelease:
+            ${{ steps.changelog.outputs.release_type == 'prerelease' }}
