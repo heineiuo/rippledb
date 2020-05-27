@@ -5,6 +5,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+type BufferEncoding =
+  | "ascii"
+  | "utf8"
+  | "utf-8"
+  | "utf16le"
+  | "ucs2"
+  | "ucs-2"
+  | "base64"
+  | "latin1"
+  | "binary"
+  | "hex";
+
 export interface Stats<T = number> {
   isFile(): boolean;
   isDirectory(): boolean;

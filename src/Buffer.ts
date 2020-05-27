@@ -165,8 +165,7 @@ export class Buffer extends Uint8Array {
 
   static isArrayBuffer(value: unknown): value is ArrayBuffer {
     return (
-      value instanceof ArrayBuffer ||
-      toString.call(value) === "[object ArrayBuffer]"
+      value instanceof ArrayBuffer || String(value) === "[object ArrayBuffer]"
     );
   }
 
