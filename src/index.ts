@@ -14,4 +14,4 @@ export {
   WriteOptions,
   IteratorOptions,
 } from "./Options";
-export { Env } from "./Env";
+export { Env, FileHandle } from "./Env";

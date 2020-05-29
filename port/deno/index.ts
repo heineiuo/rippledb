@@ -1,4 +1,78 @@
-import { InternalDatabase } from "https://cdn.jsdelivr.net/gh/heineiuo/rippledb-deno@ff38fb5/index.ts";
-export * from "https://cdn.jsdelivr.net/gh/heineiuo/rippledb-deno@ff38fb5/index.ts";
+import {
+  InternalDatabase,
+  Env,
+  FileHandle,
+  DatabaseOptions,
+} from "https://cdn.jsdelivr.net/gh/heineiuo/rippledb-deno@2a79f5c/index.ts";
 
-export class Database extends InternalDatabase {}
+export { InternalDatabase, Env, DatabaseOptions };
+
+declare const Deno: any;
+
+class DenoFile implements FileHandle {
+  constructor(file: Deno.File) {
+    this.file = file;
+  }
+  file: Deno.File;
+
+  async appendFile(data: Uint8Array): Promise<void> {
+    await this.file.write(data);
+  }
+  read() {}
+}
+
+export class DenoEnv implements Env {
+  onExit(): void {
+    return;
+  }
+
+  platform(): string {
+    return Deno.build.os === "windows" ? "win32" : Deno.build.os;
+  }
+
+  now(): number {
+    return performance.now() / 1000;
+  }
+
+  async access(filename: string): Promise<void> {
+    await Deno.open(filename);
+    await Deno.close(filename);
+  }
+
+  async mkdir(path: string): Promise<void> {
+    await Deno.mkdir(path, { recursive: true });
+  }
+
+  async writeFile(path: string, data: Uint8Array | string): Promise<void> {
+    if (typeof data === "string") {
+      await Deno.writeFile(path, new TextEncoder().encode(data));
+    } else {
+      await Deno.writeFile(path, data);
+    }
+  }
+
+  async readFile(path: string): Promise<string> {
+    return new TextDecoder().decode(Deno.readFile(path));
+  }
+
+  async open(path: string, mode: string): Promise<DenoFile> {
+    const options: Deno.OpenOptions = {};
+    if (mode.includes("r")) {
+      options.read = true;
+    }
+    if (mode.includes("a")) {
+      options.append = true;
+    }
+    const file = await Deno.open(path, options);
+    return new DenoFile(file);
+  }
+
+  rename = Deno.rename;
+}
+
+export class Database extends InternalDatabase {
+  constructor(dbpath: string, options: DatabaseOptions = {}) {
+    if (!options.env) options.env = new DenoEnv();
+    super(dbpath, options);
+  }
+}

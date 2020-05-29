@@ -245,12 +245,7 @@ export interface Env {
   access(dbpath: string): Promise<void>;
   mkdir(dbpath: string): Promise<void>;
   rename(oldpath: string, newpath: string): Promise<void>;
-  readFile(dbpath: string): Promise<Uint8Array>;
-  readFile(
-    dbpath: string,
-    options?: { encoding?: string },
-  ): Promise<string | Uint8Array>;
-  readFile(dbpath: string, bufferEncoding: "utf8"): Promise<string>;
+  readFile(dbpath: string): Promise<string>;
   writeFile(dbpath: string, content: Uint8Array | string): Promise<void>;
   open(dbpath: string, flag: string): Promise<FileHandle>;
   unlink(filename: string): Promise<void>;

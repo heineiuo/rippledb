@@ -32,7 +32,7 @@ export class Lockfile {
   private filetime: "mtime" | "ctime";
   private filename: string;
   private options: Options;
-  private refreshLockTimer!: Timer;
+  private refreshLockTimer!: any;
   private _locked = false;
   private stale: number;
 

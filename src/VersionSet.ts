@@ -147,7 +147,6 @@ export default class VersionSet {
     // read current， check if end of content is '\n'
     const current = await this._options.env.readFile(
       getCurrentFilename(this._dbpath),
-      "utf8",
     );
     if (!current || current[current.length - 1] !== "\n") {
       throw new Error("Invalid format of CURRENT file.");
