@@ -33,7 +33,6 @@ export class NodeEnv implements Env {
   rename = fs.promises.rename;
   unlink = fs.promises.unlink;
   unlinkSync = fs.unlinkSync;
-  fstat = fs.promises.fstat;
 
   // eslint-disable-next-line
   readdir(dbpath: string) {

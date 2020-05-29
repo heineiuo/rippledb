@@ -2,6 +2,7 @@ import {
   InternalDatabase,
   Env,
   FileHandle,
+  Dirent,
   DatabaseOptions,
 } from "https://cdn.jsdelivr.net/gh/heineiuo/rippledb-deno@2a79f5c/index.ts";
 
@@ -51,10 +52,6 @@ export class DenoEnv implements Env {
     }
   }
 
-  async readFile(path: string): Promise<string> {
-    return new TextDecoder().decode(Deno.readFile(path));
-  }
-
   async open(path: string, mode: string): Promise<DenoFile> {
     const options: Deno.OpenOptions = {};
     if (mode.includes("r")) {
@@ -68,6 +65,17 @@ export class DenoEnv implements Env {
   }
 
   rename = Deno.rename;
+
+  unlink = Deno.remove;
+  unlinkSync = Deno.removeSync;
+
+  async readdir(path: string): Promise<Dirent[]> {
+    const result = [];
+    for await (const dirEntry of Deno.readDir(path)) {
+      result.push(dirEntry.name);
+    }
+    return result;
+  }
 }
 
 export class Database extends InternalDatabase {
