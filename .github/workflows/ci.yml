@@ -41,7 +41,7 @@ jobs:
           git config user.email "heineiuo@gmail.com"
           git config user.name "heineiuo"
           git add .
-          git commit --message "Update Rippledb Deno"
+          git diff-index --quiet HEAD || git commit --message "Update Rippledb Deno"
           git push origin master
           cd ..
 
