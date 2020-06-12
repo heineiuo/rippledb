@@ -25,6 +25,13 @@ export class NodeEnv implements Env {
     return fs.promises.mkdir(dbpath, { recursive: true });
   }
 
+  async getFileTime(filename: string): Promise<number> {
+    const filetimeName = this.platform() === "win32" ? "mtime" : "ctime";
+    const stats = await fs.promises.stat(filename);
+    const time = new Date(stats[filetimeName]).getTime();
+    return time;
+  }
+
   writeFile = fs.promises.writeFile;
   readFile = async (path: string): Promise<string> => {
     return await fs.promises.readFile(path, "utf8");

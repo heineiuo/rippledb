@@ -1,10 +1,13 @@
 import {
   InternalDatabase,
-  Env,
-  FileHandle,
-  Dirent,
   DatabaseOptions,
 } from "https://cdn.jsdelivr.net/gh/heineiuo/rippledb-deno@2a79f5c/index.ts";
+import {
+  Env,
+  FileHandle,
+  BufferEncoding,
+  Dirent,
+} from "https://cdn.jsdelivr.net/gh/heineiuo/rippledb-deno@2a79f5c/Env.ts";
 
 export { InternalDatabase, Env, DatabaseOptions };
 
@@ -19,7 +22,9 @@ class DenoFile implements FileHandle {
   async appendFile(data: Uint8Array): Promise<void> {
     await this.file.write(data);
   }
-  read() {}
+  async readFile(): Promise<string> {
+    return new TextDecoder().decode(await this.file.read());
+  }
 }
 
 export class DenoEnv implements Env {

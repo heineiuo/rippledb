@@ -7,18 +7,11 @@
 
 import { Options } from "./Options";
 
-interface Timer {
-  hasRef(): boolean;
-  ref(): this;
-  refresh(): this;
-  unref(): this;
-}
-
 export class Lockfile {
   constructor(filename: string, options: Options) {
     this.filename = filename;
     this.options = options;
-    this.filetime = options.env.platform() === "win32" ? "mtime" : "ctime";
+
     this.stale = options.lockfileStale;
 
     this.options.env.onExit(() => {
@@ -29,9 +22,9 @@ export class Lockfile {
     });
   }
 
-  private filetime: "mtime" | "ctime";
   private filename: string;
   private options: Options;
+  // TODO compatible both nodejs and deno
   private refreshLockTimer!: any;
   private _locked = false;
   private stale: number;
@@ -51,15 +44,10 @@ export class Lockfile {
 
   private async waitUntilExpire(startTime = Date.now()): Promise<boolean> {
     try {
-      const fd = await this.options.env.open(this.filename, "r");
       try {
-        const stats = await fd.stat();
-        const filetime = new Date(stats[this.filetime]).getTime();
+        const filetime = await this.options.env.getFileTime(this.filename);
         if (Date.now() > filetime + this.stale + 1000) return true;
-      } catch (e) {
-      } finally {
-        await fd.close();
-      }
+      } catch (e) {}
       // wait time should be longer
       if (Date.now() > startTime + this.stale * 2 + 1000) return false;
       await new Promise((resolve) => setTimeout(resolve, this.stale / 2));
@@ -71,8 +59,8 @@ export class Lockfile {
 
   private async waitUntilOk(): Promise<boolean> {
     try {
-      const fd = await this.options.env.open(this.filename, "r");
-      await fd.close();
+      const file = await this.options.env.open(this.filename, "r");
+      await file.close();
       // file exist, wait file expire
       const expired = await this.waitUntilExpire();
       return expired;

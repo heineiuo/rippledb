@@ -174,4 +174,5 @@ export interface Env {
   unlink(filename: string): Promise<void>;
   unlinkSync(filename: string): void;
   readdir(dbpath: string): Promise<Dirent[]>;
+  getFileTime(filepath: string): Promise<number>;
 }
