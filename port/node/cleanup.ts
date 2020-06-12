@@ -3,7 +3,7 @@ const DEFAULT_MESSAGES = {
   uncaughtException: "Uncaught exception...",
 };
 
-interface Messages {
+interface SignalMessages {
   ctrlC: string;
   uncaughtException: string;
 }
@@ -12,18 +12,18 @@ interface CleanupHandler {
   (code: number | null, signal?: string): boolean;
 }
 
-interface Handle {
-  (...args: any[]): void;
+interface SignalHandle {
+  (signal: NodeJS.Signals): void;
 }
 
-const inited = false;
+let inited = false;
 let cleanupHandlers: CleanupHandler[] = []; // array of cleanup handlers to call
-let messages: Messages | null = null; // messages to write to stderr
+let messages: SignalMessages | null = null; // messages to write to stderr
 
-let sigintHandler: Handle; // POSIX signal handlers
-let sighupHandler: Handle;
-let sigquitHandler: Handle;
-let sigtermHandler: Handle;
+let sigintHandler: SignalHandle; // POSIX signal handlers
+let sighupHandler: SignalHandle;
+let sigquitHandler: SignalHandle;
+let sigtermHandler: SignalHandle;
 
 function exceptionHandler(e: Error): void {
   if (messages && messages.uncaughtException !== "") {
@@ -39,7 +39,7 @@ function exitHandler(exitCode: number): void {
   });
 }
 
-export function uninstall(): void {
+function uninstall(): void {
   if (cleanupHandlers.length > 0) {
     process.removeListener("SIGINT", sigintHandler);
     process.removeListener("SIGHUP", sighupHandler);
@@ -51,11 +51,11 @@ export function uninstall(): void {
   }
 }
 
-function createSignalHandler(signal: string): Handle {
+function createSignalHandler(signal: string): SignalHandle {
   return function (): void {
     let exit = true;
     cleanupHandlers.forEach(function (cleanup) {
-      if (cleanup(null, signal) === false) exit = false;
+      exit = !!cleanup(null, signal);
     });
     if (exit) {
       if (signal === "SIGINT" && messages && messages.ctrlC !== "") {
@@ -69,9 +69,9 @@ function createSignalHandler(signal: string): Handle {
   };
 }
 
-export function install(
+function install(
   cleanupHandler: CleanupHandler,
-  stderrMessages: Messages = DEFAULT_MESSAGES,
+  stderrMessages: SignalMessages = DEFAULT_MESSAGES,
 ): void {
   if (messages === null) messages = { ctrlC: "", uncaughtException: "" };
   if (typeof stderrMessages.ctrlC === "string")
@@ -90,6 +90,7 @@ export function install(
     process.on("SIGTERM", sigtermHandler);
     process.on("uncaughtException", exceptionHandler);
     process.on("exit", exitHandler);
+    inited = true;
   }
   cleanupHandlers.push(cleanupHandler);
 }

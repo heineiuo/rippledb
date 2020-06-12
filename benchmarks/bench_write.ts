@@ -12,44 +12,53 @@ function now(): number {
 }
 
 async function bench(total: number, runnerCount: number): Promise<void> {
-  const dataset = [];
-  for (let i = 0; i < total; i++) {
-    const strEntry = random(16, 100);
-    dataset.push([
-      Buffer.fromUnknown(strEntry[0]),
-      Buffer.fromUnknown(strEntry[1]),
-    ]);
+  try {
+    const dataset = [];
+    for (let i = 0; i < total; i++) {
+      const strEntry = random(16, 100);
+      dataset.push([
+        Buffer.fromUnknown(strEntry[0]),
+        Buffer.fromUnknown(strEntry[1]),
+      ]);
+    }
+
+    const dbpath = createDir("bench");
+    cleanup(dbpath);
+
+    const db = new Database(dbpath, { lockfileStale: 10 });
+    await db.ok();
+
+    console.log("db: ok");
+
+    const startTime = now();
+
+    await allocRunner(runnerCount, db, dataset);
+
+    const endTime = now();
+    const totalTime = endTime - startTime;
+
+    const file = await fs.promises.open(
+      path.resolve(__dirname, "../bench.log"),
+      "a+",
+    );
+    const log = `
+  time    : ${new Date().toISOString()}
+  key     : 16 bytes
+  value   : 100 bytes
+  total   : ${total}
+  runners : ${runnerCount} 
+  speed   : ${totalTime.toFixed(2)} ms total; ${(
+      (totalTime / total) *
+      1000
+    ).toFixed(2)} us/op
+  `;
+    console.log(log);
+    await file.appendFile(log);
+    await db.destroy();
+  } catch (e) {
+    console.error(e);
+    process.exit(1);
   }
-
-  const dbpath = createDir("bench");
-  cleanup(dbpath);
-  const db = new Database(dbpath);
-
-  const startTime = now();
-
-  await allocRunner(runnerCount, db, dataset);
-
-  const endTime = now();
-  const totalTime = endTime - startTime;
-
-  const file = await fs.promises.open(
-    path.resolve(__dirname, "../bench.log"),
-    "a+",
-  );
-  const log = `
-time    : ${new Date().toISOString()}
-key     : 16 bytes
-value   : 100 bytes
-total   : ${total}
-runners : ${runnerCount} 
-speed   : ${totalTime.toFixed(2)} ms total; ${(
-    (totalTime / total) *
-    1000
-  ).toFixed(2)} us/op
-`;
-  console.log(log);
-  await file.appendFile(log);
-  await db.destroy();
 }
 
 console.log(argv);
