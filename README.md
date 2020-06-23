@@ -1,4 +1,4 @@
-# rippledb
+# Rippledb
 
 
 <p>
@@ -8,7 +8,7 @@
   <a href="https://gitter.im/heineiuo/rippledb?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge"><img style="max-width:100%" alt="Join the chat at https://gitter.im/heineiuo/rippledb" src="https://badges.gitter.im/heineiuo/rippledb.svg"></a>
 </p>
 
-A pure node.js implementation of LSM(log structured merge tree) based storage engine(inspired by leveldb).
+Embeddable key-value database engine in pure TypeScript, based on LSM-Tree, Inspired by LevelDB.
 
 ## Get started
 
