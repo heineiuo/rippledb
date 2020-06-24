@@ -126,6 +126,7 @@ export default class Database {
     );
 
     this._status = new Status(this.recoverWrapper());
+    this.snapshots = new SnapshotList();
   }
 
   private writers = new WriterQueue();
@@ -144,7 +145,7 @@ export default class Database {
   private _manualCompaction!: ManualCompaction | null;
   private _bgError!: Status;
   private pendingOutputs: Set<number>;
-  private snapshots!: SnapshotList;
+  private snapshots: SnapshotList;
   private _stats: CompactionStats[];
   private _options: Options;
   private _tableCache: TableCache;
@@ -916,7 +917,7 @@ export default class Database {
     assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0);
     assert(!compact.builder);
     assert(!compact.outfile);
-    if (!this.snapshots) {
+    if (this.snapshots.empty()) {
       compact.smallestSnapshot = this._versionSet.lastSequence;
     } else {
       compact.smallestSnapshot = this.snapshots.oldest().sequenceNumber.value;

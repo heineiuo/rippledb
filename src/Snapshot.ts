@@ -5,25 +5,29 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { SequenceNumber } from './Format'
+import { SequenceNumber } from "./Format";
 
 export class Snapshot {
-  private _sequenceNumber: SequenceNumber
-  next!: Snapshot
-  prev!: Snapshot
+  private _sequenceNumber: SequenceNumber;
+  next!: Snapshot;
+  prev!: Snapshot;
 
   constructor(sn: SequenceNumber) {
-    this._sequenceNumber = sn
+    this._sequenceNumber = sn;
   }
 
   get sequenceNumber(): SequenceNumber {
-    return this._sequenceNumber
+    return this._sequenceNumber;
   }
 }
 
 export class SnapshotList {
+  empty(): boolean {
+    return true;
+  }
+
   oldest(): Snapshot {
     // TODO
-    return new Snapshot(new SequenceNumber())
+    return new Snapshot(new SequenceNumber());
   }
 }
