@@ -927,10 +927,10 @@ export default class Database {
     assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0);
     assert(!compact.builder);
     assert(!compact.outfile);
-    if (this.snapshots.isEmpty()) {
+    if (this._snapshots.isEmpty()) {
       compact.smallestSnapshot = this._versionSet.lastSequence;
     } else {
-      compact.smallestSnapshot = this.snapshots.oldest().sequenceNumber.value;
+      compact.smallestSnapshot = this._snapshots.oldest().sequenceNumber.value;
     }
 
     let status = new Status();
