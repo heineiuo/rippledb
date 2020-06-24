@@ -5,22 +5,25 @@
 ```ts
 
 type SnapShot = {
-  prev(): T
-  next(): T
-  sequence: bigint
+  _prev: Snapshot
+  _next: Snapshot
+  sequenceNumber: SequenceNumber | bigint
 }
 
-type LinkList<T> = {
-  empty(): boolean
-  insertAfter(T): void
+type SnapshotList = {
+  isEmpty(): boolean
+  insert(): Snapshot
+  newest(): Snapshot
+  oldest(): Snapshot
+  delete(snapshot: Snapshot): void
 }
 
 // methods in class Database: 
-public getSnapShot():SnapShot
+public getSnapShot(): SnapShot
 public releaseSnapShot(snapshot: Snapshot): void
 
 // properties in class Database:
-private snaphostList: LinkList<Snapshot>
+private _snaphostList: SnapshotList
 
 ```
 
