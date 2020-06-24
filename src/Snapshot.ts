@@ -6,15 +6,17 @@
  */
 
 import { SequenceNumber } from "./Format";
+import { assert } from "./DBHelper";
 
 export class Snapshot {
-  private _sequenceNumber: SequenceNumber;
-  next!: Snapshot;
-  prev!: Snapshot;
-
-  constructor(sn: SequenceNumber) {
-    this._sequenceNumber = sn;
+  constructor(sn: SequenceNumber | bigint) {
+    this._sequenceNumber =
+      sn instanceof SequenceNumber ? sn : new SequenceNumber(sn);
   }
+
+  _sequenceNumber: SequenceNumber;
+  _next!: Snapshot;
+  _prev!: Snapshot;
 
   get sequenceNumber(): SequenceNumber {
     return this._sequenceNumber;
@@ -22,12 +24,43 @@ export class Snapshot {
 }
 
 export class SnapshotList {
-  empty(): boolean {
-    return true;
+  constructor() {
+    this._head = new Snapshot(0n);
+    this._head._next = this._head;
+    this._head._prev = this._head;
+  }
+
+  _head: Snapshot;
+
+  isEmpty(): boolean {
+    return this._head._next === this._head;
+  }
+
+  newest(): Snapshot {
+    assert(!this.isEmpty());
+    return this._head._prev;
   }
 
   oldest(): Snapshot {
-    // TODO
-    return new Snapshot(new SequenceNumber());
+    assert(!this.isEmpty());
+    return this._head._next;
+  }
+
+  // insert before _head
+  insert(sn: SequenceNumber): Snapshot {
+    assert(this.isEmpty() || this.newest()._sequenceNumber.value <= sn.value);
+    const snapshot = new Snapshot(sn);
+    snapshot._next = this._head;
+    snapshot._prev = this._head._prev;
+    snapshot._prev._next = snapshot;
+    snapshot._next._prev = snapshot;
+    return snapshot;
+  }
+
+  delete(snapshot: Snapshot): void {
+    const next = snapshot._next;
+    const prev = snapshot._prev;
+    next._prev = prev;
+    prev._next = next;
   }
 }
