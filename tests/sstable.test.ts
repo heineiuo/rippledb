@@ -44,7 +44,7 @@ test("sstable", async (done) => {
     const [key, value] = list[i];
     const ikey = new InternalKey(
       new Slice(key),
-      new SequenceNumber(i),
+      BigInt(i),
       ValueType.kTypeValue,
     );
     await builder.add(ikey, new Slice(value));
@@ -92,7 +92,7 @@ test("sstable reverse iterator", async (done) => {
     const [key, value] = list[i];
     const ikey = new InternalKey(
       new Slice(key),
-      new SequenceNumber(i),
+      BigInt(i),
       ValueType.kTypeValue,
     );
     await builder.add(ikey, new Slice(value));

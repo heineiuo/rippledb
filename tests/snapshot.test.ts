@@ -1,14 +1,13 @@
 import { SnapshotList } from "../src/Snapshot";
-import { SequenceNumber } from "../src/Format";
 
 test("Snapshot and SnapshotList", () => {
   const list = new SnapshotList();
   expect(list.isEmpty()).toEqual(true);
-  const snap1 = list.insert(new SequenceNumber(10));
-  const snap2 = list.insert(new SequenceNumber(20));
-  const snap3 = list.insert(new SequenceNumber(30));
-  expect(list.newest()._sequenceNumber.value === 30);
-  expect(list.oldest()._sequenceNumber.value === 10);
+  const snap1 = list.insert(10n);
+  const snap2 = list.insert(20n);
+  const snap3 = list.insert(30n);
+  expect(list.newest()._sequenceNumber === 30n);
+  expect(list.oldest()._sequenceNumber === 10n);
   list.delete(snap1);
   expect(list.isEmpty()).toEqual(false);
   list.delete(snap2);

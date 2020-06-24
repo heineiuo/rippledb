@@ -11,7 +11,12 @@ import Slice from "./Slice";
 import MemTable from "./MemTable";
 import LogRecord from "./LogRecord";
 import { SequenceNumber, EntryRequireType, ValueType } from "./Format";
-import { decodeFixed64, encodeFixed32, decodeFixed32 } from "./Coding";
+import {
+  decodeFixed64,
+  encodeFixed32,
+  decodeFixed32,
+  encodeFixed64,
+} from "./Coding";
 
 export class WriteBatchInternal {
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
@@ -22,11 +27,11 @@ export class WriteBatchInternal {
   }
 
   static insert(batch: WriteBatch, mem: MemTable): void {
-    const nextSequence = WriteBatchInternal.getSequence(batch);
+    let nextSequence = WriteBatchInternal.getSequence(batch);
     for (const update of batch.iterator()) {
       const { type, key, value } = update;
       mem.add(nextSequence, type, key, value);
-      nextSequence.value += 1;
+      nextSequence += 1n;
     }
   }
 
@@ -41,12 +46,12 @@ export class WriteBatchInternal {
   }
 
   // sequence must be lastSequence + 1
-  static setSequence(batch: WriteBatch, sequence: number): void {
-    batch.head.fillBuffer(new SequenceNumber(sequence).toFixed64Buffer(), 0, 7);
+  static setSequence(batch: WriteBatch, sequence: SequenceNumber): void {
+    batch.head.fillBuffer(encodeFixed64(sequence), 0, 7);
   }
 
   static getSequence(batch: WriteBatch): SequenceNumber {
-    return new SequenceNumber(decodeFixed64(batch.head.slice(0, 8)));
+    return decodeFixed64(batch.head.slice(0, 8));
   }
 
   static setCount(batch: WriteBatch, count: number): void {

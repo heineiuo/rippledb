@@ -10,10 +10,10 @@ import BloomFilter from "./BloomFilter";
 import { Comparator } from "./Comparator";
 import Slice from "./Slice";
 import { Env, FileHandle } from "./Env";
-import { SequenceNumber } from "./Format";
 import Block from "./SSTableBlock";
 import Cache from "./Cache";
 import { Buffer } from "./Buffer";
+import { Snapshot } from "./Snapshot";
 
 export interface FilterPolicy {
   name(): string;
@@ -33,7 +33,7 @@ export interface ReadOptions {
   // (which must belong to the DB that is being read and which must
   // not have been released).  If "snapshot" is null, use an implicit
   // snapshot of the state at the beginning of this read operation.
-  snapshot?: SequenceNumber;
+  snapshot?: Snapshot;
 }
 
 export const defaultReadOptions: Omit<Required<ReadOptions>, "snapshot"> = {

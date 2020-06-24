@@ -48,7 +48,7 @@ export default class VersionSet {
   // if prevLogNumber is 0, then no log file is being compacted
   prevLogNumber = 0;
 
-  private _lastSequence = 0;
+  private _lastSequence = 0n;
   hasLastSequence?: boolean;
   manifestFileNumber = 0;
   nextFileNumber = 2;
@@ -75,11 +75,11 @@ export default class VersionSet {
     this.compactPointers = [];
   }
 
-  get lastSequence(): number {
+  get lastSequence(): bigint {
     return this._lastSequence;
   }
 
-  set lastSequence(value: number) {
+  set lastSequence(value: bigint) {
     this._lastSequence = value;
   }
 
@@ -160,7 +160,7 @@ export default class VersionSet {
     let logNumber = 0;
     let nextFileNumber = 0;
     let prevLogNumber = 0;
-    let lastSequence = 0;
+    let lastSequence = 0n;
 
     const builder = new VersionBuilder(this, this._current);
     const currentValue = current.substr(0, current.length - 1);
@@ -772,9 +772,13 @@ export default class VersionSet {
       this.internalKeyComparator,
       files,
     )) {
-      const number = decodeFixed64(fileEntry.value.buffer.slice(0, 8));
+      const fileNumber = decodeFixed64(fileEntry.value.buffer.slice(0, 8));
       const fileSize = decodeFixed64(fileEntry.value.buffer.slice(8));
-      yield* this.tableCache.entryIterator(this._options, number, fileSize);
+      yield* this.tableCache.entryIterator(
+        this._options,
+        Number(fileNumber),
+        Number(fileSize),
+      );
     }
   }
 }

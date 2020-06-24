@@ -13,6 +13,7 @@ import { InternalKey, VersionEditTag } from "./Format";
 import VersionEdit from "./VersionEdit";
 import { FileMetaData, NewFile } from "./VersionFormat";
 import { createHexStringFromDecimal } from "./LogFormat";
+import { encodeFixed64, decodeFixed64 } from "./Coding";
 
 export default class VersionEditRecord {
   static from(buf: Buffer): VersionEditRecord {
@@ -45,7 +46,7 @@ export default class VersionEditRecord {
     }
     if (edit.hasLastSequence) {
       bufList.push(Buffer.fromArrayLike([VersionEditTag.kLastSequence]));
-      bufList.push(Buffer.fromArrayLike(varint.encode(edit.lastSequence)));
+      bufList.push(encodeFixed64(edit.lastSequence));
     }
     edit.compactPointers.forEach(
       (pointer: { level: number; internalKey: Slice }) => {
@@ -120,8 +121,8 @@ export default class VersionEditRecord {
         edit.nextFileNumber = nextFileNumber;
         continue;
       } else if (type === VersionEditTag.kLastSequence) {
-        const lastSequence = varint.decode(opBuffer.slice(index));
-        index += varint.decode.bytes;
+        const lastSequence = decodeFixed64(opBuffer.slice(index));
+        index += 8;
         edit.lastSequence = lastSequence;
         continue;
       } else if (type === VersionEditTag.kCompactPointer) {
