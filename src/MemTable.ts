@@ -18,7 +18,7 @@ import {
 } from "./Format";
 import Skiplist from "./Skiplist";
 import Slice from "./Slice";
-import { getLengthPrefixedSlice } from "./Coding";
+import { getLengthPrefixedSlice, encodeFixed64 } from "./Coding";
 
 export default class MemTable {
   static getValueSlice(key: Slice): Slice | null {
@@ -115,7 +115,7 @@ export default class MemTable {
      * 2. Internal key: key --- type(1Byte)
      * 3. User key: key
      */
-    const sequenceBuf = sequence.toFixed64Buffer();
+    const sequenceBuf = encodeFixed64(sequence);
     sequenceBuf.fillInt(valueType, 7, 8);
     const buf = new Slice(
       Buffer.concat([

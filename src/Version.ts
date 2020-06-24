@@ -415,11 +415,7 @@ export default class Version {
         InternalKey.kMaxSequenceNumber,
         kValueTypeForSeek,
       );
-      const limit = new InternalKey(
-        maxUserKey,
-        new SequenceNumber(0),
-        ValueType.kTypeValue,
-      );
+      const limit = new InternalKey(maxUserKey, 0n, ValueType.kTypeValue);
       let overlaps = [] as FileMetaData[];
       while (level < Config.kMaxMemCompactLevel) {
         if (this.overlapInLevel(level + 1, minUserKey, maxUserKey)) {

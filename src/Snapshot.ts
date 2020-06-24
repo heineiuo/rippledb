@@ -9,9 +9,8 @@ import { SequenceNumber } from "./Format";
 import { assert } from "./DBHelper";
 
 export class Snapshot {
-  constructor(sn: SequenceNumber | bigint) {
-    this._sequenceNumber =
-      sn instanceof SequenceNumber ? sn : new SequenceNumber(sn);
+  constructor(sn: SequenceNumber) {
+    this._sequenceNumber = sn;
   }
 
   _sequenceNumber: SequenceNumber;
@@ -48,7 +47,7 @@ export class SnapshotList {
 
   // insert before _head
   insert(sn: SequenceNumber): Snapshot {
-    assert(this.isEmpty() || this.newest()._sequenceNumber.value <= sn.value);
+    assert(this.isEmpty() || this.newest()._sequenceNumber <= sn);
     const snapshot = new Snapshot(sn);
     snapshot._next = this._head;
     snapshot._prev = this._head._prev;
