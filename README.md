@@ -30,7 +30,7 @@ main()
 ```
 
 
-For more details, see [documention](./docs)
+For more details, see [documention](./docs/API.md)
 
 
 ## Roadmap
