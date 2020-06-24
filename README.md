@@ -30,7 +30,7 @@ main()
 ```
 
 
-For more details, see [documention](./docs)
+For more details, see [documention](./docs/API.md)
 
 
 ## Roadmap
@@ -44,9 +44,11 @@ For more details, see [documention](./docs)
 - [x] Database Recovery
 - [x] Version Manager
 - [x] Compaction
-- [x] Top-level API (put, get, del, batch, iterator, compactRange, ok)
-- [ ] Repair
+- [x] Operator API (put, get, del, batch, iterator, ok)
+- [x] Compaction API (compactRange)
+- [x] Snapshot API (getSnapshot, releaseSnapshot)
 - [x] Destroy
+- [ ] Repair
 
 ## Benchmark
 

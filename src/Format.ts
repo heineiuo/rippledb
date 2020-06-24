@@ -78,7 +78,9 @@ export enum CompressionTypes {
   none = 0x00,
 }
 
-// TODO maybe SequenceNumber should use bigint all time?
+// TODO typedef SequenceNumber as bigint:
+// type SequenceNumber = bigint
+//
 // bigint to buffer:
 //   let bnum = (1n << 56n) - 1n
 //   Buffer.fromUnknown(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
@@ -86,8 +88,8 @@ export enum CompressionTypes {
 //   let bnum = BigInt(`0x${buf.toString('hex')}`)
 export class SequenceNumber {
   // bigint?
-  constructor(initial = 0) {
-    this._value = initial;
+  constructor(initial: number | bigint = 0) {
+    this._value = typeof initial === "bigint" ? Number(initial) : initial;
   }
 
   private _value: number;
