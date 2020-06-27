@@ -4,7 +4,7 @@
 
 ```ts
 
-class Repairer {
+class DBRepairer {
   _dbname:string
   _env:Env
   _icmp:InternalCompareter
@@ -24,17 +24,17 @@ class Repairer {
   }
 }
 
-// static method in class Database: 
-static repair(): Promise<void>
+const repairer = new DBRepairer()
+await repairer.ok()
 
 ```
 
 ## Mechanism
 
 If `Manifest` file or `SSTable` file was broken, `Database` cannot recovery success. So 
-we need use `Repairer` to repair db files.
+we need use `DBRepairer` to repair db files.
 
-First, `Repairer` will find all files in `dbpath`. 
+First, `DBRepairer` will find all files in `dbpath`. 
 If `.log` file is found, convert it to SSTable files (Do not store in memory).
 
 Then, read all SSTable files and extract their metadata to 

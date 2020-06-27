@@ -47,15 +47,17 @@ export function getOldInfoLogFilename(dbpath: string): string {
   return path.resolve(dbpath, `LOG.old`);
 }
 
-export class InternalFile {
-  isInternalFile = true;
-  filename!: string;
-  number!: number;
-  type!: FileType;
-}
+type InternalFile = {
+  isInternalFile: boolean;
+  filename: string;
+  number: number;
+  type: FileType;
+};
 
 export function parseFilename(filename: string): InternalFile {
-  const internalFile = new InternalFile();
+  const internalFile = {
+    isInternalFile: true,
+  } as InternalFile;
   if (filename === "CURRENT") {
     internalFile.number = 0;
     internalFile.type = FileType.kCurrentFile;
