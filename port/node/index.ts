@@ -42,6 +42,11 @@ export class NodeEnv implements Env {
     const finalMessage = `${new Date().toISOString()} ${message}\n`;
     await handle.appendFile(finalMessage);
   }
+
+  async getFileSize(filename: string): Promise<number> {
+    const stat = await fs.promises.stat(filename);
+    return stat.size;
+  }
 }
 
 export class Database extends InternalDatabase {
