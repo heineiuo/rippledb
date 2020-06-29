@@ -5,8 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { path } from "./DBHelper";
+import { path, assert } from "./DBHelper";
 import { FileType } from "./Format";
+import { Env } from "./Env";
 
 function numberToString(num: number): string {
   let str = String(num);
@@ -45,6 +46,11 @@ export function getInfoLogFilename(dbpath: string): string {
 
 export function getOldInfoLogFilename(dbpath: string): string {
   return path.resolve(dbpath, `LOG.old`);
+}
+
+export function getTempFilename(dbpath: string, number: number): string {
+  assert(number > 0);
+  return path.resolve(dbpath, `${number}.dbtmp`);
 }
 
 type InternalFile = {
@@ -96,4 +102,27 @@ export function parseFilename(filename: string): InternalFile {
   }
 
   return internalFile;
+}
+
+export async function setCurrentFile(
+  env: Env,
+  dbpath: string,
+  manifestNumber: number,
+): Promise<void | Error> {
+  const filename = getManifestFilename(dbpath, manifestNumber);
+  assert(filename.startsWith(path.resolve(dbpath + "/")));
+  const content = filename.substr(path.resolve(dbpath + "/").length + 1);
+  const tempFilename = getTempFilename(dbpath, manifestNumber);
+  let error: void | Error;
+  try {
+    await env.writeFile(tempFilename, content + "\n");
+  } catch (e) {
+    error = e;
+  }
+  if (!error) {
+    await env.rename(tempFilename, getCurrentFilename(dbpath));
+  } else {
+    await env.unlink(tempFilename);
+  }
+  return error;
 }

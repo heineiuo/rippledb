@@ -13,7 +13,6 @@ import VersionSet from "./VersionSet";
 import {
   Config,
   InternalKey,
-  SequenceNumber,
   ValueType,
   InternalKeyComparator,
   parseInternalKey,
