@@ -22,7 +22,7 @@ import VersionEdit from "./VersionEdit";
 import { Config, InternalKeyComparator, InternalKey, Entry } from "./Format";
 import LogWriter from "./LogWriter";
 import Compaction from "./Compaction";
-import { Options } from "./Options";
+import { Options, ReadOptions } from "./Options";
 import { TableCache } from "./SSTableCache";
 import Merger from "./Merger";
 import { decodeFixed64 } from "./Coding";
@@ -731,6 +731,7 @@ export default class VersionSet {
     currentCompaction: Compaction,
   ): AsyncIterableIterator<Entry> {
     let num = 0;
+    const options = {} as ReadOptions;
 
     // Level-0 files have to be merged together.  For other levels,
     // we will make a concatenating iterator per level.
@@ -747,7 +748,7 @@ export default class VersionSet {
           const files = currentCompaction.inputs[which];
           for (let i = 0; i < files.length; i++) {
             list[num++] = this.tableCache.entryIterator(
-              this._options,
+              options,
               files[i].number,
               files[i].fileSize,
             );
@@ -768,6 +769,8 @@ export default class VersionSet {
   private async *levelFileEntryIterator(
     files: FileMetaData[],
   ): AsyncIterableIterator<Entry> {
+    const options = {} as ReadOptions;
+
     for (const fileEntry of Version.levelFileNumIterator(
       this.internalKeyComparator,
       files,
@@ -775,7 +778,7 @@ export default class VersionSet {
       const fileNumber = decodeFixed64(fileEntry.value.buffer.slice(0, 8));
       const fileSize = decodeFixed64(fileEntry.value.buffer.slice(8));
       yield* this.tableCache.entryIterator(
-        this._options,
+        options,
         Number(fileNumber),
         Number(fileSize),
       );

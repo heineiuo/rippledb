@@ -163,6 +163,6 @@ export const defaultOptions: Omit<Required<Options>, "env"> = {
   lockfileStale: 10000,
   infoLog: null,
   async log(message: string): Promise<void> {
-    if (this.infoLog) await this.infoLog.appendFile(message);
+    if (this.infoLog) await this.infoLog.appendFile(message + "\n");
   },
 };

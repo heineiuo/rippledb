@@ -98,7 +98,7 @@ export class TableCache {
   }
 
   async *entryIterator(
-    options: Options,
+    options: ReadOptions,
     fileNumber: number,
     fileSize: number,
   ): AsyncIterableIterator<Entry> {

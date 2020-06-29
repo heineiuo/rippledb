@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import { FileHandle } from "../../src/Env";
 import { onExit } from "./cleanup";
+import { InternalDBRepairer } from "../../src/DBRepairer";
 
 export class NodeEnv implements Env {
   platform(): string {
@@ -42,9 +43,21 @@ export class NodeEnv implements Env {
     const finalMessage = `${new Date().toISOString()} ${message}\n`;
     await handle.appendFile(finalMessage);
   }
+
+  async getFileSize(filename: string): Promise<number> {
+    const stat = await fs.promises.stat(filename);
+    return stat.size;
+  }
 }
 
 export class Database extends InternalDatabase {
+  constructor(dbpath: string, options: DatabaseOptions = {}) {
+    if (!options.env) options.env = new NodeEnv();
+    super(dbpath, options);
+  }
+}
+
+export class DBRepairer extends InternalDBRepairer {
   constructor(dbpath: string, options: DatabaseOptions = {}) {
     if (!options.env) options.env = new NodeEnv();
     super(dbpath, options);

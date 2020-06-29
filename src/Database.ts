@@ -65,6 +65,7 @@ import LogReader from "./LogReader";
 import IteratorMerger from "./Merger";
 import { WriterQueue, Writer } from "./WriterQueue";
 import { Lockfile } from "./Lockfile";
+import { buildTable } from "./Builder";
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -1120,34 +1121,12 @@ export default class Database {
     meta.number = this._versionSet.getNextFileNumber();
     meta.largest = new InternalKey();
     this.pendingOutputs.add(meta.number);
-    this._options.log(`Level-0 table #${meta.number}: started`);
-    const tableFilename = getTableFilename(this._dbpath, meta.number);
-    let status = new Status(this._options.env.open(tableFilename, "a+"));
-    if (!(await status.ok())) {
-      return status;
-    }
-    const builder = new SSTableBuilder(
+    const status = await buildTable(
+      this._dbpath,
+      this._options.env,
       this._options,
-      (await status.promise) as FileHandle,
-    );
-    for (const entry of mem.iterator()) {
-      if (!meta.smallest) {
-        meta.smallest = InternalKey.from(entry.key);
-      }
-      meta.largest.decodeFrom(entry.key);
-      await builder.add(entry.key, entry.value);
-    }
-
-    status = new Status(builder.finish());
-    if (!(await status.ok())) {
-      return status;
-    }
-    meta.fileSize = builder.fileSize;
-    assert(meta.fileSize > 0);
-    this._options.log(
-      `Level-0 table #${meta.number}: ${meta.fileSize} bytes ${
-        (await status.ok()) ? "status ok" : "status error"
-      }`,
+      mem.iterator(),
+      meta,
     );
     this.pendingOutputs.delete(meta.number);
 
