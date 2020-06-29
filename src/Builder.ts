@@ -32,9 +32,11 @@ export async function buildTable(
     options,
     (await status.promise) as FileHandle,
   );
+  let hasSmallestSet = false;
   for (const entry of iterator) {
-    if (!meta.smallest) {
+    if (!hasSmallestSet) {
       meta.smallest = InternalKey.from(entry.key);
+      hasSmallestSet = true;
     }
     meta.largest.decodeFrom(entry.key);
     await builder.add(entry.key, entry.value);

@@ -86,12 +86,15 @@ export class InternalDBRepairer {
       for (const tableInfo of this._tableInfos) {
         bytes += tableInfo.meta.fileSize;
       }
-      this._options.log(
+      await this._options.log(
         `**** Repaired leveldb ${this._dbpath}; 
 recovered ${this._tableInfos.length} files; ${bytes} bytes. 
 Some data may have been lost. 
 ****`,
       );
+    }
+    if (this._options.debug && error) {
+      console.log(error);
     }
     return error;
   }
@@ -259,23 +262,28 @@ Some data may have been lost.
           tableInfo.maxSequence = parsed.sn;
         }
       }
-      this._tableInfos.push(tableInfo);
     } catch (e) {
+      console.error(e);
       error = e;
+    }
+
+    this._options.log(
+      `Table #${tableInfo.meta.number}: ${counter} entries ${
+        error ? error.message : "success"
+      }`,
+    );
+
+    if (!error) {
+      this._tableInfos.push(tableInfo);
+    } else {
       this.repairTable(tableFilename, tableInfo); // RepairTable archives input file.
-    } finally {
-      this._options.log(
-        `Table #${tableInfo.meta.number}: ${counter} entries ${
-          error ? error.message : "success"
-        }`,
-      );
     }
   }
 
   async repairTable(
     srcTableFilename: string,
     tableInfo: TableInfo,
-  ): Promise<void> {
+  ): Promise<void | Error> {
     // We will copy src contents to a new table and then rename the
     // new table over the source.
     const destTableFilename = getTableFilename(
@@ -325,6 +333,7 @@ Some data may have been lost.
         }
       }
     }
+    return error;
   }
 
   async writeDescriptor(): Promise<void | Error> {
