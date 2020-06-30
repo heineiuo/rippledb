@@ -47,7 +47,7 @@ speed   : ${totalTime.toFixed(2)} ms total; ${(
 `;
   console.log(log);
   await file.appendFile(log);
-  await db.destroy();
+  await db.close();
 }
 
 bench(parseInt(argv.total as string));
