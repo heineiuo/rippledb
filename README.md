@@ -47,8 +47,8 @@ For more details, see [documention](./docs/API.md)
 - [x] Operator API (put, get, del, batch, iterator, ok)
 - [x] Compaction API (compactRange)
 - [x] Snapshot API (getSnapshot, releaseSnapshot)
-- [x] Destroy
-- [ ] Repair
+- [x] Close API (close)
+- [x] DBRepair
 
 ## Benchmark
 

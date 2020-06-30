@@ -60,7 +60,7 @@ describe("Database Iterator", () => {
       count++;
       if (count > 10) break;
     }
-    await db.destroy();
+    await db.close();
 
     done();
   });
@@ -82,7 +82,7 @@ describe("Database Iterator", () => {
         count++;
       }
     }
-    await db.destroy();
+    await db.close();
 
     expect(count).toBe(list.length);
     done();
@@ -113,7 +113,7 @@ describe("Database Iterator", () => {
       .join("|");
 
     expect(listKeys.join("|")).toEqual(originalKeys);
-    await db.destroy();
+    await db.close();
     done();
   });
 });

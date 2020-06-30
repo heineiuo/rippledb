@@ -24,7 +24,7 @@ describe("Dump memtable", () => {
     expect(String.fromCharCode.apply(null, result)).toBe("world2");
     const result2 = await db.get("key1");
     expect(!!result2).toBe(false);
-    await db.destroy();
+    await db.close();
 
     done();
   });

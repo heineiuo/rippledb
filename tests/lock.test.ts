@@ -23,9 +23,9 @@ test("lock", async (done) => {
   await copydb(dbpath, dbpath3);
   const db3 = new Database(dbpath3, { lockfileStale: 10 });
   await expect(db3.ok()).resolves.toBe(true);
-  await db1.destroy();
-  await db2.destroy();
-  await db3.destroy();
+  await db1.close();
+  await db2.close();
+  await db3.close();
 
   done();
 });

@@ -29,7 +29,7 @@ describe("Compaction", () => {
     await db.put("key", "value3");
     await db.put("key", "value4");
     await db.compactRange("k", "kz");
-    await db.destroy();
+    await db.close();
     done();
   });
 
@@ -74,7 +74,7 @@ describe("Compaction", () => {
     expect(!!result3).toBe(true);
     if (result3)
       expect(new TextDecoder().decode(result3)).toBe(randomCheckRecord[1]);
-    await db.destroy();
+    await db.close();
 
     done();
   });
