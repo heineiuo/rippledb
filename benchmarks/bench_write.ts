@@ -54,7 +54,7 @@ async function bench(total: number, runnerCount: number): Promise<void> {
   `;
     console.log(log);
     await file.appendFile(log);
-    await db.destroy();
+    await db.close();
   } catch (e) {
     console.error(e);
     process.exit(1);

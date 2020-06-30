@@ -25,7 +25,7 @@ describe("DBRepairer", () => {
       Buffer.alloc(16).fill(0x00),
       Buffer.alloc(16).fill(0xff),
     );
-    await db.destroy();
+    await db.close();
     await fs.promises.unlink(path.resolve(dbpath1, "MANIFEST-000002"));
     await fs.promises.unlink(path.resolve(dbpath1, "CURRENT"));
 
