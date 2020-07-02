@@ -1,12 +1,5 @@
-# Rippledb
+# [Rippledb](https://rippledb.github.io/) &middot;  <a href="https://github.com/heineiuo/rippledb/actions"><img style="max-width:100%" alt="GitHub Actions status" src="https://github.com/heineiuo/rippledb/workflows/Node%20CI/badge.svg"></a>  <a href="https://coveralls.io/github/heineiuo/rippledb"><img style="max-width:100%" alt="Coverage status" src="https://coveralls.io/repos/github/heineiuo/rippledb/badge.svg"></a>  <a href="https://www.npmjs.com/package/rippledb"><img style="max-width:100%" alt="npm version" src="https://img.shields.io/npm/v/rippledb.svg?style=flat"></a>  <a href="https://gitter.im/heineiuo/rippledb?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge"><img style="max-width:100%" alt="Join the chat at https://gitter.im/heineiuo/rippledb" src="https://badges.gitter.im/heineiuo/rippledb.svg"></a>
 
-
-<p>
-  <a href="https://github.com/heineiuo/rippledb/actions"><img style="max-width:100%" alt="GitHub Actions status" src="https://github.com/heineiuo/rippledb/workflows/Node%20CI/badge.svg"></a>
-  <a href="https://coveralls.io/github/heineiuo/rippledb"><img style="max-width:100%" alt="Coverage status" src="https://coveralls.io/repos/github/heineiuo/rippledb/badge.svg"></a>
-  <a href="https://www.npmjs.com/package/rippledb"><img style="max-width:100%" alt="npm version" src="https://img.shields.io/npm/v/rippledb.svg?style=flat"></a>
-  <a href="https://gitter.im/heineiuo/rippledb?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge"><img style="max-width:100%" alt="Join the chat at https://gitter.im/heineiuo/rippledb" src="https://badges.gitter.im/heineiuo/rippledb.svg"></a>
-</p>
 
 Embeddable key-value database engine in pure TypeScript, based on LSM-Tree, Inspired by LevelDB.
 
