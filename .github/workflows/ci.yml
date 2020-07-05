@@ -33,7 +33,7 @@ jobs:
 
       - name: Post Ripple Deno
         if: |
-          github.ref == 'refs/heads/master'
+          github.ref == 'refs/heads/master' || startsWith(github.ref, 'tags/')
         env:
           RIPPLEDBBOT_PAT: ${{ secrets.RIPPLEDBBOT_PAT }}
         run: |
