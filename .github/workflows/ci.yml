@@ -76,6 +76,7 @@ jobs:
           github.event_name == 'push' && contains(github.ref, 'refs/tags/')
         run: |
           cd rippledb-deno
+          echo 'new tag ${TAG_NAME}'
           git tag ${TAG_NAME}
           git push
           git push --follow-tags
