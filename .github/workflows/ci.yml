@@ -94,6 +94,7 @@ jobs:
           echo new tag $TAG_NAME
           git tag $TAG_NAME
           git push
+          git push --tags
           git push --follow-tags
           cd ..
         env:
