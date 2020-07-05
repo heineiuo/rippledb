@@ -77,7 +77,8 @@ jobs:
         run: |
           cd rippledb-deno
           git tag ${TAG_NAME}
-          git push --tags
+          git push
+          git push --follow-tags
           cd ..
         env:
           TAG_NAME: ${{ steps.changelog.outputs.tag_name }}
