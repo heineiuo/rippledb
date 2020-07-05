@@ -75,7 +75,7 @@ jobs:
         if: |
           github.event_name == 'push' && contains(github.ref, 'refs/tags/')
         run: |
-          cd ripple-deno
+          cd rippledb-deno
           git tag ${TAG_NAME}
           git push --tags
           cd ..
