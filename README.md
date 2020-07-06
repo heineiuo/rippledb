@@ -7,15 +7,15 @@ Embeddable key-value database engine in pure TypeScript, based on LSM-Tree, Insp
 
 Use in JavaScript or TypeScript:
 
-```js
-const path = require('path')
-const { Database } = require('rippledb') // install from npm
+```ts
+import path from 'path'
+import { Database } from 'rippledb'
 
 async function main(){
   const db = new Database(path.resolve(__dirname, './db'))
   await db.put('foo', 'bar')
   console.log(
-    (await db.get('foo')).toString()
+    new TextDecorder().decode(await db.get('foo'))
   ) // 'bar'
 }
 
@@ -23,25 +23,12 @@ main()
 ```
 
 
-For more details, see [documention](./docs/API.md)
-
+For more details and examples, see [Documention](https://rippledb.github.io/docs/new-database).
 
 ## Roadmap
-- [x] TableBuilder
-- [x] TableReader
-- [x] TableCache
-- [x] LogWriter
-- [x] LogReader
-- [x] WriteBatch
-- [x] MemTable
-- [x] Database Recovery
-- [x] Version Manager
-- [x] Compaction
-- [x] Operator API (put, get, del, batch, iterator, ok)
-- [x] Compaction API (compactRange)
-- [x] Snapshot API (getSnapshot, releaseSnapshot)
-- [x] Close API (close)
-- [x] DBRepair
+
+[x] Release 1.0 (2020-07-07)
+[ ] Support [Deno](https://deno.land) (2020-9-1)
 
 ## Benchmark
 
