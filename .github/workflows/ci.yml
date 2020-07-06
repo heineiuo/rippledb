@@ -21,9 +21,24 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Cache
+        id: cache-node-modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          npm -v
+          npm install
+        env:
+          CI: true
+
       - name: Build
         run: |
-          npm install
           npm run build
           npm run build:tsc
           npm run build:fixture
@@ -75,9 +90,12 @@ jobs:
         if: |
           github.event_name == 'push' && contains(github.ref, 'refs/tags/')
         run: |
-          cd ripple-deno
-          git tag ${TAG_NAME}
+          cd rippledb-deno
+          echo new tag $TAG_NAME
+          git tag $TAG_NAME
+          git push
           git push --tags
+          git push --follow-tags
           cd ..
         env:
           TAG_NAME: ${{ steps.changelog.outputs.tag_name }}
