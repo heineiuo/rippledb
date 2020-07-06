@@ -1,7 +1,7 @@
 {
   "name": "rippledb",
   "version": "1.0.0-rc.10",
-  "main": "build/port/node.js",
+  "main": "build/port/node",
   "repository": "https://github.com/heineiuo/rippledb",
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
