@@ -51,7 +51,7 @@ main()
 
 ## Roadmap
 
-- [x] Release 1.0 (2020-07-07)
+- [x] Release 1.0 (2020-7-7)
 - [ ] Support [Deno](https://deno.land) (2020-9-1)
 
 ## Benchmark

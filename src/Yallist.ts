@@ -1,3 +1,5 @@
+// Rewrite to TypeScript https://github.com/isaacs/yallist
+
 export class YallistNode<T = unknown> {
   constructor(
     value: T,
