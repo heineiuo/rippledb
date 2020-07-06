@@ -8,9 +8,30 @@ platforms after being compiled to JavaScript.
 * **Lightweight:** Rippledb has only 7k+ source code, and smaller than 1MB after compiled.Rippledb use zero third party modules.
 * **Embeddable:** Rippledb can be embedded in node.js application (or other JavaScript Runtime Environments) very easily.
 
-## Get started
 
-Use in JavaScript or TypeScript:
+## Installation
+
+Install with npm:
+
+```
+npm install rippledb
+```
+
+Install with Yarn:
+
+```
+yarn add rippledb
+```
+
+
+## Documentation
+
+You can find the React documentation on the [website](https://rippledb.github.io).
+
+Check out the [Get Started](https://rippledb.github.io/docs/) page for a quick overview.
+
+
+## Examples
 
 ```ts
 import path from 'path'
@@ -27,8 +48,6 @@ async function main(){
 main()
 ```
 
-
-For more details and examples, see [Documention](https://rippledb.github.io/docs/new-database).
 
 ## Roadmap
 
