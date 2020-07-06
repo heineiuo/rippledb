@@ -27,8 +27,8 @@ For more details and examples, see [Documention](https://rippledb.github.io/docs
 
 ## Roadmap
 
-[x] Release 1.0 (2020-07-07)
-[ ] Support [Deno](https://deno.land) (2020-9-1)
+- [x] Release 1.0 (2020-07-07)
+- [ ] Support [Deno](https://deno.land) (2020-9-1)
 
 ## Benchmark
 
