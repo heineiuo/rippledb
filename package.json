@@ -23,8 +23,6 @@
   },
   "files": [
     "build",
-    "index.d.ts",
-    "index.js",
     "LICENSE"
   ],
   "devDependencies": {
