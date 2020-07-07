@@ -1,3 +1,5 @@
+// Rewrite to TypeScript https://github.com/brianloveswords/buffer-crc32
+
 import { Buffer } from "./Buffer";
 
 const CRC_TABLE = new Int32Array([

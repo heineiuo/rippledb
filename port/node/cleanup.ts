@@ -1,3 +1,5 @@
+// Rewite to TypeScript https://github.com/jtlapp/node-cleanup/
+
 const DEFAULT_MESSAGES = {
   ctrlC: "[ctrl-C]",
   uncaughtException: "Uncaught exception...",

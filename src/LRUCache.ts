@@ -1,3 +1,5 @@
+// Rewrite to TypeScript https://github.com/isaacs/node-lru-cache
+
 import { Yallist, YallistNode } from "./Yallist";
 
 const MAX = Symbol("max");

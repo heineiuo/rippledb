@@ -41,7 +41,7 @@ async function main(){
   const db = new Database(path.resolve(__dirname, './db'))
   await db.put('foo', 'bar')
   console.log(
-    new TextDecorder().decode(await db.get('foo'))
+    new TextDecoder().decode(await db.get('foo'))
   ) // 'bar'
 }
 
@@ -51,7 +51,7 @@ main()
 
 ## Roadmap
 
-- [x] Release 1.0 (2020-07-07)
+- [x] Release 1.0 (2020-7-7)
 - [ ] Support [Deno](https://deno.land) (2020-9-1)
 
 ## Benchmark
