@@ -1,3 +1,5 @@
+// Rewrite to TypeScript https://github.com/feross/buffer
+
 export class Buffer extends Uint8Array {
   static kMaxLength = 0x7fffffff;
 

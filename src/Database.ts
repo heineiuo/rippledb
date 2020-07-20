@@ -65,6 +65,7 @@ import LogReader from "./LogReader";
 import IteratorMerger from "./Merger";
 import { WriterQueue, Writer } from "./WriterQueue";
 import { Lockfile } from "./Lockfile";
+import { buildTable } from "./Builder";
 
 // Information for a manual compaction
 interface ManualCompaction {
@@ -101,7 +102,7 @@ export default class Database {
     );
     this._dbpath = dbpath;
     // this._memtable = new MemTable(this._internalKeyComparator)
-    this._sn = new SequenceNumber(0);
+    this._sn = 0n;
     this.pendingOutputs = new Set();
     this._stats = Array.from(
       { length: Config.kNumLevels },
@@ -126,6 +127,7 @@ export default class Database {
     );
 
     this._status = new Status(this.recoverWrapper());
+    this._snapshots = new SnapshotList();
   }
 
   private writers = new WriterQueue();
@@ -144,7 +146,7 @@ export default class Database {
   private _manualCompaction!: ManualCompaction | null;
   private _bgError!: Status;
   private pendingOutputs: Set<number>;
-  private snapshots!: SnapshotList;
+  private _snapshots: SnapshotList;
   private _stats: CompactionStats[];
   private _options: Options;
   private _tableCache: TableCache;
@@ -179,7 +181,7 @@ export default class Database {
     edit.comparator = this._internalKeyComparator.userComparator.getName();
     edit.logNumber = 0;
     edit.nextFileNumber = 2;
-    edit.lastSequence = 0;
+    edit.lastSequence = 0n;
     const writer = new LogWriter(
       await this._options.env.open(getManifestFilename(this._dbpath, 1), "a"),
     );
@@ -272,7 +274,8 @@ export default class Database {
       result.saveManifest = versionSetRecoverResult.saveManifest;
     }
 
-    const maxSequence = new SequenceNumber(0);
+    const maxSequenceWrapper = { sequence: 0n };
+
     // Recover from all newer log files than the ones named in the
     // descriptor (new log files may have been added by the previous
     // incarnation without registering them in the descriptor).
@@ -320,7 +323,7 @@ export default class Database {
         logs[i],
         i === logs.length - 1,
         edit,
-        maxSequence,
+        maxSequenceWrapper,
       );
       if (typeof result2.saveManifest === "boolean") {
         result.saveManifest = result2.saveManifest;
@@ -332,8 +335,8 @@ export default class Database {
       this._versionSet.markFileNumberUsed(logs[i]);
     }
 
-    if (this._versionSet.lastSequence < maxSequence.value) {
-      this._versionSet.lastSequence = maxSequence.value;
+    if (this._versionSet.lastSequence < maxSequenceWrapper.sequence) {
+      this._versionSet.lastSequence = maxSequenceWrapper.sequence;
     }
 
     return result;
@@ -343,7 +346,7 @@ export default class Database {
     logNumber: number,
     isLastLog: boolean,
     edit: VersionEdit,
-    maxSequence: SequenceNumber,
+    maxSequenceWrapper: { sequence: SequenceNumber },
   ): Promise<RecoverLogFileResult> {
     const result = {} as RecoverLogFileResult;
     let status = new Status();
@@ -371,12 +374,13 @@ export default class Database {
       }
       WriteBatchInternal.insert(batch, mem);
       const lastSeq =
-        WriteBatchInternal.getSequence(batch).value +
-        WriteBatchInternal.getCount(batch) -
-        1;
+        WriteBatchInternal.getSequence(batch) +
+        BigInt(WriteBatchInternal.getCount(batch)) -
+        1n;
 
-      if (lastSeq > maxSequence.value) {
-        maxSequence.value = lastSeq;
+      if (lastSeq > maxSequenceWrapper.sequence) {
+        // TODO should not mutate argument
+        maxSequenceWrapper.sequence = lastSeq;
       }
 
       if (mem.size > this._options.writeBufferSize) {
@@ -418,8 +422,7 @@ export default class Database {
     }
   }
 
-  // TODO
-  public async destroy(): Promise<void> {
+  public async close(): Promise<void> {
     await this.lockfile.unlock();
     if (this._options.infoLog) {
       await this._options.infoLog.close();
@@ -436,8 +439,8 @@ export default class Database {
     if (!this._ok) await this.ok();
 
     const sequence = options.snapshot
-      ? new Snapshot(options.snapshot).sequenceNumber
-      : new SequenceNumber(this._versionSet.lastSequence);
+      ? options.snapshot.sequenceNumber
+      : this._versionSet.lastSequence;
     const iteratorOptions: Omit<Required<IteratorOptions>, "snapshot"> = {
       ...defaultIteratorOptions,
       ...options,
@@ -544,8 +547,8 @@ export default class Database {
     if (!this._ok) await this.ok();
     const slicedUserKey = new Slice(userKey);
     const sequence = options.snapshot
-      ? new Snapshot(options.snapshot).sequenceNumber
-      : new SequenceNumber(this._versionSet.lastSequence);
+      ? options.snapshot.sequenceNumber
+      : this._versionSet.lastSequence;
     const lookupKey = new LookupKey(slicedUserKey, sequence);
 
     const current = this._versionSet.current;
@@ -623,6 +626,14 @@ export default class Database {
     return this.write(writeOptions, batch);
   }
 
+  public getSnapshot(): Snapshot {
+    return this._snapshots.insert(this._versionSet.lastSequence);
+  }
+
+  public releaseSnapshot(snapshot: Snapshot): void {
+    this._snapshots.delete(snapshot);
+  }
+
   private async write(
     options: Required<WriteOptions>,
     batch?: WriteBatch,
@@ -646,8 +657,8 @@ export default class Database {
       let lastSequence = this._versionSet.lastSequence;
       const [lastWriter_, batch] = this.buildBatchGroup();
       lastWriter = lastWriter_;
-      WriteBatchInternal.setSequence(batch, lastSequence + 1);
-      lastSequence += WriteBatchInternal.getCount(batch);
+      WriteBatchInternal.setSequence(batch, lastSequence + 1n);
+      lastSequence += BigInt(WriteBatchInternal.getCount(batch));
 
       await this._log.addRecord(
         new Slice(WriteBatchInternal.getContents(batch)),
@@ -918,10 +929,10 @@ export default class Database {
     assert(this._versionSet.getNumLevelFiles(compact.compaction.level) > 0);
     assert(!compact.builder);
     assert(!compact.outfile);
-    if (!this.snapshots) {
+    if (this._snapshots.isEmpty()) {
       compact.smallestSnapshot = this._versionSet.lastSequence;
     } else {
-      compact.smallestSnapshot = this.snapshots.oldest().sequenceNumber.value;
+      compact.smallestSnapshot = this._snapshots.oldest().sequenceNumber;
     }
 
     let status = new Status();
@@ -969,12 +980,12 @@ export default class Database {
           hasCurrentUserKey = true;
           lastSequenceForKey = InternalKey.kMaxSequenceNumber;
         }
-        if (lastSequenceForKey.value <= compact.smallestSnapshot) {
+        if (lastSequenceForKey <= compact.smallestSnapshot) {
           // Hidden by an newer entry for same user key
           drop = true; // (A)
         } else if (
           ikey.valueType === ValueType.kTypeDeletion &&
-          ikey.sn.value <= compact.smallestSnapshot &&
+          ikey.sn <= compact.smallestSnapshot &&
           compact.compaction.isBaseLevelForKey(ikey.userKey)
         ) {
           // For this user key:
@@ -1111,34 +1122,12 @@ export default class Database {
     meta.number = this._versionSet.getNextFileNumber();
     meta.largest = new InternalKey();
     this.pendingOutputs.add(meta.number);
-    this._options.log(`Level-0 table #${meta.number}: started`);
-    const tableFilename = getTableFilename(this._dbpath, meta.number);
-    let status = new Status(this._options.env.open(tableFilename, "a+"));
-    if (!(await status.ok())) {
-      return status;
-    }
-    const builder = new SSTableBuilder(
+    const status = await buildTable(
+      this._dbpath,
+      this._options.env,
       this._options,
-      (await status.promise) as FileHandle,
-    );
-    for (const entry of mem.iterator()) {
-      if (!meta.smallest) {
-        meta.smallest = InternalKey.from(entry.key);
-      }
-      meta.largest.decodeFrom(entry.key);
-      await builder.add(entry.key, entry.value);
-    }
-
-    status = new Status(builder.finish());
-    if (!(await status.ok())) {
-      return status;
-    }
-    meta.fileSize = builder.fileSize;
-    assert(meta.fileSize > 0);
-    this._options.log(
-      `Level-0 table #${meta.number}: ${meta.fileSize} bytes ${
-        (await status.ok()) ? "status ok" : "status error"
-      }`,
+      mem.iterator(),
+      meta,
     );
     this.pendingOutputs.delete(meta.number);
 
@@ -1290,11 +1279,7 @@ export default class Database {
     if (!end) {
       delete manual.end;
     } else {
-      endStorage = new InternalKey(
-        end,
-        new SequenceNumber(0),
-        ValueType.kTypeValue,
-      );
+      endStorage = new InternalKey(end, 0n, ValueType.kTypeValue);
       manual.end = endStorage;
     }
 

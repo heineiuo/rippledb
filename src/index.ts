@@ -6,6 +6,7 @@
  */
 
 export { default as InternalDatabase } from "./Database";
+export { InternalDBRepairer } from "./DBRepairer";
 export { WriteBatch } from "./WriteBatch";
 export {
   Options,

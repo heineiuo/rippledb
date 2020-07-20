@@ -22,7 +22,7 @@ import VersionEdit from "./VersionEdit";
 import { Config, InternalKeyComparator, InternalKey, Entry } from "./Format";
 import LogWriter from "./LogWriter";
 import Compaction from "./Compaction";
-import { Options } from "./Options";
+import { Options, ReadOptions } from "./Options";
 import { TableCache } from "./SSTableCache";
 import Merger from "./Merger";
 import { decodeFixed64 } from "./Coding";
@@ -48,7 +48,7 @@ export default class VersionSet {
   // if prevLogNumber is 0, then no log file is being compacted
   prevLogNumber = 0;
 
-  private _lastSequence = 0;
+  private _lastSequence = 0n;
   hasLastSequence?: boolean;
   manifestFileNumber = 0;
   nextFileNumber = 2;
@@ -75,11 +75,11 @@ export default class VersionSet {
     this.compactPointers = [];
   }
 
-  get lastSequence(): number {
+  get lastSequence(): bigint {
     return this._lastSequence;
   }
 
-  set lastSequence(value: number) {
+  set lastSequence(value: bigint) {
     this._lastSequence = value;
   }
 
@@ -161,7 +161,7 @@ export default class VersionSet {
     let logNumber = 0;
     let nextFileNumber = 0;
     let prevLogNumber = 0;
-    let lastSequence = 0;
+    let lastSequence = 0n;
 
     const builder = new VersionBuilder(this, this._current);
     const currentValue = current.substr(0, current.length - 1);
@@ -732,6 +732,7 @@ export default class VersionSet {
     currentCompaction: Compaction,
   ): AsyncIterableIterator<Entry> {
     let num = 0;
+    const options = {} as ReadOptions;
 
     // Level-0 files have to be merged together.  For other levels,
     // we will make a concatenating iterator per level.
@@ -748,7 +749,7 @@ export default class VersionSet {
           const files = currentCompaction.inputs[which];
           for (let i = 0; i < files.length; i++) {
             list[num++] = this.tableCache.entryIterator(
-              this._options,
+              options,
               files[i].number,
               files[i].fileSize,
             );
@@ -769,13 +770,19 @@ export default class VersionSet {
   private async *levelFileEntryIterator(
     files: FileMetaData[],
   ): AsyncIterableIterator<Entry> {
+    const options = {} as ReadOptions;
+
     for (const fileEntry of Version.levelFileNumIterator(
       this.internalKeyComparator,
       files,
     )) {
-      const number = decodeFixed64(fileEntry.value.buffer.slice(0, 8));
+      const fileNumber = decodeFixed64(fileEntry.value.buffer.slice(0, 8));
       const fileSize = decodeFixed64(fileEntry.value.buffer.slice(8));
-      yield* this.tableCache.entryIterator(this._options, number, fileSize);
+      yield* this.tableCache.entryIterator(
+        options,
+        Number(fileNumber),
+        Number(fileSize),
+      );
     }
   }
 }

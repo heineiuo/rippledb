@@ -29,12 +29,19 @@ export enum ValueType {
 
 export const kValueTypeForSeek = ValueType.kTypeValue;
 
-export const kMaxSequenceNumber: bigint = (1n << 56n) - 1n;
+// TODO typedef SequenceNumber as bigint:
+// type SequenceNumber = bigint
+//
+// bigint to buffer:
+//   let bnum = (1n << 56n) - 1n
+//   Buffer.fromUnknown(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
+//  buf to bigint:
+//   let bnum = BigInt(`0x${buf.toString('hex')}`)
+export type SequenceNumber = bigint;
+
+export const kMaxSequenceNumber: SequenceNumber = (1n << 56n) - 1n;
 
 export class ParsedInternalKey {
-  userKey!: Slice;
-  sn!: SequenceNumber;
-  valueType!: ValueType;
   constructor(userKey?: Slice, sn?: SequenceNumber, valueType?: ValueType) {
     if (
       typeof userKey !== "undefined" &&
@@ -46,6 +53,10 @@ export class ParsedInternalKey {
       this.valueType = valueType;
     }
   }
+
+  userKey!: Slice;
+  sn!: SequenceNumber;
+  valueType!: ValueType;
 }
 
 function packSequenceAndType(seq: number | bigint, t: ValueType): bigint {
@@ -57,7 +68,7 @@ function packSequenceAndType(seq: number | bigint, t: ValueType): bigint {
 
 // Append the serialization of "key" to *result.
 function appendInternalKey(buf: Buffer, key: ParsedInternalKey): Buffer {
-  const sequenceBuf = key.sn.toFixed64Buffer();
+  const sequenceBuf = encodeFixed64(key.sn);
   sequenceBuf.fillInt(key.valueType, 7, 8);
   return Buffer.concat([buf, key.userKey.buffer, sequenceBuf]);
 }
@@ -78,37 +89,6 @@ export enum CompressionTypes {
   none = 0x00,
 }
 
-// TODO maybe SequenceNumber should use bigint all time?
-// bigint to buffer:
-//   let bnum = (1n << 56n) - 1n
-//   Buffer.fromUnknown(bnum.toString(16), 'hex') // <Buffer ff ff ff ff ff ff ff>
-//  buf to bigint:
-//   let bnum = BigInt(`0x${buf.toString('hex')}`)
-export class SequenceNumber {
-  // bigint?
-  constructor(initial = 0) {
-    this._value = initial;
-  }
-
-  private _value: number;
-
-  get value(): number {
-    return this._value;
-  }
-
-  set value(value) {
-    this._value = value;
-  }
-
-  toBuffer(): Buffer {
-    return Buffer.fromUnknown(varint.encode(this._value));
-  }
-
-  public toFixed64Buffer = (): Buffer => {
-    return encodeFixed64(this._value);
-  };
-}
-
 // Returns the user key portion of an internal key.
 export function extractUserKey(ikey: Slice): Slice {
   // if ikey.size === 8, userkey is '' (empty)
@@ -122,7 +102,7 @@ export class InternalKey extends Slice {
   // in c++ , it is (0x1llu << 56) -1, 72057594037927935
   // in javascript , Math.pow(2, 56) - 1 = 72057594037927940, Math.pow(2, 56) - 5 = 72057594037927930
   // so , use 72057594037927935 directly
-  static kMaxSequenceNumber = new SequenceNumber(72057594037927935);
+  static kMaxSequenceNumber: SequenceNumber = 72057594037927935n;
 
   static from(slice: Slice): InternalKey {
     const internalKey = new InternalKey();
@@ -176,7 +156,7 @@ export class InternalKeyBuilder {
      * 2. Internal key: key --- type(1Byte)
      * 3. User key: key
      */
-    const sequenceBuf = sequence.toFixed64Buffer();
+    const sequenceBuf = encodeFixed64(sequence);
     sequenceBuf.fillInt(valueType, 7, 8);
     const slice = new Slice(Buffer.concat([key.buffer, sequenceBuf]));
     return new InternalKey(slice);
@@ -315,7 +295,7 @@ export function parseInternalKey(
     ikey.userKey = extractUserKey(internalKey);
     const snBuf = Buffer.alloc(8);
     snBuf.fillBuffer(internalKey.buffer.slice(internalKey.length - 8), 0, 7);
-    ikey.sn = new SequenceNumber(decodeFixed64(snBuf));
+    ikey.sn = decodeFixed64(snBuf);
     ikey.valueType = internalKey.buffer[internalKey.length - 1];
     return true;
   } catch (e) {
@@ -336,7 +316,7 @@ export class LookupKey {
     this._internalKeySizeBuf = Buffer.fromUnknown(
       varint.encode(userKey.size + 8),
     );
-    this._sequenceBuf = sequence.toFixed64Buffer();
+    this._sequenceBuf = encodeFixed64(sequence);
     this._sequenceBuf.fillBuffer(
       Buffer.fromUnknown(varint.encode(kValueTypeForSeek)),
       7,

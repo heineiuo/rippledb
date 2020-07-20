@@ -1,7 +1,7 @@
 {
   "name": "rippledb",
-  "version": "0.3.1",
-  "main": "build/port/node.js",
+  "version": "1.0.0",
+  "main": "build/port/node",
   "repository": "https://github.com/heineiuo/rippledb",
   "author": "heineiuo <heineiuo@gmail.com>",
   "license": "MIT",
@@ -24,8 +24,6 @@
   },
   "files": [
     "build",
-    "index.d.ts",
-    "index.js",
     "LICENSE"
   ],
   "devDependencies": {

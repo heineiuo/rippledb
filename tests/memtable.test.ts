@@ -1,11 +1,6 @@
 import Slice from "../src/Slice";
 import MemTable from "../src/MemTable";
-import {
-  LookupKey,
-  ValueType,
-  SequenceNumber,
-  InternalKeyComparator,
-} from "../src/Format";
+import { LookupKey, ValueType, InternalKeyComparator } from "../src/Format";
 import { BytewiseComparator } from "../src/Comparator";
 // @ts-ignore make jest happy
 global.TextEncoder = require("util").TextEncoder;
@@ -17,31 +12,27 @@ test("memtable add and get", () => {
     new InternalKeyComparator(new BytewiseComparator()),
   );
   memtable.add(
-    new SequenceNumber(10),
+    10n,
     ValueType.kTypeValue,
     new Slice("key"),
     new Slice("key1valuevalue1"),
   );
   memtable.add(
-    new SequenceNumber(20),
+    20n,
     ValueType.kTypeValue,
     new Slice("key2"),
     new Slice("key2valuevadfa"),
   );
   memtable.add(
-    new SequenceNumber(30),
+    30n,
     ValueType.kTypeValue,
     new Slice("key3"),
     new Slice("key3value12389fdajj123"),
   );
 
-  expect(
-    !!memtable.get(new LookupKey(new Slice("key"), new SequenceNumber(1000))),
-  ).toBe(true);
+  expect(!!memtable.get(new LookupKey(new Slice("key"), 1000n))).toBe(true);
 
-  expect(
-    !!memtable.get(new LookupKey(new Slice("key3"), new SequenceNumber(5))),
-  ).toBe(false);
+  expect(!!memtable.get(new LookupKey(new Slice("key3"), 5n))).toBe(false);
 });
 
 test("memtable reverse iterator", () => {
@@ -49,19 +40,19 @@ test("memtable reverse iterator", () => {
     new InternalKeyComparator(new BytewiseComparator()),
   );
   memtable.add(
-    new SequenceNumber(10),
+    10n,
     ValueType.kTypeValue,
     new Slice("key"),
     new Slice("key1valuevalue1"),
   );
   memtable.add(
-    new SequenceNumber(20),
+    20n,
     ValueType.kTypeValue,
     new Slice("key2"),
     new Slice("key2valuevadfa"),
   );
   memtable.add(
-    new SequenceNumber(30),
+    30n,
     ValueType.kTypeValue,
     new Slice("key3"),
     new Slice("key3value12389fdajj123"),
