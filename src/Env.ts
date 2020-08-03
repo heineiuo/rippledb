@@ -166,11 +166,11 @@ export interface Env {
   platform(): string;
   // get current time
   now(): number;
-  access(dbpath: string): Promise<void>;
+  access(filename: string): Promise<void>;
   mkdir(dbpath: string): Promise<void>;
   rename(oldpath: string, newpath: string): Promise<void>;
   writeFile(dbpath: string, content: Uint8Array | string): Promise<void>;
-  open(dbpath: string, flag?: string): Promise<FileHandle>;
+  open(filename: string, flag?: string): Promise<FileHandle>;
   unlink(filename: string): Promise<void>;
   unlinkSync(filename: string): void;
   readdir(dbpath: string): Promise<Dirent[]>;

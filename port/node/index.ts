@@ -39,7 +39,9 @@ class NodeEnv implements Env {
   readFile = async (path: string): Promise<string> => {
     return await fs.promises.readFile(path, "utf8");
   };
-  open = fs.promises.open;
+  open = (path: string, flag: string): Promise<FileHandle> => {
+    return fs.promises.open(path, flag);
+  };
   rename = fs.promises.rename;
   unlink = fs.promises.unlink;
   unlinkSync = fs.unlinkSync;
