@@ -12,7 +12,7 @@ import { getTableFilename } from "./Filename";
 import SSTableBuilder from "./SSTableBuilder";
 import { Options } from "./Options";
 import { InternalKey, Entry } from "./Format";
-import { assert } from "console";
+import { assert } from "./DBHelper";
 
 export async function buildTable(
   dbpath: string,
