@@ -1,11 +1,18 @@
 import fs from "fs";
 import os from "os";
+import { TextEncoder } from "util";
 import InternalDatabase from "../../src/Database";
 import { Env, FileHandle } from "../../src/Env";
 import { DatabaseOptions } from "../../src/Options";
 import { InternalDBRepairer } from "../../src/DBRepairer";
 import { WriteBatch } from "../../src/WriteBatch";
 import { onExit } from "./cleanup";
+
+//@ts-ignore
+if (!global.TextEncoder) {
+  //@ts-ignore
+  global.TextEncoder = TextEncoder;
+}
 
 class NodeEnv implements Env {
   platform(): string {
