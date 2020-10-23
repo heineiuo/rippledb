@@ -145,10 +145,11 @@ export default class VersionSet {
   public recover = async (): Promise<RecoverResult> => {
     const result: RecoverResult = {};
     // read current， check if end of content is '\n'
-    const current = await this._options.env.readFile(
+    const currentFile = await this._options.env.open(
       getCurrentFilename(this._dbpath),
-      "utf8",
     );
+    const current = await currentFile.readFile("utf8");
+    await currentFile.close();
     if (!current || current[current.length - 1] !== "\n") {
       throw new Error("Invalid format of CURRENT file.");
     }

@@ -187,10 +187,12 @@ export default class Database {
     );
     await writer.addRecord(VersionEditRecord.add(edit));
     await writer.close();
-    await this._options.env.writeFile(
+    const file = await this._options.env.open(
       getCurrentFilename(this._dbpath),
-      "MANIFEST-000001\n",
+      "a+",
     );
+    await file.write(new TextEncoder().encode("MANIFEST-000001\n"));
+    await file.close();
   }
 
   private async recoverWrapper(): Promise<void> {

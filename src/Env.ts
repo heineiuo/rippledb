@@ -17,35 +17,6 @@ type BufferEncoding =
   | "binary"
   | "hex";
 
-export interface Stats<T = number> {
-  isFile(): boolean;
-  isDirectory(): boolean;
-  isBlockDevice(): boolean;
-  isCharacterDevice(): boolean;
-  isSymbolicLink(): boolean;
-  isFIFO(): boolean;
-  isSocket(): boolean;
-
-  dev: T;
-  ino: T;
-  mode: T;
-  nlink: T;
-  uid: T;
-  gid: T;
-  rdev: T;
-  size: T;
-  blksize: T;
-  blocks: T;
-  atimeMs: T;
-  mtimeMs: T;
-  ctimeMs: T;
-  birthtimeMs: T;
-  atime: Date;
-  mtime: Date;
-  ctime: Date;
-  birthtime: Date;
-}
-
 export interface Dirent {
   isFile(): boolean;
   isDirectory(): boolean;
@@ -58,11 +29,6 @@ export interface Dirent {
 }
 
 export interface FileHandle {
-  /**
-   * Gets the file descriptor for this file handle.
-   */
-  readonly fd: number;
-
   /**
    * Asynchronously append data to a file, creating the file if it does not exist. The underlying file will _not_ be closed automatically.
    * The `FileHandle` must have been opened for appending.
@@ -84,27 +50,6 @@ export interface FileHandle {
       | string
       | null,
   ): Promise<void>;
-
-  /**
-   * Asynchronous fchown(2) - Change ownership of a file.
-   */
-  chown(uid: number, gid: number): Promise<void>;
-
-  /**
-   * Asynchronous fchmod(2) - Change permissions of a file.
-   * @param mode A file mode. If a string is passed, it is parsed as an octal integer.
-   */
-  chmod(mode: string | number): Promise<void>;
-
-  /**
-   * Asynchronous fdatasync(2) - synchronize a file's in-core state with storage device.
-   */
-  datasync(): Promise<void>;
-
-  /**
-   * Asynchronous fsync(2) - synchronize a file's in-core state with the underlying storage device.
-   */
-  sync(): Promise<void>;
 
   /**
    * Asynchronously reads data from the file.
@@ -155,27 +100,6 @@ export interface FileHandle {
       | string
       | null,
   ): Promise<string | Uint8Array>;
-
-  /**
-   * Asynchronous fstat(2) - Get file status.
-   */
-  stat(): Promise<Stats>;
-
-  /**
-   * Asynchronous ftruncate(2) - Truncate a file to a specified length.
-   * @param len If not specified, defaults to `0`.
-   */
-  truncate(len?: number): Promise<void>;
-
-  /**
-   * Asynchronously change file timestamps of the file.
-   * @param atime The last access time. If a string is provided, it will be coerced to number.
-   * @param mtime The last modified time. If a string is provided, it will be coerced to number.
-   */
-  utimes(
-    atime: string | number | Date,
-    mtime: string | number | Date,
-  ): Promise<void>;
 
   /**
    * Asynchronously writes `buffer` to the file.
@@ -242,20 +166,14 @@ export interface Env {
   platform(): string;
   // get current time
   now(): number;
-  access(dbpath: string): Promise<void>;
+  access(filename: string): Promise<void>;
   mkdir(dbpath: string): Promise<void>;
   rename(oldpath: string, newpath: string): Promise<void>;
-  readFile(dbpath: string): Promise<Uint8Array>;
-  readFile(
-    dbpath: string,
-    options?: { encoding?: string },
-  ): Promise<string | Uint8Array>;
-  readFile(dbpath: string, bufferEncoding: "utf8"): Promise<string>;
   writeFile(dbpath: string, content: Uint8Array | string): Promise<void>;
-  open(dbpath: string, flag: string): Promise<FileHandle>;
+  open(filename: string, flag?: string): Promise<FileHandle>;
   unlink(filename: string): Promise<void>;
   unlinkSync(filename: string): void;
-  fstat(fd: FileHandle): Promise<Stats>;
   readdir(dbpath: string): Promise<Dirent[]>;
+  getFileTime(filepath: string): Promise<number>;
   getFileSize(filename: string): Promise<number>;
 }

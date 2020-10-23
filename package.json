@@ -19,7 +19,8 @@
     "build": "npm run build:src && npm run build:port-node",
     "build:tsc": "tsc -d",
     "build:deno": "node scripts/transform2deno.js",
-    "prepublish": "export NODE_ENV=production && npm run build"
+    "prepublish": "export NODE_ENV=production && npm run build",
+    "preversion": "npm run build:scripts && node scripts/preversion.js && git add port/deno"
   },
   "files": [
     "build",

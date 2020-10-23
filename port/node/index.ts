@@ -35,13 +35,23 @@ class NodeEnv implements Env {
     return fs.promises.mkdir(dbpath, { recursive: true });
   }
 
+  async getFileTime(filename: string): Promise<number> {
+    const filetimeName = this.platform() === "win32" ? "mtime" : "ctime";
+    const stats = await fs.promises.stat(filename);
+    const time = new Date(stats[filetimeName]).getTime();
+    return time;
+  }
+
   writeFile = fs.promises.writeFile;
-  readFile = fs.promises.readFile;
-  open = fs.promises.open;
+  readFile = async (path: string): Promise<string> => {
+    return await fs.promises.readFile(path, "utf8");
+  };
+  open = (path: string, flag: string): Promise<FileHandle> => {
+    return fs.promises.open(path, flag);
+  };
   rename = fs.promises.rename;
   unlink = fs.promises.unlink;
   unlinkSync = fs.unlinkSync;
-  fstat = fs.promises.fstat;
 
   // eslint-disable-next-line
   readdir(dbpath: string) {
