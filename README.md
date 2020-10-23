@@ -65,6 +65,12 @@ runners     : 10
 fillrandom  : 823.87 ms total; 82.39 us/op
 ```
 
+## Compatibility
+
+|node.js|Deno|
+|-|-|
+|`>=v10.0.0`|WIP|
+
 ## License
 
 [MIT License](./LICENSE)
